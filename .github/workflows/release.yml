@@ -29,6 +29,24 @@ jobs:
         working-directory: ui
         run: npm ci
 
+      # v2026.11.0-alpha.1 becomes "Cubby 2026.11 alpha 1", with a notes template to fill in before publishing.
+      - name: Release title and notes
+        id: notes
+        shell: pwsh
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          $version = $env:TAG.TrimStart('v')
+          $m = [regex]::Match($version, '^(\d+\.\d+)\.(\d+)(?:-([a-z]+)\.?(\d+)?)?')
+          $title = 'Cubby ' + $(if ($m.Groups[2].Value -eq '0') { $m.Groups[1].Value } else { "$($m.Groups[1].Value).$($m.Groups[2].Value)" })
+          if ($m.Groups[3].Success) { $title += ' ' + $m.Groups[3].Value }
+          if ($m.Groups[4].Success) { $title += ' ' + $m.Groups[4].Value }
+          $body = (Get-Content .github/release-notes.md -Raw -Encoding utf8).Replace('{{TITLE}}', $title).Replace('{{VERSION}}', $version)
+          "title=$title" >> $env:GITHUB_OUTPUT
+          "body<<NOTES_END" >> $env:GITHUB_OUTPUT
+          $body >> $env:GITHUB_OUTPUT
+          "NOTES_END" >> $env:GITHUB_OUTPUT
+
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -39,7 +57,7 @@ jobs:
           tauriScript: npm run tauri
           args: --bundles nsis
           tagName: ${{ github.ref_name }}
-          releaseName: Cubby ${{ github.ref_name }}
-          releaseBody: See the notes below. Download the setup file to install Cubby on Windows 10 or 11.
+          releaseName: ${{ steps.notes.outputs.title }}
+          releaseBody: ${{ steps.notes.outputs.body }}
           releaseDraft: true
           prerelease: ${{ contains(github.ref_name, '-') }}
