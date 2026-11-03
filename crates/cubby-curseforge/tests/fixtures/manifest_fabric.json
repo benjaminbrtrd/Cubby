@@ -1,0 +1,10 @@
+{
+  "minecraft": { "version": "1.20.4", "modLoaders": [ { "id": "fabric-0.15.11", "primary": true } ] },
+  "manifestType": "minecraftModpack",
+  "manifestVersion": 1,
+  "name": "Example Fabric Pack",
+  "version": "0.9",
+  "author": "Carol",
+  "files": [ { "projectID": 1, "fileID": 2 } ],
+  "overrides": "my-overrides"
+}

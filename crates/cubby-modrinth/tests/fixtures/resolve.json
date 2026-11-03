@@ -1,0 +1,167 @@
+{
+  "projects": [
+    { "id": "app", "slug": "app", "project_type": "mod", "title": "App", "icon_url": "https://cdn.modrinth.com/app.png" },
+    { "id": "lib", "slug": "lib", "project_type": "mod", "title": "Lib" },
+    { "id": "core", "slug": "core", "project_type": "mod", "title": "Core" },
+    { "id": "base", "slug": "base", "project_type": "mod", "title": "Base" },
+    { "id": "ghost", "slug": "ghost", "project_type": "mod", "title": "Ghost Lib" },
+    { "id": "other", "slug": "other", "project_type": "mod", "title": "Other" },
+    { "id": "shader", "slug": "shader", "project_type": "shader", "title": "Shader" },
+    { "id": "rp", "slug": "rp", "project_type": "resourcepack", "title": "Pack" },
+    { "id": "rp-addon", "slug": "rp-addon", "project_type": "resourcepack", "title": "Pack Addon" },
+    { "id": "pack", "slug": "pack", "project_type": "modpack", "title": "Modpack" },
+    { "id": "evil", "slug": "evil", "project_type": "mod", "title": "Evil" },
+    { "id": "cycle-a", "slug": "cycle-a", "project_type": "mod", "title": "Cycle A" },
+    { "id": "cycle-b", "slug": "cycle-b", "project_type": "mod", "title": "Cycle B" }
+  ],
+  "versions": [
+    {
+      "id": "app-1", "project_id": "app", "name": "App 1.0", "version_number": "1.0", "version_type": "release",
+      "game_versions": ["1.21.1"], "loaders": ["fabric"], "date_published": "2024-01-01T00:00:00Z",
+      "files": [{ "url": "https://cdn.modrinth.com/app-1.0.jar", "filename": "app-1.0.jar", "primary": true, "size": 900,
+                  "hashes": { "sha1": "1111111111111111111111111111111111111111" } }],
+      "dependencies": []
+    },
+    {
+      "id": "app-2", "project_id": "app", "name": "App 2.0", "version_number": "2.0", "version_type": "release",
+      "game_versions": ["1.20.1", "1.21.1"], "loaders": ["fabric", "quilt"], "date_published": "2024-05-01T00:00:00Z",
+      "files": [
+        { "url": "https://cdn.modrinth.com/app-2.0-sources.jar", "filename": "app-2.0-sources.jar", "primary": false, "size": 5,
+          "hashes": { "sha1": "2222222222222222222222222222222222222222" } },
+        { "url": "https://cdn.modrinth.com/app-2.0.jar", "filename": "app-2.0.jar", "primary": true, "size": 1000,
+          "hashes": { "sha1": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "sha512": "00" } }
+      ],
+      "dependencies": [
+        { "project_id": "lib", "version_id": null, "file_name": null, "dependency_type": "required" },
+        { "project_id": "core", "version_id": "core-1", "dependency_type": "required" },
+        { "project_id": "ghost", "dependency_type": "required" },
+        { "project_id": "extra", "dependency_type": "optional" },
+        { "project_id": "embedded-thing", "dependency_type": "embedded" },
+        { "file_name": "external.jar", "dependency_type": "required" }
+      ]
+    },
+    {
+      "id": "core-1", "project_id": "core", "name": "Core 1", "version_number": "1", "version_type": "alpha",
+      "game_versions": ["1.21.1"], "loaders": ["fabric"], "date_published": "2023-01-01T00:00:00Z",
+      "files": [{ "url": "https://cdn.modrinth.com/core.jar", "filename": "core.jar", "primary": true, "size": 300,
+                  "hashes": { "sha1": "3333333333333333333333333333333333333333" } }],
+      "dependencies": []
+    },
+    {
+      "id": "lib-1", "project_id": "lib", "name": "Lib 1", "version_number": "1", "version_type": "release",
+      "game_versions": ["1.20.1"], "loaders": ["fabric"], "date_published": "2023-01-01T00:00:00Z",
+      "files": [{ "url": "https://cdn.modrinth.com/lib-1.jar", "filename": "lib-1.jar", "primary": true, "size": 150,
+                  "hashes": { "sha1": "4444444444444444444444444444444444444441" } }],
+      "dependencies": []
+    },
+    {
+      "id": "lib-2", "project_id": "lib", "name": "Lib 2", "version_number": "2", "version_type": "release",
+      "game_versions": ["1.20.1"], "loaders": ["fabric"], "date_published": "2023-06-01T00:00:00Z",
+      "files": [{ "url": "https://cdn.modrinth.com/lib-2.jar", "filename": "lib-2.jar", "primary": true, "size": 160,
+                  "hashes": { "sha1": "4444444444444444444444444444444444444442" } }],
+      "dependencies": []
+    },
+    {
+      "id": "lib-3", "project_id": "lib", "name": "Lib 3", "version_number": "3", "version_type": "release",
+      "game_versions": ["1.21.1"], "loaders": ["fabric"], "date_published": "2024-02-01T00:00:00Z",
+      "files": [{ "url": "https://cdn.modrinth.com/lib-3.jar", "filename": "lib-3.jar", "primary": true, "size": 200,
+                  "hashes": { "sha1": "4444444444444444444444444444444444444443" } }],
+      "dependencies": [{ "project_id": "base", "dependency_type": "required" }]
+    },
+    {
+      "id": "lib-4", "project_id": "lib", "name": "Lib 4 beta", "version_number": "4-beta", "version_type": "beta",
+      "game_versions": ["1.21.1"], "loaders": ["fabric"], "date_published": "2024-09-01T00:00:00Z",
+      "files": [{ "url": "https://cdn.modrinth.com/lib-4.jar", "filename": "lib-4.jar", "primary": true, "size": 210,
+                  "hashes": { "sha1": "4444444444444444444444444444444444444444" } }],
+      "dependencies": []
+    },
+    {
+      "id": "base-1", "project_id": "base", "name": "Base 1", "version_number": "1", "version_type": "release",
+      "game_versions": ["1.21.1"], "loaders": ["fabric"], "date_published": "2024-01-01T00:00:00Z",
+      "files": [{ "url": "https://cdn.modrinth.com/base.jar", "filename": "base.jar", "primary": true, "size": 100,
+                  "hashes": { "sha1": "5555555555555555555555555555555555555555" } }],
+      "dependencies": []
+    },
+    {
+      "id": "ghost-1", "project_id": "ghost", "name": "Ghost (Forge)", "version_number": "1", "version_type": "release",
+      "game_versions": ["1.21.1"], "loaders": ["forge"], "date_published": "2024-01-01T00:00:00Z",
+      "files": [{ "url": "https://cdn.modrinth.com/ghost.jar", "filename": "ghost.jar", "primary": true, "size": 1,
+                  "hashes": { "sha1": "6666666666666666666666666666666666666666" } }],
+      "dependencies": []
+    },
+    {
+      "id": "other-1", "project_id": "other", "name": "Other 1", "version_number": "1", "version_type": "release",
+      "game_versions": ["1.21.1"], "loaders": ["fabric"], "date_published": "2024-01-01T00:00:00Z",
+      "files": [{ "url": "https://cdn.modrinth.com/other-1.jar", "filename": "other.jar", "primary": true, "size": 1,
+                  "hashes": { "sha1": "7777777777777777777777777777777777777771" } }],
+      "dependencies": []
+    },
+    {
+      "id": "other-2", "project_id": "other", "name": "Other 2", "version_number": "2", "version_type": "release",
+      "game_versions": ["1.21.1"], "loaders": ["fabric"], "date_published": "2024-02-01T00:00:00Z",
+      "files": [{ "url": "https://cdn.modrinth.com/other-2.jar", "filename": "other-2.jar", "primary": true, "size": 1,
+                  "hashes": { "sha1": "7777777777777777777777777777777777777772" } }],
+      "dependencies": []
+    },
+    {
+      "id": "shader-1", "project_id": "shader", "name": "Shader 1", "version_number": "1", "version_type": "release",
+      "game_versions": ["1.21.1"], "loaders": ["iris", "optifine"], "date_published": "2024-01-01T00:00:00Z",
+      "files": [{ "url": "https://cdn.modrinth.com/shader.zip", "filename": "Shader.zip", "primary": true, "size": 50,
+                  "hashes": { "sha1": "8888888888888888888888888888888888888888" } }],
+      "dependencies": [
+        { "project_id": "app", "dependency_type": "incompatible" },
+        { "version_id": "app-1", "dependency_type": "incompatible" },
+        { "version_id": "other-2", "dependency_type": "incompatible" }
+      ]
+    },
+    {
+      "id": "rp-1", "project_id": "rp", "name": "Pack 1", "version_number": "1", "version_type": "release",
+      "game_versions": ["1.20.1"], "loaders": ["minecraft"], "date_published": "2023-01-01T00:00:00Z",
+      "files": [{ "url": "https://cdn.modrinth.com/rp-1.zip", "filename": "Pack-1.zip", "primary": true, "size": 10,
+                  "hashes": { "sha1": "9999999999999999999999999999999999999991" } }],
+      "dependencies": []
+    },
+    {
+      "id": "rp-2", "project_id": "rp", "name": "Pack 2", "version_number": "2", "version_type": "release",
+      "game_versions": ["1.21.1"], "loaders": ["minecraft"], "date_published": "2024-01-01T00:00:00Z",
+      "files": [{ "url": "https://cdn.modrinth.com/rp-2.zip", "filename": "Pack-2.zip", "primary": true, "size": 20,
+                  "hashes": { "sha1": "9999999999999999999999999999999999999992" } }],
+      "dependencies": []
+    },
+    {
+      "id": "rp-addon-1", "project_id": "rp-addon", "name": "Addon 1", "version_number": "1", "version_type": "release",
+      "game_versions": ["1.21.1"], "loaders": ["minecraft"], "date_published": "2024-01-01T00:00:00Z",
+      "files": [{ "url": "https://cdn.modrinth.com/addon.zip", "filename": "Addon.zip", "primary": true, "size": 5,
+                  "hashes": { "sha1": "9999999999999999999999999999999999999993" } }],
+      "dependencies": [{ "project_id": "rp", "dependency_type": "required" }]
+    },
+    {
+      "id": "pack-1", "project_id": "pack", "name": "Modpack 1", "version_number": "1", "version_type": "release",
+      "game_versions": ["1.21.1"], "loaders": ["fabric"], "date_published": "2024-01-01T00:00:00Z",
+      "files": [{ "url": "https://cdn.modrinth.com/pack.mrpack", "filename": "pack.mrpack", "primary": true, "size": 5,
+                  "hashes": { "sha1": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" } }],
+      "dependencies": []
+    },
+    {
+      "id": "evil-1", "project_id": "evil", "name": "Evil 1", "version_number": "1", "version_type": "release",
+      "game_versions": ["1.21.1"], "loaders": ["fabric"], "date_published": "2024-01-01T00:00:00Z",
+      "files": [{ "url": "https://cdn.modrinth.com/evil.jar", "filename": "../evil.jar", "primary": true, "size": 5,
+                  "hashes": { "sha1": "cccccccccccccccccccccccccccccccccccccccc" } }],
+      "dependencies": []
+    },
+    {
+      "id": "cycle-a-1", "project_id": "cycle-a", "name": "A", "version_number": "1", "version_type": "release",
+      "game_versions": ["1.21.1"], "loaders": ["fabric"], "date_published": "2024-01-01T00:00:00Z",
+      "files": [{ "url": "https://cdn.modrinth.com/a.jar", "filename": "a.jar", "primary": true, "size": 1,
+                  "hashes": { "sha1": "dddddddddddddddddddddddddddddddddddddda1" } }],
+      "dependencies": [{ "project_id": "cycle-b", "dependency_type": "required" }]
+    },
+    {
+      "id": "cycle-b-1", "project_id": "cycle-b", "name": "B", "version_number": "1", "version_type": "release",
+      "game_versions": ["1.21.1"], "loaders": ["fabric"], "date_published": "2024-01-01T00:00:00Z",
+      "files": [{ "url": "https://cdn.modrinth.com/b.jar", "filename": "b.jar", "primary": true, "size": 1,
+                  "hashes": { "sha1": "ddddddddddddddddddddddddddddddddddddddb1" } }],
+      "dependencies": [{ "project_id": "cycle-a", "dependency_type": "required" }]
+    }
+  ]
+}

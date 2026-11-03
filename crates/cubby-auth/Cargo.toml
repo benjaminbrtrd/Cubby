@@ -1,0 +1,20 @@
+[package]
+name = "cubby-auth"
+description = "Microsoft accounts"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+cubby-common.workspace = true
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+reqwest.workspace = true
+chrono.workspace = true
+base64 = "0.23.1"
+
+[dev-dependencies]
+tempfile = "3.27.0"

@@ -1,0 +1,148 @@
+{
+ "version": "2.0",
+ "minecraft": "1.12.2",
+ "loader": {
+  "type": "forge",
+  "choose": false,
+  "metadata": {
+   "minecraft": "1.12.2",
+   "version": "14.23.5.2860",
+   "rawVersion": "1.12.2-14.23.5.2860"
+  }
+ },
+ "colours": {
+  "Red": "FF0000"
+ },
+ "warnings": {
+  "Danger": "May damage worlds."
+ },
+ "mods": [
+  {
+   "name": "Base Mod",
+   "version": "1",
+   "url": "packs/Opt/files/base.jar",
+   "file": "base.jar",
+   "download": "server",
+   "md5": "00000000000000000000000000000001",
+   "filesize": 10,
+   "type": "mods",
+   "client": true,
+   "optional": false,
+   "selected": false,
+   "recommended": true,
+   "hidden": false,
+   "library": false,
+   "description": "Always installed"
+  },
+  {
+   "name": "Shaders Mod",
+   "version": "1",
+   "url": "packs/Opt/files/shaders.jar",
+   "file": "shaders.jar",
+   "download": "server",
+   "md5": "00000000000000000000000000000002",
+   "filesize": 20,
+   "type": "mods",
+   "client": true,
+   "optional": true,
+   "selected": true,
+   "recommended": true,
+   "hidden": false,
+   "library": false,
+   "description": "Pretty light"
+  },
+  {
+   "name": "Minimap",
+   "version": "1",
+   "url": "packs/Opt/files/minimap.jar",
+   "file": "minimap.jar",
+   "download": "server",
+   "md5": "00000000000000000000000000000003",
+   "filesize": 30,
+   "type": "mods",
+   "client": true,
+   "optional": true,
+   "selected": false,
+   "recommended": true,
+   "hidden": false,
+   "library": false,
+   "group": "maps",
+   "depends": [
+    "Minimap Lib"
+   ],
+   "description": "Shows a map"
+  },
+  {
+   "name": "Minimap Lib",
+   "version": "1",
+   "url": "packs/Opt/files/minimaplib.jar",
+   "file": "minimaplib.jar",
+   "download": "server",
+   "md5": "00000000000000000000000000000004",
+   "filesize": 40,
+   "type": "dependency",
+   "client": true,
+   "optional": true,
+   "selected": false,
+   "recommended": false,
+   "hidden": false,
+   "library": true,
+   "description": "Library of Minimap"
+  },
+  {
+   "name": "Mini Map Alt",
+   "version": "1",
+   "url": "packs/Opt/files/minimapalt.jar",
+   "file": "minimapalt.jar",
+   "download": "server",
+   "md5": "00000000000000000000000000000005",
+   "filesize": 50,
+   "type": "mods",
+   "client": true,
+   "optional": true,
+   "selected": false,
+   "recommended": false,
+   "hidden": false,
+   "library": false,
+   "group": "maps",
+   "description": "Another map"
+  },
+  {
+   "name": "Fast Craft",
+   "version": "1",
+   "url": "http://forum.example.test/thread/1",
+   "file": "fastcraft.jar",
+   "download": "browser",
+   "md5": "00000000000000000000000000000006",
+   "type": "mods",
+   "client": true,
+   "optional": true,
+   "selected": false,
+   "recommended": false,
+   "hidden": false,
+   "library": false,
+   "colour": "Red",
+   "warning": "Danger",
+   "description": "Faster, risky"
+  },
+  {
+   "name": "Server Only",
+   "version": "1",
+   "url": "packs/Opt/files/server.jar",
+   "file": "server.jar",
+   "download": "server",
+   "type": "mods",
+   "client": false,
+   "optional": true,
+   "selected": true,
+   "recommended": true,
+   "hidden": false,
+   "library": false,
+   "description": "Not for clients"
+  }
+ ],
+ "configs": {
+  "filesize": 1,
+  "sha1": "0000000000000000000000000000000000000000"
+ }
+}

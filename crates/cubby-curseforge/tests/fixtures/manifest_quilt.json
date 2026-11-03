@@ -1,0 +1,10 @@
+{
+  "minecraft": { "version": "1.20.1", "modLoaders": [ { "id": "quilt-0.26.0", "primary": true } ] },
+  "manifestType": "minecraftModpack",
+  "manifestVersion": 1,
+  "name": "Example Quilt Pack",
+  "version": "1.0",
+  "author": "Dave",
+  "files": [],
+  "overrides": "overrides"
+}

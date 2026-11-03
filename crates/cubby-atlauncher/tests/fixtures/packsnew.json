@@ -1,0 +1,200 @@
+[
+ {
+  "id": 81,
+  "position": 56,
+  "name": "Digital Reality",
+  "type": "public",
+  "devVersions": [
+   {
+    "version": "Dev",
+    "minecraft": "1.21.1",
+    "hash": "eb2f0ab25c978679cdb45de3dd0590fc",
+    "hasLoader": true
+   }
+  ],
+  "versions": [
+   {
+    "version": "5.0.1",
+    "minecraft": "1.21.1",
+    "canUpdate": true,
+    "isRecommended": true,
+    "hasLoader": true
+   },
+   {
+    "version": "4.0.6",
+    "minecraft": "1.12.2",
+    "canUpdate": true,
+    "isRecommended": false,
+    "hasLoader": true
+   },
+   {
+    "version": "4.0.5",
+    "minecraft": "1.12.2",
+    "canUpdate": true,
+    "isRecommended": false,
+    "hasLoader": true
+   }
+  ],
+  "createServer": true,
+  "logging": true,
+  "featured": false,
+  "hasDiscordImage": false,
+  "description": "A hardcore tech pack, that started back in 1.5.2, that caters to a lot of everything; tech, magic, PVP, non-PVP, and community. The mod pack contains a selection of mods, especially tech mods, to allow multiple production paths and systems to be used at once and in ever-changing ways.  Be warned the pack contains GTCE and while it is not set up to be a pure GTCE environment, many of the GT recipes are active. Configs have been tweaked to stay true to previous versions of the pack.  Like \"Reality\", \"Digital Reality\", should have a little bit of everything to be complete and have multiple ways to achieve your goals.",
+  "websiteURL": "http://digitalreality.enjin.com/home"
+ },
+ {
+  "id": 1,
+  "position": 31,
+  "name": "MoonQuest",
+  "type": "public",
+  "devVersions": [
+   {
+    "version": "dev",
+    "minecraft": "1.7.10",
+    "hash": "1759ad83418f1dfdab42b7ba33ed8f53"
+   }
+  ],
+  "versions": [
+   {
+    "version": "0.17.0",
+    "minecraft": "1.6.4",
+    "canUpdate": true,
+    "isRecommended": true
+   },
+   {
+    "version": "0.16.0",
+    "minecraft": "1.6.4",
+    "canUpdate": true,
+    "isRecommended": true
+   },
+   {
+    "version": "0.15.1",
+    "minecraft": "1.6.4",
+    "canUpdate": true,
+    "isRecommended": true
+   }
+  ],
+  "createServer": true,
+  "logging": true,
+  "featured": false,
+  "hasDiscordImage": false,
+  "description": "Welcome to this Yogscast Inspired Unofficial Minecraft Modpack! If you haven't seen their new Minecraft series yet this modpack has all those mods and now you can go ahead and play along too! You should really go watch it!"
+ },
+ {
+  "id": 166,
+  "position": 3,
+  "name": "Pixelmon Mod",
+  "type": "public",
+  "devVersions": [
+   {
+    "version": "9.4.1-dev",
+    "minecraft": "1.21.1",
+    "hash": "4af6e6db14b46e38caf65ff92a286cbc",
+    "hasLoader": true
+   }
+  ],
+  "versions": [
+   {
+    "version": "Pixelmon-1.21.1-9.4.2",
+    "minecraft": "1.21.1",
+    "canUpdate": true,
+    "isRecommended": true,
+    "hasLoader": true
+   },
+   {
+    "version": "Pixelmon-1.21.1-9.4.1",
+    "minecraft": "1.21.1",
+    "canUpdate": true,
+    "isRecommended": true,
+    "hasLoader": true
+   },
+   {
+    "version": "Pixelmon-1.21.1-9.4.0",
+    "minecraft": "1.21.1",
+    "canUpdate": false,
+    "isRecommended": false,
+    "hasLoader": true
+   }
+  ],
+  "createServer": true,
+  "logging": true,
+  "featured": true,
+  "hasDiscordImage": false,
+  "description": "You probably all know Pokemon. Pixelmon is basically the same only it is on a Minecraft server! You can catch pokemon, battle trainers, compete with each other and against other pokemon, earn gym badges, upgrade your pokemons with attacks and trade with each other. \r\n\r\nThis pack requires 800mb to 2gb of RAM for optimal performance. \r\nJava 8 - 64 bit is required. \r\n\r\nWebsite:\r\nhttps://pixelmonmod.com/\r\nhttps://www.reforged.gg/",
+  "discordInviteURL": "https://www.discord.gg/pixelmon",
+  "supportURL": "https://www.pixelmonmod.com/tracker.php",
+  "websiteURL": "https://www.reforged.gg/"
+ },
+ {
+  "id": 11,
+  "position": 192,
+  "name": "Eva's Server",
+  "type": "private",
+  "devVersions": [],
+  "versions": [
+   {
+    "version": "2.4",
+    "minecraft": "1.6.4",
+    "canUpdate": true,
+    "isRecommended": true
+   },
+   {
+    "version": "2.3",
+    "minecraft": "1.6.4",
+    "canUpdate": true,
+    "isRecommended": true
+   },
+   {
+    "version": "2.2.1",
+    "minecraft": "1.6.4",
+    "canUpdate": true,
+    "isRecommended": true
+   }
+  ],
+  "createServer": true,
+  "logging": true,
+  "featured": false,
+  "hasDiscordImage": false,
+  "description": "A server configuration just for Eva's Server. Only Eva's Server users will see this option!!"
+ },
+ {
+  "id": 13,
+  "position": 190,
+  "name": "The Adventures of Toff and Shed",
+  "type": "public",
+  "devVersions": [
+   {
+    "version": "dev",
+    "minecraft": "1.6.4",
+    "hash": "95eb7674adb3b030ec37b25112ef6c20"
+   }
+  ],
+  "versions": [],
+  "createServer": true,
+  "logging": true,
+  "featured": false,
+  "hasDiscordImage": false,
+  "description": ""
+ },
+ {
+  "id": 999,
+  "position": 5,
+  "name": "Hidden System Pack",
+  "type": "public",
+  "system": true,
+  "devVersions": [],
+  "versions": [
+   {
+    "version": "1.0",
+    "minecraft": "1.20.1",
+    "canUpdate": true,
+    "isRecommended": true
+   }
+  ],
+  "createServer": false,
+  "logging": false,
+  "featured": false,
+  "hasDiscordImage": false,
+  "description": "system"
+ }
+]

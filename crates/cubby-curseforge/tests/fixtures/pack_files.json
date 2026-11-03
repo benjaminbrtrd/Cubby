@@ -1,0 +1,17 @@
+{
+  "data": [
+    { "id": 5000001, "modId": 925200, "isAvailable": true, "displayName": "Example Forge Pack 1.2.0", "fileName": "Example-Pack-1.2.0.zip",
+      "releaseType": 1, "fileStatus": 4, "hashes": [ { "value": "cccccccccccccccccccccccccccccccccccccccc", "algo": 1 } ],
+      "fileDate": "2024-05-01T10:00:00.000Z", "fileLength": 20000000, "downloadCount": 100,
+      "downloadUrl": "https://edge.forgecdn.net/files/5000/1/Example-Pack-1.2.0.zip",
+      "gameVersions": [ "1.20.1", "Forge", "Client" ] },
+    { "id": 5000002, "modId": 925200, "isAvailable": true, "displayName": "Example Pack 1.3.0-beta", "fileName": "Example-Pack-1.3.0-beta.zip",
+      "releaseType": 2, "fileStatus": 4, "hashes": [], "fileDate": "2024-04-01T10:00:00.000Z", "fileLength": 1, "downloadCount": 5,
+      "downloadUrl": "https://edge.forgecdn.net/files/5000/2/Example-Pack-1.3.0-beta.zip",
+      "gameVersions": [ "NeoForge", "1.20.1" ] },
+    { "id": 4000001, "modId": 925200, "isAvailable": true, "displayName": "", "fileName": "Example-Pack-0.1.zip",
+      "releaseType": 3, "fileStatus": 4, "hashes": [], "fileDate": "2023-01-01T10:00:00.000Z", "fileLength": 1, "downloadCount": 1,
+      "downloadUrl": null, "gameVersions": [ "1.19.2" ] }
+  ],
+  "pagination": { "index": 0, "pageSize": 50, "resultCount": 3, "totalCount": 3 }
+}

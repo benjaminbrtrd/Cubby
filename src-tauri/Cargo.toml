@@ -1,0 +1,57 @@
+[package]
+name = "cubby"
+description = "Cubby, a fast Minecraft launcher"
+authors = ["Benjamin BERTRAND"]
+version.workspace = true
+edition = "2024"
+license.workspace = true
+repository.workspace = true
+rust-version = "1.90"
+
+[lib]
+name = "cubby_lib"
+# rlib only: the mobile cdylib/staticlib targets make the MinGW linker fail ("export ordinal too large")
+crate-type = ["rlib"]
+# No unit tests in this crate (the logic lives in the cubby-* crates): a test executable that links Tauri does not
+# start on Windows (STATUS_ENTRYPOINT_NOT_FOUND), so `cargo test --workspace` would fail on it.
+test = false
+doctest = false
+
+[[bin]]
+name = "cubby"
+path = "src/main.rs"
+test = false
+
+[build-dependencies]
+tauri-build = { version = "2.7.4", features = [] }
+
+[dependencies]
+cubby-common.workspace = true
+cubby-meta.workspace = true
+cubby-java.workspace = true
+cubby-auth.workspace = true
+cubby-instance.workspace = true
+cubby-launch.workspace = true
+cubby-modrinth.workspace = true
+cubby-packinstall.workspace = true
+cubby-ftb.workspace = true
+cubby-technic.workspace = true
+cubby-atlauncher.workspace = true
+cubby-curseforge.workspace = true
+dirs.workspace = true
+futures.workspace = true
+uuid.workspace = true
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+tokio.workspace = true
+chrono.workspace = true
+tracing.workspace = true
+log = "0.4"
+tauri = { version = "2.12.5", features = ["protocol-asset"] }
+tauri-plugin-log = "2"
+tauri-plugin-opener = "2"
+tauri-plugin-dialog = "2"
+sysinfo = { version = "0.39", default-features = false, features = ["system"] }
+
+[dev-dependencies]
+tempfile = "3.27.0"

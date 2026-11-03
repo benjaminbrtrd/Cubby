@@ -1,0 +1,16 @@
+{
+  "data": [
+    { "id": 1001, "name": "Just Enough Items", "slug": "jei", "classId": 6, "allowModDistribution": true,
+      "links": { "websiteUrl": "https://www.curseforge.com/minecraft/mc-mods/jei" } },
+    { "id": 1002, "name": "Blocked Mod", "slug": "blocked-mod", "classId": 6, "allowModDistribution": false,
+      "links": { "websiteUrl": "https://www.curseforge.com/minecraft/mc-mods/blocked-mod" } },
+    { "id": 1003, "name": "Faithful", "slug": "faithful-32x", "classId": 12, "allowModDistribution": true,
+      "links": { "websiteUrl": "https://www.curseforge.com/minecraft/texture-packs/faithful-32x" } },
+    { "id": 1004, "name": "CDN-able", "slug": "cdn-able", "classId": 6, "allowModDistribution": true,
+      "links": { "websiteUrl": "https://www.curseforge.com/minecraft/mc-mods/cdn-able" } },
+    { "id": 1005, "name": "Optional extra", "slug": "optional-extra", "classId": 6, "allowModDistribution": null,
+      "links": { "websiteUrl": "https://www.curseforge.com/minecraft/mc-mods/optional-extra" } },
+    { "id": 1006, "name": "Complementary", "slug": "complementary", "classId": 6552, "allowModDistribution": true,
+      "links": { "websiteUrl": "https://www.curseforge.com/minecraft/shaders/complementary" } }
+  ]
+}

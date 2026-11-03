@@ -1,0 +1,19 @@
+[package]
+name = "cubby-technic"
+description = "Technic Platform client: search and browse modpacks, plan installs of single-zip and Solder packs"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+cubby-common.workspace = true
+tokio.workspace = true
+reqwest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+zip.workspace = true
+
+[dev-dependencies]
+tempfile = "3.27.0"

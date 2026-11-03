@@ -1,0 +1,44 @@
+[workspace]
+resolver = "2"
+members = ["crates/*", "src-tauri"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0-only"
+repository = "https://github.com/benjaminbrtrd/Cubby"
+
+[workspace.dependencies]
+cubby-common = { path = "crates/cubby-common" }
+cubby-meta = { path = "crates/cubby-meta" }
+cubby-java = { path = "crates/cubby-java" }
+cubby-auth = { path = "crates/cubby-auth" }
+cubby-instance = { path = "crates/cubby-instance" }
+cubby-launch = { path = "crates/cubby-launch" }
+cubby-modrinth = { path = "crates/cubby-modrinth" }
+cubby-packinstall = { path = "crates/cubby-packinstall" }
+cubby-ftb = { path = "crates/cubby-ftb" }
+cubby-technic = { path = "crates/cubby-technic" }
+cubby-atlauncher = { path = "crates/cubby-atlauncher" }
+cubby-curseforge = { path = "crates/cubby-curseforge" }
+tokio = { version = "1", features = ["full"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls", "gzip"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+futures = "0.3"
+sha1 = "0.10"
+hex = "0.4"
+dirs = "6"
+uuid = { version = "1", features = ["v4", "v3", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+toml = "0.8"
+tracing = "0.1"
+zip = { version = "2", default-features = false, features = ["deflate"] }
+
+# Disk and link time: no debug info for dependencies, line tables only for our crates.
+[profile.dev]
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+debug = false

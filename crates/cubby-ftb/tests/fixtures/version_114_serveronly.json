@@ -1,0 +1,229 @@
+{
+ "status": "success",
+ "updated": 1744905365,
+ "refreshed": 0,
+ "type": "release",
+ "plays": 27007,
+ "installs": 3040,
+ "parent": 114,
+ "notification": "",
+ "links": [],
+ "id": 100071,
+ "name": "1.6.1",
+ "private": false,
+ "targets": [
+  {
+   "id": -1,
+   "name": "minecraft",
+   "version": "1.19.2",
+   "type": "game",
+   "updated": 0
+  },
+  {
+   "id": -1,
+   "name": "forge",
+   "version": "43.4.5",
+   "type": "modloader",
+   "updated": 0
+  },
+  {
+   "id": -1,
+   "name": "java",
+   "version": "17.0.7+7",
+   "type": "runtime",
+   "updated": 0
+  }
+ ],
+ "specs": {
+  "id": 0,
+  "minimum": 4096,
+  "recommended": 6144
+ },
+ "files": [
+  {
+   "id": 2785895855,
+   "version": "0",
+   "path": "./defaultconfigs",
+   "url": "https://files.feed-the-beast.com/blob/2d/2dd5ae8e5ef71867259bdcc4dcdf63c59ef6ae980e42b89efb54686ef060b97f.toml",
+   "mirrors": [],
+   "tags": [],
+   "sha1": "ad2bf4cba49d36139855e584e3808ab233e4f7e3",
+   "hashes": {
+    "sha1": "ad2bf4cba49d36139855e584e3808ab233e4f7e3",
+    "sha256": "d4238d730864f0724372511ef3e345cd07058a1dae930dcb174bd222eafdb10c",
+    "sha512": "ce4fd17889d0c7505b7834cad71f777fd64c1be134fc1aa4978fd0f1b837a1633208b796c46cc0890daf6f04bb132448f6013813aead7d4bfa8e51b311238301",
+    "murmur": 2123981243,
+    "cfMurmur": 913851506
+   },
+   "size": 1959,
+   "clientonly": false,
+   "serveronly": false,
+   "optional": false,
+   "name": "rftoolscontrol-server.toml",
+   "type": "config",
+   "updated": 1744905365
+  },
+  {
+   "id": 2785895852,
+   "version": "0",
+   "path": "./defaultconfigs",
+   "url": "https://files.feed-the-beast.com/blob/78/7881e6f05cdd34e1cbb1a7d1ba17fd314b571331ac6be8104a335faf50aa5b2e.toml",
+   "mirrors": [],
+   "tags": [],
+   "sha1": "e00f981b8b7da14b3b3df3f2664fc8c398a9ada7",
+   "hashes": {
+    "sha1": "e00f981b8b7da14b3b3df3f2664fc8c398a9ada7",
+    "sha256": "5ee6731ba543c5a2879d8ed7ad9aa521ee1201d0a9e6e2c8291811076763c987",
+    "sha512": "c43d81f5bf0863ed52ff44419cc3cf838861d83c2139f135741779f8beb03955b1f689dc02644cb41b84e557c2c1af8ca07e3c48ff4e1e6755e056cdb27f6e1e",
+    "murmur": 4252390001,
+    "cfMurmur": 9297465
+   },
+   "size": 2398,
+   "clientonly": false,
+   "serveronly": false,
+   "optional": false,
+   "name": "sophisticatedcore-server.toml",
+   "type": "config",
+   "updated": 1744905365
+  },
+  {
+   "id": 2785895853,
+   "version": "0",
+   "path": "./defaultconfigs",
+   "url": "https://files.feed-the-beast.com/blob/c7/c7c8c183e1951f05c111a15ad3d6d6ed021f4fefaab8fdf08ae16ca352605289.toml",
+   "mirrors": [],
+   "tags": [],
+   "sha1": "8578282f039abbda91dcaa265c7c31486e1f0c4a",
+   "hashes": {
+    "sha1": "8578282f039abbda91dcaa265c7c31486e1f0c4a",
+    "sha256": "aaf55b1fd5a83cf3c248da9a59b4a41e8e5a62ff285d28d66cb9ec3f0af76503",
+    "sha512": "8a7a14736aa643b827213ed3ba68d69b2fa241a758953c282e138266027896f7a9a010f5a2c051909de1d88d8fe7f2c11f565e9b299714efd55a414af3e6759e",
+    "murmur": 2568729012,
+    "cfMurmur": 3158624770
+   },
+   "size": 460,
+   "clientonly": false,
+   "serveronly": false,
+   "optional": false,
+   "name": "refinedstorageaddons-server.toml",
+   "type": "config",
+   "updated": 1744905365
+  },
+  {
+   "id": 2785898818,
+   "version": "0",
+   "path": "./mods",
+   "url": "https://edge.forgecdn.net/files/4821/189/extremesoundmuffler-3.39-forge-1.19.2.jar",
+   "mirrors": [
+    "https://files.feed-the-beast.com/blob/a0/a0cd0c7e5c4d16ba460252bc587d30ce0ec263bfc6a5bcfbf51f68f60d0d6f87.jar"
+   ],
+   "tags": [],
+   "sha1": "33ea95b7332abfc317d5646c83e6a7ea5bec0a6f",
+   "hashes": {
+    "sha1": "33ea95b7332abfc317d5646c83e6a7ea5bec0a6f",
+    "sha256": "c6c9dda903151bd0992865b7dcd448c8cc4852b7a75317c727c52fd78a8a5812",
+    "sha512": "34753acf045309c41b62ab4fecd169ff026069104e5eca7ffd99a93ea97d9233b5c97f96cd547828933c59ed02a08d55e35976b0bc9336b3c3c35ad48b0694a0",
+    "murmur": 1929863549,
+    "cfMurmur": 1895084034
+   },
+   "size": 296296,
+   "clientonly": true,
+   "serveronly": false,
+   "optional": false,
+   "name": "extremesoundmuffler-3.39-forge-1.19.2.jar",
+   "type": "mod",
+   "updated": 1744905365,
+   "curseforge": {
+    "project": "363363",
+    "file": "4821189"
+   }
+  },
+  {
+   "id": 2785898869,
+   "version": "0",
+   "path": "./mods",
+   "url": "https://edge.forgecdn.net/files/6299/441/ftbpromoter-19.2.52.jar",
+   "mirrors": [
+    "https://files.feed-the-beast.com/blob/4b/4b48cea698ff89f9dfd6947c58e96be6d3947fcba47a1a9ece07868279b27c06.jar"
+   ],
+   "tags": [],
+   "sha1": "8fe43c4d69174c48a36ac8bb39b8ba2159150c31",
+   "hashes": {
+    "sha1": "8fe43c4d69174c48a36ac8bb39b8ba2159150c31",
+    "sha256": "5f56d18391d6eb9a0635e9b422faf383f90fd5aad00e6751d27199b879a17e50",
+    "sha512": "d29118cc2f1f2d178b1426b5bd934841c633280ec9c0a6fff17639e5f667f8bc1ef8ddbfdb9329c0ae0bfe8dcaee77216da9eebc95a9e6cd40757ad8de9449dd",
+    "murmur": 796941955,
+    "cfMurmur": 1540197074
+   },
+   "size": 41297,
+   "clientonly": true,
+   "serveronly": false,
+   "optional": false,
+   "name": "ftbpromoter-19.2.52.jar",
+   "type": "mod",
+   "updated": 1744905365,
+   "curseforge": {
+    "project": "1194001",
+    "file": "6299441"
+   }
+  },
+  {
+   "id": 2785897454,
+   "version": "0",
+   "path": "./mods",
+   "url": "https://edge.forgecdn.net/files/4488/549/fullstackwatchdog-1.0.1%2b1.19.2-forge.jar",
+   "mirrors": [
+    "https://files.feed-the-beast.com/blob/99/99c150151be3bb9a4783dfdf32353f3f300b8642f5f3bc73f310781d83e3f24b.jar"
+   ],
+   "tags": [],
+   "sha1": "6f1e3a25c4a0258c2592fefb837f95a24eb3bfa0",
+   "hashes": {
+    "sha1": "6f1e3a25c4a0258c2592fefb837f95a24eb3bfa0",
+    "sha256": "0c845a2812e374edeb6085844294098bb7f774fef4d19fc88c334eadf7b73aa4",
+    "sha512": "623167bc2d164800cac8384a325aa97d8605eb5a119b7fc70d3c5ce42f0d36bb16820aaf82df7377bd9e4682a44b9870fbc08dad1670aa726a337b7f9383bd81",
+    "murmur": 1001858615,
+    "cfMurmur": 3895274001
+   },
+   "size": 14539,
+   "clientonly": false,
+   "serveronly": true,
+   "optional": false,
+   "name": "fullstackwatchdog-1.0.1+1.19.2-forge.jar",
+   "type": "mod",
+   "updated": 1744905365,
+   "curseforge": {
+    "project": "849817",
+    "file": "4488549"
+   }
+  },
+  {
+   "id": 2785897816,
+   "version": "0",
+   "path": "./mods",
+   "url": "https://edge.forgecdn.net/files/4599/519/default-server-properties-forge-77.1.0.jar",
+   "mirrors": [
+    "https://files.feed-the-beast.com/blob/5b/5bc193561ceb2e3ed6423d9a898b35cb73768fb9476135c8bb595b86812bb79a.jar"
+   ],
+   "tags": [],
+   "sha1": "f20d325e54cd5fda64e8130e2d2844e8ed780bef",
+   "hashes": {
+    "sha1": "f20d325e54cd5fda64e8130e2d2844e8ed780bef",
+    "sha256": "a745f488076e52e23498ca3388f7d69efb90b77b2acf28366a7e78e974c02aef",
+    "sha512": "2b0349bec97844baf8bd24d5063b3280d863dc6b91742f982140a2751cd26ebd4fc4023331e1043877ae8eed9a7a0bc27d58f79ba716d86d0cdd44f58c4927bd",
+    "murmur": 2934317480,
+    "cfMurmur": 2970613254
+   },
+   "size": 8114,
+   "clientonly": false,
+   "serveronly": true,
+   "optional": false,
+   "name": "default-server-properties-forge-77.1.0.jar",
+   "type": "mod",
+   "updated": 1744905365,
+   "curseforge": {
+    "project": "676811",
+    "file": "4599519"
+   }
+  }
+ ]
+}

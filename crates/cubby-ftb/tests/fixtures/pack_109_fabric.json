@@ -1,0 +1,191 @@
+{
+ "status": "success",
+ "id": 109,
+ "name": "FTB Unstable 1.20: Fabric",
+ "slug": "ftb-unstable-120-fabric",
+ "description": "",
+ "synopsis": "Experience the cutting-edge of Modded Minecraft in Unstable 1.20! Fabric Edition!",
+ "type": "release",
+ "released": 1687210372,
+ "updated": 1687206772,
+ "private": false,
+ "featured": false,
+ "plays": 49143,
+ "installs": 22001,
+ "plays_14d": 49143,
+ "tags": [
+  {
+   "id": 9,
+   "name": "FTB"
+  },
+  {
+   "id": 13,
+   "name": "Tech"
+  },
+  {
+   "id": 34,
+   "name": "Unstable"
+  },
+  {
+   "id": 51,
+   "name": "Sandbox"
+  },
+  {
+   "id": 23,
+   "name": "Exploration"
+  },
+  {
+   "id": 41,
+   "name": "Fabric"
+  },
+  {
+   "id": 102,
+   "name": "Kitchen Sink"
+  }
+ ],
+ "links": [
+  {
+   "id": -1,
+   "name": "Wiki",
+   "link": "https://docs.feed-the-beast.com",
+   "type": "misc"
+  },
+  {
+   "id": -1,
+   "name": "Issue Tracker",
+   "link": "https://github.com/ftbteam/ftb-modpack-issues/issues",
+   "type": "misc"
+  }
+ ],
+ "art": [
+  {
+   "url": "https://cdn.feed-the-beast.com/blob/33/33a922a283084fc3f0c66ab0a89e06c983f4732619cb9c92561877e506923ff3.png",
+   "type": "square",
+   "updated": 0,
+   "width": 512,
+   "height": 512,
+   "compressed": false,
+   "mirrors": [],
+   "id": -1,
+   "sha1": "69a352ddddd7eddd25a76638a462b7d30795d70c",
+   "title": "Logo",
+   "order": 0
+  },
+  {
+   "url": "https://cdn.feed-the-beast.com/blob/3f/3f1714284849d43cfeb03595b1926f93330a87c4db36ee46fe6449041ee28adc.jpg",
+   "type": "splash",
+   "updated": 0,
+   "width": 1920,
+   "height": 1080,
+   "compressed": false,
+   "mirrors": [],
+   "id": -1,
+   "sha1": "37b168c348f095a3156821df625ec8e6e3f7f646",
+   "title": "Background",
+   "order": 1
+  }
+ ],
+ "authors": [
+  {
+   "id": -1,
+   "website": "https://www.feed-the-beast.com/",
+   "name": "FTB Team",
+   "type": "team",
+   "updated": 0
+  }
+ ],
+ "versions": [
+  {
+   "specs": {
+    "minimum": 4096,
+    "recommended": 6144,
+    "id": -1
+   },
+   "targets": [
+    {
+     "id": -1,
+     "name": "minecraft",
+     "version": "1.20.1",
+     "type": "game",
+     "updated": 0
+    },
+    {
+     "id": -1,
+     "name": "fabric",
+     "version": "0.14.21",
+     "type": "modloader",
+     "updated": 0
+    },
+    {
+     "id": -1,
+     "name": "java",
+     "version": "17.0.7+7",
+     "type": "runtime",
+     "updated": 0
+    }
+   ],
+   "id": 6565,
+   "name": "1.2.0",
+   "type": "release",
+   "updated": 1688053717,
+   "released": 1688053717,
+   "private": false
+  },
+  {
+   "specs": {
+    "minimum": 4096,
+    "recommended": 6144,
+    "id": -1
+   },
+   "targets": [
+    {
+     "id": -1,
+     "name": "minecraft",
+     "version": "1.20.1",
+     "type": "game",
+     "updated": 0
+    },
+    {
+     "id": -1,
+     "name": "fabric",
+     "version": "0.14.21",
+     "type": "modloader",
+     "updated": 0
+    },
+    {
+     "id": -1,
+     "name": "java",
+     "version": "17.0.7+7",
+     "type": "runtime",
+     "updated": 0
+    }
+   ],
+   "id": 6571,
+   "name": "1.3.0",
+   "type": "release",
+   "updated": 1689286402,
+   "released": 1689286402,
+   "private": false
+  }
+ ],
+ "provider": "modpacks.ch",
+ "notification": "",
+ "rating": {
+  "id": -1,
+  "configured": false,
+  "verified": false,
+  "age": 7,
+  "gambling": false,
+  "frightening": true,
+  "alcoholdrugs": false,
+  "nuditysexual": false,
+  "sterotypeshate": false,
+  "language": false,
+  "violence": true
+ },
+ "meta": {
+  "supportsWorlds": false,
+  "curseforgeProjectId": null,
+  "isLegacy": true
+ }
+}

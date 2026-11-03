@@ -1,0 +1,557 @@
+<script lang="ts">
+  import { tick, untrack } from 'svelte'
+  import { api } from '../../api'
+  import { Button, Dialog, Icon, IconButton, MetaChip, PlayButton, SegmentedControl, ServerRow, StatusTag, TextField } from '../../cubby'
+  import { num, plural } from '../../format'
+  import { app } from '../../state.svelte'
+  import type { Instance, Server, ServerStatus } from '../../types'
+  import type { InstanceData } from './InstancePage.svelte'
+
+  let { instance, data }: { instance: Instance; data: InstanceData } = $props()
+
+  const id = $derived(instance.id)
+  const servers = $derived(data.servers ?? [])
+  const running = $derived(!!app.running[id])
+  const preparing = $derived(!!app.instanceTask(id))
+
+  // Server List Ping, by address
+  let statuses = $state<Record<string, ServerStatus>>({})
+  let pending = $state<Record<string, boolean>>({})
+  let generation = 0
+  const OFFLINE: ServerStatus = { online: false, motd: '', playersOnline: 0, playersMax: 0, version: null, pingMs: null, iconUrl: null }
+  const anyPending = $derived(Object.values(pending).some(Boolean))
+
+  async function ping(address: string) {
+    const gen = generation
+    pending[address] = true
+    let s: ServerStatus
+    try {
+      s = await api.pingServer(address)
+    } catch {
+      s = OFFLINE
+    }
+    if (gen !== generation) return
+    statuses[address] = s
+    pending[address] = false
+  }
+
+  function refresh() {
+    generation++
+    statuses = {}
+    pending = {}
+    for (const a of new Set(servers.map((s) => s.address))) void ping(a)
+  }
+
+  let pingedOnce = false
+  $effect(() => {
+    if (!data.servers || pingedOnce) return
+    pingedOnce = true
+    untrack(refresh)
+  })
+
+  // Selection and the details panel
+  let selected = $state(0)
+  const sel = $derived(servers[selected] ?? servers[0] ?? null)
+  const selIndex = $derived(sel ? servers.indexOf(sel) : -1)
+  const selStatus = $derived(sel ? statuses[sel.address] : undefined)
+  let asideTitle: HTMLElement | undefined = $state()
+
+  async function details(i: number) {
+    selected = i
+    editing = false
+    await tick()
+    asideTitle?.focus()
+  }
+
+  // Saving servers.dat (the whole list, in this order)
+  async function save(next: Server[]): Promise<boolean> {
+    const before = data.servers
+    data.servers = next
+    try {
+      await api.saveServers(id, $state.snapshot(next) as Server[])
+      return true
+    } catch (e) {
+      data.servers = before
+      app.error(e)
+      return false
+    }
+  }
+
+  function move(i: number, to: number) {
+    if (to < 0 || to >= servers.length) return
+    const next = [...servers]
+    const [item] = next.splice(i, 1)
+    next.splice(to, 0, item)
+    selected = to
+    void save(next)
+  }
+
+  // Add
+  let address = $state('')
+  let name = $state('')
+  let addError = $state('')
+
+  async function add(e: SubmitEvent) {
+    e.preventDefault()
+    const addr = address.trim()
+    if (!addr || /\s/.test(addr)) {
+      addError = 'Enter the server address, like play.example.net'
+      return
+    }
+    addError = ''
+    const server: Server = { name: name.trim() || addr, address: addr, iconUrl: null, acceptTextures: null }
+    if (await save([...servers, server])) {
+      address = ''
+      name = ''
+      selected = servers.length - 1
+      void ping(addr)
+      app.toast(`${server.name} added.`, 'success')
+    }
+  }
+
+  // Edit
+  let editing = $state(false)
+  let editName = $state('')
+  let editAddress = $state('')
+  let editError = $state('')
+
+  function startEdit() {
+    if (!sel) return
+    editName = sel.name
+    editAddress = sel.address
+    editError = ''
+    editing = true
+  }
+
+  async function saveEdit(e: SubmitEvent) {
+    e.preventDefault()
+    if (!sel) return
+    const addr = editAddress.trim()
+    if (!addr || /\s/.test(addr)) {
+      editError = 'Enter the server address, like play.example.net'
+      return
+    }
+    const changed = addr !== sel.address
+    const next = servers.map((s, i) => (i === selIndex ? { ...s, name: editName.trim() || addr, address: addr } : s))
+    if (await save(next)) {
+      editing = false
+      if (changed) void ping(addr)
+    }
+  }
+
+  function setTextures(v: string) {
+    if (!sel) return
+    const acceptTextures = v === 'accept' ? true : v === 'refuse' ? false : null
+    void save(servers.map((s, i) => (i === selIndex ? { ...s, acceptTextures } : s)))
+  }
+
+  // Remove
+  let removing = $state<number | null>(null)
+
+  async function remove() {
+    if (removing === null) return
+    const at = removing
+    if (await save(servers.filter((_, i) => i !== at))) {
+      removing = null
+      selected = Math.max(0, Math.min(at, servers.length - 1))
+    }
+  }
+
+  // Join
+  function join(s: Server) {
+    void app.launch(id, false, s.address)
+  }
+
+  function onPlay() {
+    if (running) void app.kill(id)
+    else if (!preparing && sel) join(sel)
+  }
+
+  async function copy(text: string) {
+    try {
+      await navigator.clipboard.writeText(text)
+      app.toast('Address copied.', 'success')
+    } catch (e) {
+      app.error(e)
+    }
+  }
+
+  const textures = $derived(sel?.acceptTextures === true ? 'accept' : sel?.acceptTextures === false ? 'refuse' : 'ask')
+  const versionDiffers = $derived(!!selStatus?.version && !selStatus.version.includes(instance.minecraft))
+</script>
+
+<div class="ip-body" role="tabpanel" id="instance-panel" aria-label="Servers">
+  <div class="toolbar">
+    <div class="toolbar__title">
+      <h2 class="text-heading">{data.servers ? plural(servers.length, 'server', 'servers') : 'Servers'}</h2>
+      <p class="text-small muted">The Multiplayer list of this instance.</p>
+    </div>
+    <Button icon="update" busy={anyPending} disabled={!servers.length} onclick={refresh}>Refresh</Button>
+  </div>
+
+  <form class="block" aria-labelledby="add-title" onsubmit={add} novalidate>
+    <h3 id="add-title" class="text-label muted">Add a server</h3>
+    <div class="add">
+      <div class="add__address">
+        <TextField label="Server address" icon="globe" mono placeholder="play.example.net" bind:value={address} error={addError || undefined} autocomplete="off" spellcheck={false} />
+      </div>
+      <div class="add__name">
+        <TextField label="Name" placeholder="Shown in your list" bind:value={name} autocomplete="off" />
+      </div>
+      <Button type="submit" variant="primary" icon="plus">Add server</Button>
+    </div>
+  </form>
+
+  {#if data.servers === null}
+    <p class="muted text-body">Reading the server list…</p>
+  {:else if !servers.length}
+    <div class="empty">
+      <p class="text-heading">No servers yet</p>
+      <p class="muted text-body">Add one above. It also shows up in the game’s Multiplayer list.</p>
+    </div>
+  {:else}
+    <section class="stack" aria-labelledby="saved-title">
+      <div class="head">
+        <h3 id="saved-title" class="text-label muted">Saved servers</h3>
+        <span class="text-counter muted">{num(servers.length)}</span>
+      </div>
+      {#each servers as s, i (i + s.address)}
+        {@const st = statuses[s.address]}
+        <!-- Click a row to show it in the panel; its ⋯ button does the same from the keyboard. -->
+        <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+        <div class={['srow', i === selIndex && 'is-selected']} onclick={() => (selected = i)}>
+          <div class="srow__main">
+            {#if st}
+              <ServerRow
+                name={s.name}
+                address={s.address}
+                iconSrc={st.iconUrl ?? s.iconUrl ?? undefined}
+                motd={st.motd}
+                online={st.online}
+                players={st.online ? { online: st.playersOnline, max: st.playersMax } : undefined}
+                playersLabel={`${num(st.playersOnline)} of ${num(st.playersMax)} players online`}
+                ping={st.pingMs ?? undefined}
+                joinLabel={`Join ${s.name} with ${instance.name}`}
+                onJoin={() => join(s)}
+              />
+            {:else}
+              <div class="cb-server">
+                <span class="cb-server__icon">{#if s.iconUrl}<img src={s.iconUrl} alt="" />{:else}<Icon name="servers" size={27} />{/if}</span>
+                <div class="cb-server__body">
+                  <div class="cb-server__head">
+                    <span class="cb-server__name text-heading">{s.name}</span>
+                    <span class="cb-server__address text-mono">{s.address}</span>
+                  </div>
+                  <p class="cb-server__motd text-mono">Checking the server…</p>
+                </div>
+                <div class="cb-server__join">
+                  <Button icon="play" aria-label={`Join ${s.name} with ${instance.name}`} onclick={() => join(s)}>Join</Button>
+                </div>
+              </div>
+            {/if}
+          </div>
+          <IconButton icon="more" label={`Details for ${s.name}`} onclick={() => details(i)} />
+        </div>
+      {/each}
+    </section>
+  {/if}
+</div>
+
+<aside class="ip-aside" aria-label="Server details">
+  <div class="ip-aside__inner">
+    {#if sel}
+      {@const icon = selStatus?.iconUrl ?? sel.iconUrl}
+      {#if editing}
+        <form class="edit" onsubmit={saveEdit} novalidate>
+          <h2 class="text-heading">Edit server</h2>
+          <TextField label="Name" bind:value={editName} autocomplete="off" />
+          <TextField label="Server address" mono icon="globe" bind:value={editAddress} error={editError || undefined} autocomplete="off" spellcheck={false} />
+          <div class="row">
+            <Button variant="ghost" onclick={() => (editing = false)}>Cancel</Button>
+            <Button type="submit" icon="check">Save</Button>
+          </div>
+        </form>
+      {:else}
+        <div class="who">
+          {#if icon}
+            <img class="who__icon" src={icon} alt="" width="64" height="64" />
+          {:else}
+            <span class="who__icon who__icon--empty" aria-hidden="true"><Icon name="servers" size={27} /></span>
+          {/if}
+          <div class="who__text">
+            <h2 class="text-heading wrap" tabindex="-1" bind:this={asideTitle}>{sel.name}</h2>
+            <p class="text-mono muted wrap">{sel.address}</p>
+          </div>
+        </div>
+        <PlayButton
+          size="lg"
+          class="wide"
+          state={running ? 'running' : preparing ? 'installing' : 'ready'}
+          label={running ? undefined : preparing ? undefined : 'Join'}
+          detail={running ? 'The game is running' : `Join ${sel.name} with ${instance.name}`}
+          onclick={onPlay}
+        />
+        <div class="row">
+          <Button size="sm" icon="copy" onclick={() => sel && copy(sel.address)}>Copy address</Button>
+          <Button size="sm" icon="wrench" onclick={startEdit}>Edit</Button>
+          <IconButton size="sm" icon="update" label={`Move ${sel.name} up`} disabled={selIndex === 0} onclick={() => move(selIndex, selIndex - 1)} />
+          <IconButton size="sm" icon="download" label={`Move ${sel.name} down`} disabled={selIndex === servers.length - 1} onclick={() => move(selIndex, selIndex + 1)} />
+        </div>
+      {/if}
+
+      {#if selStatus?.online && selStatus.motd}
+        <div>
+          <p class="text-label muted label">Message of the day</p>
+          <p class="text-mono motd">{selStatus.motd}</p>
+        </div>
+      {/if}
+
+      <dl class="facts">
+        <dt class="text-small muted">Status</dt>
+        <dd class="inline">
+          {#if !selStatus}
+            <span class="text-body muted">Checking…</span>
+          {:else}
+            <StatusTag state={selStatus.online ? 'online' : 'offline'}>{selStatus.online ? 'Online' : 'Can’t reach server'}</StatusTag>
+            {#if selStatus.online && selStatus.pingMs != null}<span class="text-mono">{num(selStatus.pingMs)} ms</span>{/if}
+          {/if}
+        </dd>
+        {#if selStatus?.online}
+          <dt class="text-small muted">Players</dt>
+          <dd class="text-body">{num(selStatus.playersOnline)} of {num(selStatus.playersMax)}</dd>
+        {/if}
+        {#if selStatus?.version}
+          <dt class="text-small muted">Version</dt>
+          <dd class="inline"><MetaChip>{selStatus.version}</MetaChip></dd>
+        {/if}
+      </dl>
+      {#if versionDiffers}
+        <p class="text-small flag"><span class="warn icon"><Icon name="warning" size={18} label="Warning" /></span><span>This instance runs <span class="text-mono">{instance.minecraft}</span>. Check that the server accepts it.</span></p>
+      {/if}
+
+      <div class="part">
+        <span class="text-body-strong" aria-hidden="true">Server resource packs</span>
+        <SegmentedControl
+          label="Server resource packs"
+          options={[
+            { value: 'ask', label: 'Ask' },
+            { value: 'accept', label: 'Accept' },
+            { value: 'refuse', label: 'Refuse' },
+          ]}
+          value={textures}
+          onChange={setTextures}
+        />
+        <p class="text-small muted">What the game does when this server sends its own resource pack.</p>
+      </div>
+
+      <div class="danger">
+        <Button size="sm" variant="danger" icon="trash" onclick={() => (removing = selIndex)}>Remove</Button>
+        <span class="text-small muted">Takes it off this list only.</span>
+      </div>
+    {:else}
+      <p class="text-label muted">Server details</p>
+      <p class="text-body muted">Add a server to see who’s online and join in one click.</p>
+    {/if}
+  </div>
+</aside>
+
+{#if removing !== null && servers[removing]}
+  {@const s = servers[removing]}
+  {#snippet removeActions()}
+    <Button variant="ghost" onclick={() => (removing = null)}>Cancel</Button>
+    <Button variant="danger" icon="trash" onclick={remove}>Remove</Button>
+  {/snippet}
+  <Dialog tone="danger" icon="trash" title={`Remove ${s.name}?`} onClose={() => (removing = null)} actions={removeActions}>
+    <p>Takes <span class="text-mono">{s.address}</span> off the server list of this instance. You can add it again any time.</p>
+  </Dialog>
+{/if}
+
+<style>
+  p,
+  h2,
+  h3,
+  dl,
+  dd {
+    margin: 0;
+  }
+  .muted {
+    color: var(--ink-muted);
+  }
+  .warn {
+    color: var(--gold-text);
+  }
+  .icon {
+    display: inline-flex;
+    flex: none;
+  }
+  .wrap {
+    overflow-wrap: anywhere;
+  }
+  .toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+  }
+  .toolbar__title {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+  .block {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 0;
+    padding: var(--space-3) var(--space-4);
+    background: var(--surface);
+    border: var(--border-block) solid var(--edge);
+    box-shadow: var(--shadow-block);
+  }
+  .add {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: var(--space-3) var(--space-4);
+  }
+  .add__address {
+    flex: 2 1 240px;
+    min-width: 0;
+  }
+  .add__name {
+    flex: 1 1 160px;
+    min-width: 0;
+  }
+  /* line the button up with the fields, below their labels */
+  .add > :global(.cb-btn) {
+    margin-top: 28px;
+  }
+  .empty {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+    padding: var(--space-5);
+    background: var(--surface);
+    border: var(--border-block) solid var(--edge);
+    box-shadow: var(--shadow-block-sm);
+  }
+  .stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+  .head {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-2);
+  }
+  .srow {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .srow__main {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+  }
+  .srow.is-selected .srow__main::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border: var(--border-block) solid var(--ink);
+    pointer-events: none;
+  }
+  .who {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+  }
+  .who__icon {
+    display: block;
+    flex: none;
+    box-sizing: border-box;
+    width: 64px;
+    height: 64px;
+    image-rendering: pixelated;
+    border: var(--border-block) solid var(--edge);
+    box-shadow: var(--shadow-block-sm);
+  }
+  .who__icon--empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--ink-muted);
+    background: var(--surface);
+  }
+  .who__text {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+  .who__text h2 {
+    outline: none;
+  }
+  .ip-aside__inner :global(.wide) {
+    width: 100%;
+  }
+  .row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .edit {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+  .label {
+    margin-bottom: 6px;
+  }
+  .motd {
+    padding: var(--space-2) var(--space-3);
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+    background: var(--field);
+    border: var(--border-block) solid var(--outline);
+    box-shadow: var(--shadow-well);
+  }
+  .facts {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: var(--space-2) var(--space-4);
+    padding: var(--space-3) var(--space-4);
+    background: var(--surface);
+    border: var(--border-block) solid var(--edge);
+  }
+  .inline {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .flag {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+  }
+  .part {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .danger {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2) var(--space-3);
+    padding-top: var(--space-4);
+    border-top: var(--border-hair) solid var(--line);
+  }
+</style>

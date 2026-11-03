@@ -1,0 +1,10 @@
+{
+  "minecraft": { "version": "1.21.1", "modLoaders": [ { "id": "neoforge-21.1.5", "primary": true } ] },
+  "manifestType": "minecraftModpack",
+  "manifestVersion": 1,
+  "name": "Example NeoForge Pack",
+  "version": "3.0",
+  "author": "Bob",
+  "files": [],
+  "overrides": "overrides"
+}

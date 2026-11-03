@@ -1,0 +1,20 @@
+{
+  "data": [
+    { "id": 2001, "modId": 1001, "displayName": "JEI 15.3.0.4", "fileName": "jei-1.20.1-forge-15.3.0.4.jar", "releaseType": 1,
+      "hashes": [ { "value": "0123456789abcdef0123456789abcdef", "algo": 2 }, { "value": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "algo": 1 } ],
+      "fileLength": 1048576, "downloadUrl": "https://edge.forgecdn.net/files/4712/3456/jei-1.20.1-forge-15.3.0.4.jar", "gameVersions": [ "1.20.1", "Forge" ] },
+    { "id": 2002, "modId": 1002, "displayName": "Blocked 1.0", "fileName": "blocked-mod-1.0.jar", "releaseType": 1,
+      "hashes": [ { "value": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "algo": 1 } ],
+      "fileLength": 2048, "downloadUrl": null, "gameVersions": [ "1.20.1", "Forge" ] },
+    { "id": 2003, "modId": 1003, "displayName": "Faithful", "fileName": "Faithful 32x.zip", "releaseType": 1,
+      "hashes": [ { "value": "dddddddddddddddddddddddddddddddddddddddd", "algo": 1 } ],
+      "fileLength": 4096, "downloadUrl": "https://edge.forgecdn.net/files/2/3/Faithful%2032x.zip", "gameVersions": [ "1.20.1" ] },
+    { "id": 4500012, "modId": 1004, "displayName": "CDN-able", "fileName": "cdn-able.jar", "releaseType": 1,
+      "hashes": [], "fileLength": 10, "downloadUrl": null, "gameVersions": [ "1.20.1", "Forge" ] },
+    { "id": 2005, "modId": 1005, "displayName": "Optional extra", "fileName": "optional-extra.jar", "releaseType": 1,
+      "hashes": [ { "value": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "algo": 1 } ],
+      "fileLength": 11, "downloadUrl": "https://edge.forgecdn.net/files/2/5/optional-extra.jar", "gameVersions": [ "1.20.1", "Forge" ] },
+    { "id": 2006, "modId": 1006, "displayName": "Complementary", "fileName": "Complementary.zip", "releaseType": 1,
+      "hashes": [], "fileLength": 12, "downloadUrl": "https://edge.forgecdn.net/files/2/6/Complementary.zip", "gameVersions": [ "1.20.1" ] }
+  ]
+}

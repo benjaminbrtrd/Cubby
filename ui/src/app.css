@@ -1,0 +1,48 @@
+
+html,
+body,
+#app {
+  height: 100%;
+  /* clip, not hidden: the frame never scrolls, even when something calls scrollIntoView */
+  overflow: clip;
+}
+
+body {
+  user-select: none;
+}
+
+/* Text the player may want to copy */
+input,
+textarea,
+pre,
+code,
+.text-mono,
+.text-log,
+.cb-log,
+.selectable {
+  user-select: text;
+}
+
+a {
+  color: var(--link);
+}
+
+::selection {
+  background: var(--diamond);
+  color: var(--on-diamond);
+}
+
+/* Scrollbars as blocks */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--outline) transparent;
+}
+
+/* Settings › Appearance › Reduce motion (the OS preference is handled by cubby.css) */
+[data-motion='reduce'] *,
+[data-motion='reduce'] *::before,
+[data-motion='reduce'] *::after {
+  transition: none !important;
+  animation: none !important;
+  scroll-behavior: auto !important;
+}

@@ -1,0 +1,219 @@
+{
+ "enableCurseIntegration": true,
+ "enableEditingMods": true,
+ "version": "0.17.0",
+ "minecraft": "1.6.4",
+ "mainClass": {
+  "mainClass": "net.minecraft.launchwrapper.Launch"
+ },
+ "memory": 2048,
+ "permgen": 256,
+ "extraArguments": {
+  "arguments": "--tweakClass=cpw.mods.fml.common.launcher.FMLTweaker"
+ },
+ "messages": {
+  "install": "<center>Welcome to MoonQuest The unofficial port of Yogscast's series!</center>",
+  "update": "<center>Turrets are back!<br/> ALWAYS Back-up before updating<br/>See changelog for details</center>"
+ },
+ "libraries": [
+  {
+   "url": "packs/MoonQuest/files/libraries/launchwrapper-1.8.jar",
+   "file": "launchwrapper-1.8.jar",
+   "server": "net/minecraft/launchwrapper/1.8/launchwrapper-1.8.jar",
+   "md5": "460ffeedae268dc70c8210ce179fa44a",
+   "download": "server",
+   "filesize": 28927,
+   "force": false
+  },
+  {
+   "url": "packs/MoonQuest/files/libraries/asm-all-4.1.jar",
+   "file": "asm-all-4.1.ajar",
+   "server": "org/ow2/asm/asm-all/4.1/asm-all-4.1.jar",
+   "md5": "d21c2a06a4e6b175aa01e328f38a1182",
+   "download": "server",
+   "filesize": 214592,
+   "force": false
+  }
+ ],
+ "mods": [
+  {
+   "name": "MinecraftForge",
+   "version": "1.6.4-9.11.1.953",
+   "url": "packs/MoonQuest/files//forge-1.6.4-9.11.1.953-universal.jar",
+   "file": "forge-1.6.4-9.11.1.953-universal.jar",
+   "download": "server",
+   "md5": "0bf5250f9ff4b7b0f3bcc41893010781",
+   "filesize": 1970601,
+   "force": false,
+   "type": "forge",
+   "client": true,
+   "optional": false,
+   "server": true,
+   "selected": false,
+   "recommended": true,
+   "hidden": false,
+   "library": false,
+   "description": "This is the API that all mods in the pack need to work",
+   "website": "http://files.minecraftforge.net/",
+   "authors": [
+    ""
+   ]
+  },
+  {
+   "name": "OptifineOptions",
+   "version": "0.9.0.6",
+   "url": "packs/MoonQuest/files/optionsoptifine.zip",
+   "file": "optionsoptifine.zip",
+   "download": "server",
+   "md5": "79a617dcc7c55634e9587b2f9440d719",
+   "filesize": 666,
+   "force": false,
+   "type": "extract",
+   "extractTo": "root",
+   "extractFolder": "/",
+   "client": true,
+   "optional": false,
+   "server": true,
+   "selected": false,
+   "recommended": true,
+   "hidden": false,
+   "library": true,
+   "description": "An options file for crashes with Optifine!",
+   "website": "http://www.atlauncher.com/forums",
+   "authors": [
+    ""
+   ]
+  },
+  {
+   "name": "Zan's Minimap",
+   "version": "1.6.4",
+   "url": "packs/MoonQuest/files/ZansMinimap1.6.4.zip",
+   "file": "ZansMinimap1.6.4.zip",
+   "download": "server",
+   "md5": "97a9934f12a01986bcdc6ec8eba97336",
+   "filesize": 384626,
+   "force": false,
+   "type": "mods",
+   "client": true,
+   "optional": true,
+   "server": false,
+   "serverSeparate": false,
+   "selected": false,
+   "recommended": true,
+   "hidden": false,
+   "library": false,
+   "group": "maps",
+   "description": "Adds a minimap!",
+   "website": "http://www.minecraftforum.net/topic/482147-162-jul08-reis-minimap-v34-01/",
+   "authors": [
+    ""
+   ]
+  },
+  {
+   "name": "Rei's Minimap",
+   "version": "3.4_01",
+   "url": "packs/MoonQuest/files/[1.6.4]ReiMinimap_v3.4_01.zip",
+   "file": "[1.6.4]ReiMinimap_v3.4_01.zip",
+   "download": "server",
+   "md5": "d263cc04f492cee0e7b17ea1ef628bc9",
+   "filesize": 255630,
+   "force": false,
+   "type": "mods",
+   "client": true,
+   "optional": true,
+   "server": false,
+   "serverSeparate": false,
+   "selected": false,
+   "recommended": true,
+   "hidden": false,
+   "library": false,
+   "group": "maps",
+   "description": "Adds a minimap!",
+   "website": "http://forum.minecraftuser.jp/viewtopic.php?f=13&t=153#p836",
+   "authors": [
+    ""
+   ]
+  },
+  {
+   "name": "CodeChickenLib",
+   "version": "1.0.0.62",
+   "url": "packs/MoonQuest/files/CodeChickenLib-universal-1.6.4-1.0.0.62.jar",
+   "file": "CodeChickenLib-universal-1.6.4-1.0.0.62.jar",
+   "download": "server",
+   "md5": "3c63930aa90fb5ae09502b6a0fb9de11",
+   "filesize": 259459,
+   "curse_id": 451813,
+   "curse_file_id": 3221651,
+   "force": false,
+   "type": "dependency",
+   "client": true,
+   "optional": false,
+   "server": true,
+   "selected": false,
+   "recommended": true,
+   "hidden": false,
+   "library": false,
+   "description": "Sorts out that pesky download Problem!",
+   "website": "http://www.minecraftforum.net/topic/1504359-164-theboos-mods-craftable-spawners-and-custom-recipes/",
+   "authors": [
+    "RaindropTheNya"
+   ]
+  },
+  {
+   "name": "CodeChickenCore",
+   "version": "0.9.0.9",
+   "url": "packs/MoonQuest/files/CodeChickenCore 0.9.0.9.jar",
+   "file": "CodeChickenCore 0.9.0.9.jar",
+   "download": "server",
+   "md5": "d8800f201da7fe01ba1f8127a9a568ff",
+   "filesize": 157457,
+   "curse_id": 222213,
+   "curse_file_id": 2207571,
+   "force": false,
+   "type": "mods",
+   "client": true,
+   "optional": false,
+   "server": true,
+   "selected": false,
+   "recommended": true,
+   "hidden": false,
+   "library": false,
+   "description": "Needed to run the best recipe finder in Minecraft!",
+   "website": "http://www.minecraftforum.net/topic/909223-147152-smp-chickenbones-mods/",
+   "donation": "http://www.chickenbones.craftsaddle.org/Pages/donate.php",
+   "authors": [
+    "ChickenBones"
+   ]
+  },
+  {
+   "name": "NotEnoughItems",
+   "version": "1.6.1.9",
+   "url": "packs/MoonQuest/files/NotEnoughItems 1.6.1.9.jar",
+   "file": "NotEnoughItems 1.6.1.9.jar",
+   "download": "server",
+   "md5": "752aedf4d3fce0553141efbcc8ea4a16",
+   "filesize": 436148,
+   "curse_id": 222211,
+   "curse_file_id": 2207574,
+   "force": false,
+   "type": "mods",
+   "client": true,
+   "optional": false,
+   "server": true,
+   "selected": false,
+   "recommended": true,
+   "hidden": false,
+   "library": false,
+   "description": "The best recipe finder in Minecraft!",
+   "website": "http://www.minecraftforum.net/topic/909223-147152-smp-chickenbones-mods/",
+   "donation": "http://www.chickenbones.craftsaddle.org/Pages/donate.php",
+   "authors": [
+    "ChickenBones"
+   ]
+  }
+ ],
+ "configs": {
+  "filesize": 547571,
+  "sha1": "a31488214dc219338914c355b38d6983bdb395d6"
+ }
+}

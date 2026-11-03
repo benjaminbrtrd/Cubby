@@ -1,0 +1,8 @@
+{
+  "name": "cubby",
+  "private": true,
+  "description": "Run the desktop app from the repository root: npm run tauri dev",
+  "scripts": {
+    "tauri": "node ui/node_modules/@tauri-apps/cli/tauri.js"
+  }
+}

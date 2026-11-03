@@ -1,0 +1,45 @@
+{
+  "data": [
+    {
+      "id": 925200,
+      "gameId": 432,
+      "name": "Example Forge Pack",
+      "slug": "example-forge-pack",
+      "links": {
+        "websiteUrl": "https://www.curseforge.com/minecraft/modpacks/example-forge-pack",
+        "wikiUrl": null,
+        "issuesUrl": "https://github.com/alice/pack/issues",
+        "sourceUrl": "https://github.com/alice/pack"
+      },
+      "summary": "A hand-written example pack.",
+      "status": 4,
+      "downloadCount": 5000000,
+      "isFeatured": false,
+      "primaryCategoryId": 4487,
+      "classId": 4471,
+      "authors": [ { "id": 1, "name": "Alice", "url": "https://www.curseforge.com/members/alice" } ],
+      "logo": {
+        "id": 1, "modId": 925200, "title": "logo", "description": "",
+        "thumbnailUrl": "https://media.forgecdn.net/avatars/thumbnails/1/2/256/256/pack.png",
+        "url": "https://media.forgecdn.net/avatars/1/2/pack.png"
+      },
+      "screenshots": [
+        { "id": 2, "modId": 925200, "title": "Spawn", "description": "", "thumbnailUrl": "https://media.forgecdn.net/t.png", "url": "https://media.forgecdn.net/s.png" }
+      ],
+      "mainFileId": 5000001,
+      "latestFilesIndexes": [
+        { "gameVersion": "1.20.1", "fileId": 5000001, "filename": "a.zip", "releaseType": 1, "gameVersionTypeId": 1, "modLoader": 1 },
+        { "gameVersion": "1.19.2", "fileId": 4000001, "filename": "b.zip", "releaseType": 1, "gameVersionTypeId": 1, "modLoader": 1 },
+        { "gameVersion": "1.20.1", "fileId": 5000002, "filename": "c.zip", "releaseType": 2, "gameVersionTypeId": 1, "modLoader": 6 }
+      ],
+      "dateCreated": "2020-01-01T10:00:00.000Z",
+      "dateModified": "2024-05-01T10:00:00.000Z",
+      "dateReleased": "2024-05-01T10:00:00.000Z",
+      "allowModDistribution": true,
+      "gamePopularityRank": 3,
+      "isAvailable": true,
+      "thumbsUpCount": 10
+    }
+  ],
+  "pagination": { "index": 0, "pageSize": 20, "resultCount": 1, "totalCount": 1234 }
+}

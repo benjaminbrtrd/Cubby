@@ -1,0 +1,21 @@
+{
+  "minecraft": {
+    "version": "1.20.1",
+    "modLoaders": [ { "id": "forge-47.2.0", "primary": true } ],
+    "recommendedRam": 6144
+  },
+  "manifestType": "minecraftModpack",
+  "manifestVersion": 1,
+  "name": "Example Forge Pack",
+  "version": "1.2.0",
+  "author": "Alice",
+  "files": [
+    { "projectID": 1001, "fileID": 2001, "required": true },
+    { "projectID": 1002, "fileID": 2002, "required": true },
+    { "projectID": 1003, "fileID": 2003, "required": true },
+    { "projectID": 1004, "fileID": 4500012, "required": true },
+    { "projectID": 1005, "fileID": 2005, "required": false },
+    { "projectID": 1006, "fileID": 2006, "required": true }
+  ],
+  "overrides": "overrides"
+}

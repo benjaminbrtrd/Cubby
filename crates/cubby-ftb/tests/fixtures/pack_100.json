@@ -1,0 +1,303 @@
+{
+ "status": "success",
+ "id": 100,
+ "name": "FTB StoneBlock 3",
+ "slug": "ftb-stoneblock-3",
+ "description": "![FTB StoneBlock 3 Logo](https://cdn.feed-the-beast.com/packs/ftb-stoneblock-3/title.png)\n![FTB StoneBlock 3 Description About - Build a base that really rocks! -\nStoneblock 3 is here and there's more",
+ "synopsis": "In a world surrounded by stone, build yourself a subterranean kingdom that really rocks! Use magic and technology to forge your realm to your designs.",
+ "type": "release",
+ "released": 1667330107,
+ "updated": 1667243244,
+ "private": false,
+ "featured": false,
+ "plays": 14444039,
+ "installs": 2519339,
+ "plays_14d": 7429086,
+ "tags": [
+  {
+   "id": 9,
+   "name": "FTB"
+  },
+  {
+   "id": 12,
+   "name": "Magic"
+  },
+  {
+   "id": 13,
+   "name": "Tech"
+  },
+  {
+   "id": 14,
+   "name": "Questing"
+  },
+  {
+   "id": 23,
+   "name": "Exploration"
+  },
+  {
+   "id": 45,
+   "name": "1.18.2"
+  },
+  {
+   "id": 22,
+   "name": "Large"
+  },
+  {
+   "id": 102,
+   "name": "Kitchen Sink"
+  }
+ ],
+ "links": [
+  {
+   "id": -1,
+   "name": "Wiki",
+   "link": "https://docs.feed-the-beast.com",
+   "type": "misc"
+  },
+  {
+   "id": -1,
+   "name": "Issue Tracker",
+   "link": "https://github.com/ftbteam/ftb-modpack-issues/issues",
+   "type": "misc"
+  }
+ ],
+ "art": [
+  {
+   "url": "https://cdn.feed-the-beast.com/blob/27/277ea696db174dabd3cdc1ba9f6120218c8f9c6aea916855140f6be41adf821a.png",
+   "type": "square",
+   "updated": 0,
+   "width": 512,
+   "height": 512,
+   "compressed": false,
+   "mirrors": [],
+   "id": -1,
+   "sha1": "08e2b62329bbf778eabcf5ca8f0d7b6b61a82b34",
+   "title": "Logo",
+   "order": 0
+  },
+  {
+   "url": "https://cdn.feed-the-beast.com/blob/8b/8be71c3fda1c8e071dae644a023025940f2ef1b8f80aa8c153b46602748eccd6.png",
+   "type": "splash",
+   "updated": 0,
+   "width": 1920,
+   "height": 1080,
+   "compressed": false,
+   "mirrors": [],
+   "id": -1,
+   "sha1": "ac058b5f8638fed132b3893abebe2cac18d13bbb",
+   "title": "Background",
+   "order": 1
+  }
+ ],
+ "authors": [
+  {
+   "id": -1,
+   "website": "https://www.feed-the-beast.com/",
+   "name": "FTB Team",
+   "type": "team",
+   "updated": 0
+  }
+ ],
+ "versions": [
+  {
+   "specs": {
+    "minimum": 4096,
+    "recommended": 6144,
+    "id": -1
+   },
+   "targets": [
+    {
+     "id": -1,
+     "name": "minecraft",
+     "version": "1.18.2",
+     "type": "game",
+     "updated": 0
+    },
+    {
+     "id": -1,
+     "name": "forge",
+     "version": "40.1.84",
+     "type": "modloader",
+     "updated": 0
+    },
+    {
+     "id": -1,
+     "name": "java",
+     "version": "17.0.2+8",
+     "type": "runtime",
+     "updated": 0
+    }
+   ],
+   "id": 2275,
+   "name": "1.0.0",
+   "type": "beta",
+   "updated": 1667330107,
+   "released": 1667330107,
+   "private": false
+  },
+  {
+   "specs": {
+    "minimum": 4096,
+    "recommended": 6144,
+    "id": -1
+   },
+   "targets": [
+    {
+     "id": -1,
+     "name": "minecraft",
+     "version": "1.18.2",
+     "type": "game",
+     "updated": 0
+    },
+    {
+     "id": -1,
+     "name": "forge",
+     "version": "40.1.84",
+     "type": "modloader",
+     "updated": 0
+    },
+    {
+     "id": -1,
+     "name": "java",
+     "version": "17.0.2+8",
+     "type": "runtime",
+     "updated": 0
+    }
+   ],
+   "id": 2293,
+   "name": "1.4.0",
+   "type": "archived",
+   "updated": 1669321533,
+   "released": 1669321533,
+   "private": false
+  },
+  {
+   "specs": {
+    "minimum": 4096,
+    "recommended": 6144,
+    "id": -1
+   },
+   "targets": [
+    {
+     "id": -1,
+     "name": "minecraft",
+     "version": "1.18.2",
+     "type": "game",
+     "updated": 0
+    },
+    {
+     "id": -1,
+     "name": "forge",
+     "version": "40.2.1",
+     "type": "modloader",
+     "updated": 0
+    },
+    {
+     "id": -1,
+     "name": "java",
+     "version": "17.0.2+8",
+     "type": "runtime",
+     "updated": 0
+    }
+   ],
+   "id": 2327,
+   "name": "1.6.0",
+   "type": "alpha",
+   "updated": 1675453657,
+   "released": 1675453657,
+   "private": false
+  },
+  {
+   "specs": {
+    "minimum": 4096,
+    "recommended": 6144,
+    "id": -1
+   },
+   "targets": [
+    {
+     "id": -1,
+     "name": "minecraft",
+     "version": "1.18.2",
+     "type": "game",
+     "updated": 0
+    },
+    {
+     "id": -1,
+     "name": "forge",
+     "version": "40.2.14",
+     "type": "modloader",
+     "updated": 0
+    },
+    {
+     "id": -1,
+     "name": "java",
+     "version": "17.0.2+8",
+     "type": "runtime",
+     "updated": 0
+    }
+   ],
+   "id": 12492,
+   "name": "1.11.0",
+   "type": "release",
+   "updated": 1726692434,
+   "released": 1726692434,
+   "private": false
+  },
+  {
+   "specs": {
+    "minimum": 4096,
+    "recommended": 6144,
+    "id": -1
+   },
+   "targets": [
+    {
+     "id": -1,
+     "name": "minecraft",
+     "version": "1.18.2",
+     "type": "game",
+     "updated": 0
+    },
+    {
+     "id": -1,
+     "name": "forge",
+     "version": "40.2.14",
+     "type": "modloader",
+     "updated": 0
+    },
+    {
+     "id": -1,
+     "name": "java",
+     "version": "17.0.2+8",
+     "type": "runtime",
+     "updated": 0
+    }
+   ],
+   "id": 12632,
+   "name": "1.11.1",
+   "type": "release",
+   "updated": 1731616290,
+   "released": 1731616290,
+   "private": false
+  }
+ ],
+ "provider": "modpacks.ch",
+ "notification": "",
+ "rating": {
+  "id": -1,
+  "configured": false,
+  "verified": false,
+  "age": 7,
+  "gambling": false,
+  "frightening": true,
+  "alcoholdrugs": false,
+  "nuditysexual": false,
+  "sterotypeshate": false,
+  "language": false,
+  "violence": true
+ },
+ "meta": {
+  "supportsWorlds": true,
+  "curseforgeProjectId": 1091305,
+  "isLegacy": true
+ }
+}
