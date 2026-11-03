@@ -1,0 +1,45 @@
+name: Release
+
+# Push a tag like v2026.11.0 (or v2026.11.0-alpha.1) to build the Windows installer
+# and attach it to a draft GitHub release.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Interface dependencies
+        working-directory: ui
+        run: npm ci
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Optional: without them, CurseForge search is off and only the demo can be played.
+          CUBBY_CURSEFORGE_API_KEY: ${{ secrets.CUBBY_CURSEFORGE_API_KEY }}
+          CUBBY_MSA_CLIENT_ID: ${{ vars.CUBBY_MSA_CLIENT_ID }}
+        with:
+          tauriScript: npm run tauri
+          args: --bundles nsis
+          tagName: ${{ github.ref_name }}
+          releaseName: Cubby ${{ github.ref_name }}
+          releaseBody: See the notes below. Download the setup file to install Cubby on Windows 10 or 11.
+          releaseDraft: true
+          prerelease: ${{ contains(github.ref_name, '-') }}

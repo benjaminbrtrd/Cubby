@@ -6,7 +6,7 @@
   import { tick, untrack } from 'svelte'
   import { api } from '../../api'
   import { app, type SettingsSection } from '../../state.svelte'
-  import { bytes, fold, num } from '../../format'
+  import { bytes, fold, num, appVersion } from '../../format'
   import type { DataFolder, JavaInstall, Settings } from '../../types'
   import { Button, Dialog, Icon, Logo, SegmentedControl, Slider, StatusTag, Switch, TextField } from '../../cubby'
 
@@ -695,7 +695,7 @@
             {@render heading('about', 'About')}
             <div class="about">
               <Logo size={32} />
-              <p class="text-body-strong">Cubby {#if app.info}<span class="text-mono">{app.info.version}</span>{/if}</p>
+              <p class="text-body-strong">Cubby {#if app.info}<span class="text-mono">{appVersion(app.info.version)}</span>{/if}</p>
               <p class="text-small muted">A free Minecraft launcher.</p>
               {#if app.info}
                 <div>

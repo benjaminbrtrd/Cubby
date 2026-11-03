@@ -10,7 +10,7 @@
 
 Cubby keeps each of your worlds in its own instance, with its own version, loader, mods and settings. You pick one and press Play: Cubby downloads the game, the loader and the right Java, then gets out of the way.
 
-It's a native app built with Rust and Tauri, so there's no bundled browser and no Java just to open the launcher. The installer is about 8 MB.
+It's a native app built with Rust and Tauri, so there's no bundled browser and no Java just to open the launcher. The installer is about 11 MB.
 
 ## What it does
 
@@ -30,6 +30,12 @@ It's a native app built with Rust and Tauri, so there's no bundled browser and n
 Cubby runs on Windows 10 and 11 (64-bit). Get the installer from the [releases page](https://github.com/benjaminbrtrd/Cubby/releases). macOS and Linux builds are planned.
 
 The full game needs a signed-in Microsoft account that owns Minecraft: Java Edition. Without one, Cubby only starts the Minecraft demo. Microsoft sign-in is waiting for Mojang to approve the app.
+
+## Versions
+
+Cubby uses calendar versions: `2026.11.0` is the first release of November 2026, `2026.11.1` the next one that month. Test builds add `-alpha.N` or `-beta.N`. The full year keeps them apart from Minecraft's own version numbers.
+
+To publish a release, push a tag such as `v2026.11.0`: GitHub Actions builds the installer and attaches it to a draft release.
 
 ## Building from source
 
