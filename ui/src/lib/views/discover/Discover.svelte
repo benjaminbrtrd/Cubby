@@ -32,8 +32,8 @@
   const source = $derived(sources.some((p) => p.id === d.provider) ? d.provider : 'modrinth')
   /** Another provider's modpacks use its own browser instead of the Modrinth search below. */
   const embedded = $derived(d.kind === 'modpack' && source !== 'modrinth' ? (sources.find((p) => p.id === source) ?? null) : null)
-  /** CurseForge mods, shader packs and resource packs are not in Cubby yet. */
-  const notYet = $derived(d.kind !== 'modpack' && source === 'curseforge')
+  /** Mods, shader packs and resource packs searched on CurseForge (Modrinth's categories and filters don't apply). */
+  const fromCf = $derived(d.kind !== 'modpack' && source === 'curseforge')
   $effect(() => {
     if (!app.providers && !app.providersError) void app.loadProviders()
   })
@@ -93,8 +93,8 @@
       kind,
       gameVersion: scoped ? targetMc : null,
       loader: scoped && kind === 'mod' ? targetLoader : null,
-      categories: [...d.categories],
-      environment: kind === 'mod' ? d.environment : null,
+      categories: fromCf ? [] : [...d.categories],
+      environment: kind === 'mod' && !fromCf ? d.environment : null,
       sort: d.sort,
       offset: d.page * PAGE_SIZE,
       limit: PAGE_SIZE,
@@ -103,8 +103,7 @@
     const mine = ++seq
     loading = true
     error = null
-    api
-      .searchProjects(q)
+    ;(fromCf ? api.curseforgeSearch(q) : api.searchProjects(q))
       .then((r) => {
         if (mine !== seq) return
         results = r
@@ -123,7 +122,7 @@
 
   const offline = $derived(!!error && (/(network|connect|dns|resolve|timed? ?out|offline|unreachable|socket|tls|fetch)/i.test(error) || !navigator.onLine))
   const hits = $derived(results?.hits ?? [])
-  const shown = $derived(d.hideInstalled && target && kind !== 'modpack' ? hits.filter((h) => !app.installedIn(target.id, h.id)) : hits)
+  const shown = $derived(d.hideInstalled && target && kind !== 'modpack' && !fromCf ? hits.filter((h) => !app.installedIn(target.id, h.id)) : hits)
   const hiddenCount = $derived(hits.length - shown.length)
   const pages = $derived(results ? Math.max(1, Math.ceil(results.total / PAGE_SIZE)) : 1)
   const filtered = $derived(d.categories.length > 0 || d.environment !== null || d.hideInstalled)
@@ -197,11 +196,12 @@
 
   interface CardState {
     fit: Fit
-    action: 'install' | 'other' | 'installed' | 'update' | 'busy'
+    action: 'install' | 'other' | 'installed' | 'update' | 'busy' | 'curseforge'
     version: string | null
   }
 
   function cardState(h: ProjectHit): CardState {
+    if (fromCf) return { fit: hitFit(h, target), action: 'curseforge', version: null }
     if (h.kind === 'modpack' || !target) return { fit: hitFit(h, target), action: 'install', version: null }
     const busy = pending[h.id] === target.id && !!app.taskFor(`install:${target.id}`)
     if (busy) return { fit: { tone: 'busy', icon: 'download', word: 'Installing' }, action: 'busy', version: null }
@@ -215,13 +215,24 @@
     return { fit, action: fit.tone === 'ok' ? 'install' : 'other', version: null }
   }
 
+  /** The project's page on CurseForge, where it can be downloaded. */
+  function cfUrl(h: ProjectHit): string {
+    const section = h.kind === 'shader' ? 'shaders' : h.kind === 'resourcepack' ? 'texture-packs' : 'mc-mods'
+    return `https://www.curseforge.com/minecraft/${section}/${h.slug}`
+  }
+
+  function open(h: ProjectHit) {
+    if (fromCf) api.openUrl(cfUrl(h)).catch((e) => app.error(e))
+    else app.openProject(h.slug, h.kind)
+  }
+
   function art(h: ProjectHit) {
     return h.iconUrl ? { src: h.iconUrl } : projectArt(h.slug)
   }
 
   // popular picks
   let pickList = $state<{ pack: ProjectHit | null; shader: ProjectHit | null; resource: ProjectHit | null } | null>(null)
-  const showPicks = $derived(kind === 'mod' && d.page === 0 && !d.query && !loading && !error)
+  const showPicks = $derived(kind === 'mod' && !fromCf && d.page === 0 && !d.query && !loading && !error)
 
   $effect(() => {
     if (!showPicks || pickList) return
@@ -255,12 +266,10 @@
   </button>
 {/snippet}
 
-{#snippet backToModrinth()}<Button size="sm" onclick={() => (app.discover.provider = 'modrinth')}>Search on Modrinth</Button>{/snippet}
-
 <div class="screen">
   <div class="top">
     <h1 class="text-title">Discover</h1>
-    {#if !embedded && !notYet}
+    {#if !embedded}
     <div class="search">
       <TextField
         label="Search {words.many}"
@@ -291,7 +300,7 @@
     <div class="tabs">
       <Tabs label="What to discover" items={tabs} value={kind} onChange={setKind} />
     </div>
-    {#if !embedded && !notYet}
+    {#if !embedded}
     <div class="sort">
       <Picker items={sorts} value={d.sort} onSelect={setSort} label="Sort by" buttonLabel="Sort by {sortLabel}. Change" variant="ghost" listWidth={200}>
         {#snippet trigger()}<span class="text-body">Sort: <span class="text-body-strong ink">{sortLabel}</span></span>{/snippet}
@@ -313,20 +322,14 @@
     </div>
   {/if}
 
-  {#if notYet}
-    <div class="soon">
-      <Banner tone="info" icon="info" title="CurseForge {words.many} aren’t in Cubby yet" actions={backToModrinth}>
-        Cubby can install CurseForge modpacks for now. Modrinth has {words.many} for the same games.
-      </Banner>
-    </div>
-  {:else if embedded}
+  {#if embedded}
     <div class="embed">
       {#key embedded.id}<ProviderBrowser provider={embedded} />{/key}
     </div>
   {:else}
   <div class="layout">
     <nav class="filters" aria-label="Filters">
-      {#each CATEGORIES[kind] as group (group.label)}
+      {#each fromCf ? [] : CATEGORIES[kind] as group (group.label)}
         <section>
           <h2 class="text-label muted">{group.label}</h2>
           <ul>
@@ -343,7 +346,7 @@
         </section>
       {/each}
 
-      {#if kind === 'mod'}
+      {#if kind === 'mod' && !fromCf}
         <section>
           <h2 class="text-label muted">Environment</h2>
           <ul>
@@ -361,7 +364,7 @@
         </section>
       {/if}
 
-      {#if kind !== 'modpack' && target}
+      {#if kind !== 'modpack' && target && !fromCf}
         <Switch
           checked={d.hideInstalled}
           onChange={(v) => (app.discover.hideInstalled = v)}
@@ -470,7 +473,7 @@
                   <InstanceIcon {...art(h)} size={32} />
                   <div class="head">
                     <div class="name-line">
-                      <button type="button" class="title text-body-strong" onclick={() => app.openProject(h.slug, h.kind)}>{h.title}</button>
+                      <button type="button" class="title text-body-strong" onclick={() => open(h)}>{h.title}</button>
                       <span class="text-small muted author" title="by {h.author}">by {h.author}</span>
                     </div>
                     <p class="text-small muted summary-text" title={h.summary}>{h.summary}</p>
@@ -498,6 +501,8 @@
                       <Button size="sm" icon="download" disabled>Installing</Button>
                     {:else if s.action === 'update'}
                       <Button size="sm" icon="update" onclick={() => (installing = h)} aria-label="Update {h.title}">Update</Button>
+                    {:else if s.action === 'curseforge'}
+                      <Button size="sm" iconEnd="chevron-right" onclick={() => open(h)} aria-label="See {h.title} on CurseForge">On CurseForge</Button>
                     {:else if s.action === 'other'}
                       <Button size="sm" onclick={() => (installing = h)} aria-label="Install {h.title} to another instance or version">Install to…</Button>
                     {:else}
@@ -678,9 +683,6 @@
   .source:focus-visible {
     outline: 2px solid transparent;
     box-shadow: var(--focus-ring);
-  }
-  .soon {
-    max-width: 720px;
   }
   .embed {
     display: flex;

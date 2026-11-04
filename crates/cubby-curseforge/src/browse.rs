@@ -4,7 +4,7 @@ use cubby_common::packs::{PackChannel, PackLoaderKind, PackPage, PackSort, PackS
 use cubby_common::Result;
 
 use crate::api;
-use crate::client::{CurseForgeClient, GAME_ID, MODPACK_CLASS_ID};
+use crate::client::{CurseForgeClient, GAME_ID, MODPACK_CLASS_ID, MOD_CLASS_ID, RESOURCE_PACK_CLASS_ID, SHADER_CLASS_ID};
 
 /// CurseForge refuses `index + pageSize` above this.
 const MAX_WINDOW: u32 = 10_000;
@@ -49,6 +49,63 @@ pub(crate) fn sort_params(sort: PackSort) -> (u8, &'static str) {
         PackSort::Newest => (11, "desc"),
         PackSort::Name => (4, "asc"),
     }
+}
+
+/// What a resource search looks for. Modpacks have their own search ([`CurseForgeClient::search`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ResourceKind {
+    Mod,
+    ResourcePack,
+    Shader,
+}
+
+impl ResourceKind {
+    fn class_id(self) -> u32 {
+        match self {
+            ResourceKind::Mod => MOD_CLASS_ID,
+            ResourceKind::ResourcePack => RESOURCE_PACK_CLASS_ID,
+            ResourceKind::Shader => SHADER_CLASS_ID,
+        }
+    }
+}
+
+/// A search for mods, resource packs or shader packs.
+#[derive(Debug, Clone)]
+pub struct ResourceQuery {
+    pub kind: ResourceKind,
+    pub text: String,
+    /// Only files for this Minecraft version.
+    pub game_version: Option<String>,
+    /// Only mods for this loader (resource packs and shaders have none).
+    pub loader: Option<PackLoaderKind>,
+    pub sort: PackSort,
+    pub offset: u32,
+    pub limit: u32,
+}
+
+fn loader_code(loader: PackLoaderKind) -> u8 {
+    match loader {
+        PackLoaderKind::Forge => 1,
+        PackLoaderKind::Fabric => 4,
+        PackLoaderKind::Quilt => 5,
+        PackLoaderKind::NeoForge => 6,
+    }
+}
+
+pub(crate) fn resource_params(q: &ResourceQuery) -> Vec<(&'static str, String)> {
+    let mut params = search_params(&q.text, q.sort, q.offset, q.limit);
+    for (name, value) in &mut params {
+        if *name == "classId" {
+            *value = q.kind.class_id().to_string();
+        }
+    }
+    if let Some(version) = q.game_version.as_deref().map(str::trim).filter(|v| !v.is_empty()) {
+        params.push(("gameVersion", version.to_string()));
+    }
+    if let (ResourceKind::Mod, Some(loader)) = (q.kind, q.loader) {
+        params.push(("modLoaderType", loader_code(loader).to_string()));
+    }
+    params
 }
 
 pub(crate) fn search_params(query: &str, sort: PackSort, offset: u32, limit: u32) -> Vec<(&'static str, String)> {
@@ -174,6 +231,13 @@ impl CurseForgeClient {
         Ok(PackPage { hits: response.data.iter().map(summary_from_mod).collect(), total: response.pagination.map(|p| p.total_count) })
     }
 
+    /// Mods, resource packs or shader packs matching the query.
+    pub async fn search_resources(&self, query: &ResourceQuery) -> Result<PackPage> {
+        let params = resource_params(query);
+        let response: api::Envelope<Vec<api::Mod>> = self.get("/v1/mods/search", &params, "CurseForge search").await?;
+        Ok(PackPage { hits: response.data.iter().map(summary_from_mod).collect(), total: response.pagination.map(|p| p.total_count) })
+    }
+
     /// The popular modpacks, for the screen shown before the player types anything.
     pub async fn featured(&self) -> Result<PackPage> {
         self.search("", PackSort::Downloads, 0, 20).await
@@ -243,6 +307,27 @@ mod tests {
         assert_eq!(sort_params(PackSort::Downloads), (6, "desc"));
         assert_eq!(sort_params(PackSort::Updated), (3, "desc"));
         assert_eq!(sort_params(PackSort::Name), (4, "asc"));
+    }
+
+    #[test]
+    fn resource_search_params() {
+        let mut q = ResourceQuery { kind: ResourceKind::Mod, text: "sodium".into(), game_version: Some(" 1.21.1 ".into()), loader: Some(PackLoaderKind::Fabric), sort: PackSort::Downloads, offset: 0, limit: 20 };
+        let get = |p: &[(&str, String)], k: &str| p.iter().find(|(n, _)| *n == k).map(|(_, v)| v.clone());
+        let p = resource_params(&q);
+        assert_eq!(get(&p, "classId").as_deref(), Some("6"));
+        assert_eq!(get(&p, "gameVersion").as_deref(), Some("1.21.1"));
+        assert_eq!(get(&p, "modLoaderType").as_deref(), Some("4"));
+        assert_eq!(get(&p, "searchFilter").as_deref(), Some("sodium"));
+        // shaders and resource packs have no loader
+        q.kind = ResourceKind::Shader;
+        let p = resource_params(&q);
+        assert_eq!(get(&p, "classId").as_deref(), Some("6552"));
+        assert!(get(&p, "modLoaderType").is_none());
+        q.kind = ResourceKind::ResourcePack;
+        q.game_version = None;
+        let p = resource_params(&q);
+        assert_eq!(get(&p, "classId").as_deref(), Some("12"));
+        assert!(get(&p, "gameVersion").is_none());
     }
 
     #[test]

@@ -1,5 +1,6 @@
 //! Tauri glue between the web UI and the `cubby-*` crates.
 
+mod cf_resources;
 mod commands;
 mod dto;
 mod events;
@@ -79,6 +80,7 @@ pub fn run() {
             commands::content_sources,
             commands::check_updates,
             commands::apply_updates,
+            cf_resources::curseforge_search,
             update::check_update,
             update::download_update,
             update::install_update,

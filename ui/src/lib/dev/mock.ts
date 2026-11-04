@@ -708,6 +708,37 @@ export async function handle(command: string, args: Record<string, any>): Promis
     }
 
     // Discover
+    case 'curseforge_search': {
+      const q = args.query as ProjectQuery
+      await sleep(300)
+      const names: Record<string, string[]> = {
+        mod: ['Just Enough Items', 'Jade', 'Create', 'Applied Energistics 2', 'Waystones', 'Farmer’s Delight'],
+        shader: ['Complementary Shaders', 'BSL Shaders', 'Rethinking Voxels'],
+        resourcepack: ['Faithful 32x', 'Bare Bones', 'Sphax PureBDCraft'],
+      }
+      const all = (names[q.kind] ?? []).map((title, i): ProjectHit => ({
+        id: String(238222 + i),
+        slug: title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+        kind: q.kind,
+        title,
+        author: ['mezz', 'Snownee', 'simibubi', 'AE2', 'BlayTheNinth', 'vectorwing'][i % 6],
+        summary: 'A sample result from CurseForge.',
+        iconUrl: null,
+        categories: [],
+        downloads: 90_000_000 / (i + 1),
+        follows: 0,
+        updated: daysAgo(i * 3 + 1),
+        published: daysAgo(i * 3 + 1),
+        gameVersions: ['1.21.1', '1.20.1'],
+        loaders: q.kind === 'mod' ? ['fabric', 'neoforge'] : [],
+        clientSide: 'unknown',
+        serverSide: 'unknown',
+        license: null,
+        featuredImage: null,
+      }))
+      const hits = all.filter((h) => h.title.toLowerCase().includes(q.query.trim().toLowerCase()))
+      return { hits, total: hits.length, offset: q.offset, limit: q.limit }
+    }
     case 'search_projects': {
       const q: ProjectQuery = args.query
       const words = q.query.trim().toLowerCase()

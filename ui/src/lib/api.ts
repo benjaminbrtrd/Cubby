@@ -116,6 +116,8 @@ export const api = {
   // Discover (Modrinth)
   searchProjects: (query: ProjectQuery) => call<SearchResults>('search_projects', { query }),
   getProject: (idOrSlug: string) => call<Project>('get_project', { idOrSlug }),
+  /** Mods, shader packs and resource packs from CurseForge, in the shape of searchProjects. */
+  curseforgeSearch: (query: ProjectQuery) => call<SearchResults>('curseforge_search', { query }),
   /** Newest first. `gameVersion` / `loader` null = every version. */
   listProjectVersions: (idOrSlug: string, gameVersion: string | null, loader: LoaderKind | null) =>
     call<ProjectVersion[]>('list_project_versions', { idOrSlug, gameVersion, loader }),

@@ -13,6 +13,12 @@ pub const API_BASE: &str = "https://api.curseforge.com";
 pub const GAME_ID: u32 = 432;
 /// "Modpacks" class of Minecraft.
 pub const MODPACK_CLASS_ID: u32 = 4471;
+/// "Mods" class of Minecraft.
+pub const MOD_CLASS_ID: u32 = 6;
+/// "Resource Packs" class of Minecraft.
+pub const RESOURCE_PACK_CLASS_ID: u32 = 12;
+/// "Shaders" class of Minecraft.
+pub const SHADER_CLASS_ID: u32 = 6552;
 
 const RATE_LIMIT_RETRIES: usize = 2;
 const KEY_VARIABLE: &str = "CUBBY_CURSEFORGE_API_KEY";
