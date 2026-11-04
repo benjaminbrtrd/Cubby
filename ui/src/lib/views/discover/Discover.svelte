@@ -13,8 +13,8 @@
   import { compactNum, instanceMeta, num, plural, relativeTime } from '../../format'
   import { projectArt } from '../../icon'
   import { app } from '../../state.svelte'
-  import type { ProjectKind, ProjectQuery, ProjectSort, SearchResults } from '../../types'
-  import ProviderBrowser from '../create/ProviderBrowser.svelte'
+  import type { PackSort, PackSummary, ProjectKind, ProjectQuery, ProjectSort, SearchResults } from '../../types'
+  import PackPage from '../create/PackPage.svelte'
   import ProviderMark from '../create/ProviderMark.svelte'
   import InstallPanel from './InstallPanel.svelte'
   import Picker from './Picker.svelte'
@@ -30,8 +30,8 @@
   )
   /** The chosen source, or Modrinth when this tab doesn't offer it. */
   const source = $derived(sources.some((p) => p.id === d.provider) ? d.provider : 'modrinth')
-  /** Another provider's modpacks use its own browser instead of the Modrinth search below. */
-  const embedded = $derived(d.kind === 'modpack' && source !== 'modrinth' ? (sources.find((p) => p.id === source) ?? null) : null)
+  /** Modpacks of another provider (ATLauncher, CurseForge, FTB, Technic): same grid, searched through the pack commands. */
+  const packProvider = $derived(d.kind === 'modpack' && source !== 'modrinth' ? (sources.find((p) => p.id === source) ?? null) : null)
   /** Mods, shader packs and resource packs searched on CurseForge (Modrinth's categories and filters don't apply). */
   const fromCf = $derived(d.kind !== 'modpack' && source === 'curseforge')
   $effect(() => {
@@ -55,6 +55,7 @@
     { id: 'updated', label: 'Recently updated' },
     { id: 'newest', label: 'Newest' },
   ]
+  const sortChoices = $derived(packProvider ? sorts.filter((x) => packProvider.sorts.includes(PACK_SORT[x.id]) && x.id !== 'follows') : sorts)
   const sortLabel = $derived(sorts.find((s) => s.id === app.discover.sort)?.label ?? 'Relevance')
 
   function message(e: unknown): string {
@@ -87,6 +88,67 @@
   const targetMc = $derived(target?.minecraft ?? null)
   const targetLoader = $derived(target?.loader.kind ?? null)
 
+  const PACK_SORT: Record<ProjectSort, PackSort> = { relevance: 'relevance', downloads: 'downloads', follows: 'downloads', updated: 'updated', newest: 'newest' }
+
+  /** What a pack search returned, to open a pack page from its card. */
+  let packRaw = $state<PackSummary[]>([])
+  let openPack = $state<PackSummary | null>(null)
+  /** Loader and Minecraft version filters of the pack sources (the providers can't filter, so Cubby does). */
+  let packLoaders = $state<string[]>([])
+  let packVersions = $state<string[]>([])
+
+  function toHit(p: PackSummary): ProjectHit {
+    return {
+      id: p.id,
+      slug: p.id,
+      kind: 'modpack',
+      title: p.name,
+      author: p.authors[0] ?? '',
+      summary: p.summary,
+      iconUrl: p.iconUrl,
+      categories: [],
+      downloads: p.downloads ?? 0,
+      follows: 0,
+      updated: p.updated ?? '',
+      published: p.updated ?? '',
+      gameVersions: p.minecraft,
+      loaders: p.loaders,
+      clientSide: 'unknown',
+      serverSide: 'unknown',
+      license: null,
+      featuredImage: null,
+    }
+  }
+
+  function search(q: ProjectQuery): Promise<SearchResults> {
+    const provider = packProvider
+    if (provider) {
+      if (!provider.available) return Promise.reject(provider.reason ?? `${provider.name} isn't available right now.`)
+      const wanted = PACK_SORT[d.sort]
+      const sort = provider.sorts.includes(wanted) ? wanted : (provider.sorts[0] ?? 'relevance')
+      const offset = provider.paged ? d.page * PAGE_SIZE : 0
+      return api.packSearch(provider.id, d.query, sort, offset).then((page) => {
+        packRaw = page.hits
+        return { hits: page.hits.map(toHit), total: provider.paged ? (page.total ?? page.hits.length) : page.hits.length, offset, limit: PAGE_SIZE }
+      })
+    }
+    return fromCf ? api.curseforgeSearch(q) : api.searchProjects(q)
+  }
+
+  function openPackOf(h: ProjectHit) {
+    const raw = packRaw.find((p) => p.id === h.id)
+    if (raw) openPack = raw
+  }
+
+  $effect(() => {
+    // a new source or tab starts without the other one's filters
+    void source
+    void d.kind
+    packLoaders = []
+    packVersions = []
+    openPack = null
+  })
+
   $effect(() => {
     const q: ProjectQuery = {
       query: d.query,
@@ -103,7 +165,7 @@
     const mine = ++seq
     loading = true
     error = null
-    ;(fromCf ? api.curseforgeSearch(q) : api.searchProjects(q))
+    ;search(q)
       .then((r) => {
         if (mine !== seq) return
         results = r
@@ -121,11 +183,30 @@
   })
 
   const offline = $derived(!!error && (/(network|connect|dns|resolve|timed? ?out|offline|unreachable|socket|tls|fetch)/i.test(error) || !navigator.onLine))
-  const hits = $derived(results?.hits ?? [])
+  const allHits = $derived(results?.hits ?? [])
+  /** Loaders and Minecraft versions found in this source's results, for the filters. */
+  const packLoaderChoices = $derived([...new Set(allHits.flatMap((h) => h.loaders))].sort())
+  const packVersionChoices = $derived(
+    [...new Set(allHits.flatMap((h) => h.gameVersions))]
+      .sort((a, b) => b.localeCompare(a, undefined, { numeric: true }))
+      .slice(0, 12),
+  )
+  const packFiltered = $derived(
+    packProvider
+      ? allHits.filter(
+          (h) =>
+            (!packLoaders.length || h.loaders.some((l) => packLoaders.includes(l))) &&
+            (!packVersions.length || h.gameVersions.some((v) => packVersions.includes(v))),
+        )
+      : allHits,
+  )
+  /** Sources that return everything at once are paged here. */
+  const clientPaged = $derived(!!packProvider && !packProvider.paged)
+  const hits = $derived(clientPaged ? packFiltered.slice(d.page * PAGE_SIZE, (d.page + 1) * PAGE_SIZE) : packFiltered)
   const shown = $derived(d.hideInstalled && target && kind !== 'modpack' && !fromCf ? hits.filter((h) => !app.installedIn(target.id, h.id)) : hits)
   const hiddenCount = $derived(hits.length - shown.length)
-  const pages = $derived(results ? Math.max(1, Math.ceil(results.total / PAGE_SIZE)) : 1)
-  const filtered = $derived(d.categories.length > 0 || d.environment !== null || d.hideInstalled)
+  const pages = $derived(!results ? 1 : Math.max(1, Math.ceil((clientPaged ? packFiltered.length : results.total) / PAGE_SIZE)))
+  const filtered = $derived(d.categories.length > 0 || d.environment !== null || d.hideInstalled || packLoaders.length > 0 || packVersions.length > 0)
 
   // filters
   function setKind(k: string) {
@@ -164,6 +245,13 @@
     app.discover.environment = null
     app.discover.hideInstalled = false
     app.discover.page = 0
+    packLoaders = []
+    packVersions = []
+  }
+
+  function togglePack(list: string[], value: string): string[] {
+    app.discover.page = 0
+    return list.includes(value) ? list.filter((x) => x !== value) : [...list, value]
   }
 
   function clearSearch() {
@@ -196,11 +284,12 @@
 
   interface CardState {
     fit: Fit
-    action: 'install' | 'other' | 'installed' | 'update' | 'busy' | 'curseforge'
+    action: 'install' | 'other' | 'installed' | 'update' | 'busy' | 'curseforge' | 'pack'
     version: string | null
   }
 
   function cardState(h: ProjectHit): CardState {
+    if (packProvider) return { fit: hitFit(h, target), action: 'pack', version: null }
     if (fromCf) return { fit: hitFit(h, target), action: 'curseforge', version: null }
     if (h.kind === 'modpack' || !target) return { fit: hitFit(h, target), action: 'install', version: null }
     const busy = pending[h.id] === target.id && !!app.taskFor(`install:${target.id}`)
@@ -222,7 +311,8 @@
   }
 
   function open(h: ProjectHit) {
-    if (fromCf) api.openUrl(cfUrl(h)).catch((e) => app.error(e))
+    if (packProvider) openPackOf(h)
+    else if (fromCf) api.openUrl(cfUrl(h)).catch((e) => app.error(e))
     else app.openProject(h.slug, h.kind)
   }
 
@@ -266,10 +356,12 @@
   </button>
 {/snippet}
 
+{#if openPack && packProvider}
+  <PackPage provider={packProvider} summary={openPack} onBack={() => (openPack = null)} />
+{:else}
 <div class="screen">
   <div class="top">
     <h1 class="text-title">Discover</h1>
-    {#if !embedded}
     <div class="search">
       <TextField
         label="Search {words.many}"
@@ -282,7 +374,6 @@
         }}
       />
     </div>
-    {/if}
     <span class="grow"></span>
     {#if kind === 'modpack'}
       <span class="text-small muted line"><Icon name="library" size={18} />Each modpack installs as a new instance</span>
@@ -300,14 +391,12 @@
     <div class="tabs">
       <Tabs label="What to discover" items={tabs} value={kind} onChange={setKind} />
     </div>
-    {#if !embedded}
     <div class="sort">
-      <Picker items={sorts} value={d.sort} onSelect={setSort} label="Sort by" buttonLabel="Sort by {sortLabel}. Change" variant="ghost" listWidth={200}>
+      <Picker items={sortChoices} value={d.sort} onSelect={setSort} label="Sort by" buttonLabel="Sort by {sortLabel}. Change" variant="ghost" listWidth={200}>
         {#snippet trigger()}<span class="text-body">Sort: <span class="text-body-strong ink">{sortLabel}</span></span>{/snippet}
         {#snippet option(item, on)}<span class={['text-body', on && 'text-body-strong']}>{item.label}</span>{/snippet}
       </Picker>
     </div>
-    {/if}
   </div>
 
   {#if sources.length > 1}
@@ -322,14 +411,47 @@
     </div>
   {/if}
 
-  {#if embedded}
-    <div class="embed">
-      {#key embedded.id}<ProviderBrowser provider={embedded} />{/key}
-    </div>
-  {:else}
   <div class="layout">
     <nav class="filters" aria-label="Filters">
-      {#each fromCf ? [] : CATEGORIES[kind] as group (group.label)}
+      {#if packProvider}
+        {#if packLoaderChoices.length}
+          <section>
+            <h2 class="text-label muted">Loader</h2>
+            <ul>
+              {#each packLoaderChoices as l (l)}
+                {@const on = packLoaders.includes(l)}
+                <li>
+                  <button type="button" class="check" aria-pressed={on} onclick={() => (packLoaders = togglePack(packLoaders, l))}>
+                    <span class={['box', on && 'on']} aria-hidden="true">{#if on}<Icon name="check" size={9} />{/if}</span>
+                    <span class="text-body">{categoryLabel(l)}</span>
+                  </button>
+                </li>
+              {/each}
+            </ul>
+          </section>
+        {/if}
+        {#if packVersionChoices.length}
+          <section>
+            <h2 class="text-label muted">Minecraft version</h2>
+            <ul>
+              {#each packVersionChoices as v (v)}
+                {@const on = packVersions.includes(v)}
+                <li>
+                  <button type="button" class="check" aria-pressed={on} onclick={() => (packVersions = togglePack(packVersions, v))}>
+                    <span class={['box', on && 'on']} aria-hidden="true">{#if on}<Icon name="check" size={9} />{/if}</span>
+                    <span class="text-body text-mono">{v}</span>
+                  </button>
+                </li>
+              {/each}
+            </ul>
+          </section>
+        {/if}
+        {#if !clientPaged && (packLoaderChoices.length || packVersionChoices.length)}
+          <p class="text-small muted hint">Filters apply to the packs on this page.</p>
+        {/if}
+      {/if}
+
+      {#each fromCf || packProvider ? [] : CATEGORIES[kind] as group (group.label)}
         <section>
           <h2 class="text-label muted">{group.label}</h2>
           <ul>
@@ -397,7 +519,7 @@
             <span>Searching Modrinth…</span>
           {:else if results}
             <span>
-              {plural(results.total, 'result', 'results')}.
+              {plural(clientPaged ? packFiltered.length : results.total, 'result', 'results')}.
               {#if kind === 'modpack'}
                 Each one installs as a new instance.
               {:else if scoped && target}
@@ -501,6 +623,8 @@
                       <Button size="sm" icon="download" disabled>Installing</Button>
                     {:else if s.action === 'update'}
                       <Button size="sm" icon="update" onclick={() => (installing = h)} aria-label="Update {h.title}">Update</Button>
+                    {:else if s.action === 'pack'}
+                      <Button size="sm" icon="download" onclick={() => open(h)} aria-label="Install {h.title}">Install</Button>
                     {:else if s.action === 'curseforge'}
                       <Button size="sm" iconEnd="chevron-right" onclick={() => open(h)} aria-label="See {h.title} on CurseForge">On CurseForge</Button>
                     {:else if s.action === 'other'}
@@ -566,8 +690,8 @@
       {/if}
     </div>
   </div>
-  {/if}
 </div>
+{/if}
 
 {#if installing}
   {@const h = installing}
@@ -683,14 +807,6 @@
   .source:focus-visible {
     outline: 2px solid transparent;
     box-shadow: var(--focus-ring);
-  }
-  .embed {
-    display: flex;
-    flex-direction: column;
-  }
-  .embed :global(.browser) {
-    padding: 0;
-    overflow: visible;
   }
   .layout {
     display: grid;
