@@ -446,7 +446,6 @@
   {#if !compact}
     <div class="head">
       <h2 class="text-heading">Install</h2>
-      {#if chosen}<span class="text-mono muted">{chosen.versionNumber} · {bytes(primarySize(chosen))}</span>{/if}
     </div>
   {/if}
 
