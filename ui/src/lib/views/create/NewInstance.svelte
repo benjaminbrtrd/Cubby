@@ -2,18 +2,10 @@
 <script lang="ts">
   import { Banner, Button, Icon, type IconName } from '../../cubby'
   import { app } from '../../state.svelte'
-  import type { ProviderId } from '../../types'
   import CustomForm from './CustomForm.svelte'
   import ImportSource from './ImportSource.svelte'
   import ProviderBrowser from './ProviderBrowser.svelte'
-
-  const MARKS: Record<ProviderId, { letters: string; color: string; ink: string }> = {
-    atlauncher: { letters: 'AT', color: 'var(--diamond)', ink: 'var(--edge)' },
-    curseforge: { letters: 'CF', color: 'var(--gold)', ink: 'var(--edge)' },
-    ftb: { letters: 'FT', color: 'var(--redstone)', ink: '#fff' },
-    modrinth: { letters: 'MR', color: 'var(--grass)', ink: 'var(--edge)' },
-    technic: { letters: 'TN', color: 'var(--outline)', ink: 'var(--edge)' },
-  }
+  import ProviderMark from './ProviderMark.svelte'
 
   const source = $derived(app.newSource)
   const providers = $derived(app.providers)
@@ -58,10 +50,9 @@
     {#if providers}
       <ul class="items">
         {#each providers as p (p.id)}
-          {@const m = MARKS[p.id]}
           <li>
             <button type="button" class={['item', source === p.id && 'is-on']} aria-current={source === p.id ? 'page' : undefined} onclick={() => (app.newSource = p.id)}>
-              <span class="mark" style:background={m.color} style:color={m.ink} aria-hidden="true">{m.letters}</span>
+              <ProviderMark id={p.id} />
               <span class="text-body-strong">{p.name}</span>
               {#if !p.available}<span class="lock" data-tip="Needs setup"><Icon name="key" size={18} /></span>{/if}
             </button>

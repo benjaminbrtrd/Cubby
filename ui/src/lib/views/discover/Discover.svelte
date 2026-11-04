@@ -14,12 +14,21 @@
   import { projectArt } from '../../icon'
   import { app } from '../../state.svelte'
   import type { ProjectKind, ProjectQuery, ProjectSort, SearchResults } from '../../types'
+  import ProviderBrowser from '../create/ProviderBrowser.svelte'
+  import ProviderMark from '../create/ProviderMark.svelte'
   import InstallPanel from './InstallPanel.svelte'
   import Picker from './Picker.svelte'
   import TargetPicker from './TargetPicker.svelte'
   import { CATEGORIES, KINDS, KIND_ORDER, PAGE_SIZE, categoryLabel, hitFit, type Fit } from './discover'
 
   const d = $derived(app.discover)
+  /** The modpack sources, Modrinth (Discover itself) first. */
+  const sources = $derived([...(app.providers ?? [])].sort((a, b) => (a.id === 'modrinth' ? -1 : b.id === 'modrinth' ? 1 : a.name.localeCompare(b.name))))
+  /** Another provider's modpacks use its own browser instead of the Modrinth search below. */
+  const embedded = $derived(d.kind === 'modpack' && d.provider !== 'modrinth' ? (app.providers?.find((p) => p.id === d.provider) ?? null) : null)
+  $effect(() => {
+    if (d.kind === 'modpack' && !app.providers && !app.providersError) void app.loadProviders()
+  })
   const kind = $derived(d.kind)
   const words = $derived(KINDS[kind])
   const target = $derived(app.target)
@@ -241,6 +250,7 @@
 <div class="screen">
   <div class="top">
     <h1 class="text-title">Discover</h1>
+    {#if !embedded}
     <div class="search">
       <TextField
         label="Search {words.many}"
@@ -253,6 +263,7 @@
         }}
       />
     </div>
+    {/if}
     <span class="grow"></span>
     {#if kind === 'modpack'}
       <span class="text-small muted line"><Icon name="library" size={18} />Each modpack installs as a new instance</span>
@@ -270,14 +281,33 @@
     <div class="tabs">
       <Tabs label="What to discover" items={tabs} value={kind} onChange={setKind} />
     </div>
+    {#if !embedded}
     <div class="sort">
       <Picker items={sorts} value={d.sort} onSelect={setSort} label="Sort by" buttonLabel="Sort by {sortLabel}. Change" variant="ghost" listWidth={200}>
         {#snippet trigger()}<span class="text-body">Sort: <span class="text-body-strong ink">{sortLabel}</span></span>{/snippet}
         {#snippet option(item, on)}<span class={['text-body', on && 'text-body-strong']}>{item.label}</span>{/snippet}
       </Picker>
     </div>
+    {/if}
   </div>
 
+  {#if kind === 'modpack' && sources.length > 1}
+    <div class="sources" role="group" aria-label="Modpack source">
+      <span class="text-label muted">Source</span>
+      {#each sources as p (p.id)}
+        <button type="button" class={['source', d.provider === p.id && 'is-on']} aria-pressed={d.provider === p.id} onclick={() => (app.discover.provider = p.id)}>
+          <ProviderMark id={p.id} size={22} />
+          <span class="text-body-strong">{p.name}</span>
+        </button>
+      {/each}
+    </div>
+  {/if}
+
+  {#if embedded}
+    <div class="embed">
+      {#key embedded.id}<ProviderBrowser provider={embedded} />{/key}
+    </div>
+  {:else}
   <div class="layout">
     <nav class="filters" aria-label="Filters">
       {#each CATEGORIES[kind] as group (group.label)}
@@ -515,6 +545,7 @@
       {/if}
     </div>
   </div>
+  {/if}
 </div>
 
 {#if installing}
@@ -599,6 +630,46 @@
   }
   .ink {
     color: var(--ink);
+  }
+  /* Modpack sources */
+  .sources {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .source {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    height: 36px;
+    padding: 0 var(--space-3) 0 var(--space-2);
+    font: inherit;
+    color: var(--ink-muted);
+    background: transparent;
+    border: var(--border-block) solid transparent;
+    cursor: pointer;
+  }
+  .source:hover {
+    color: var(--ink);
+    background: var(--surface);
+  }
+  .source.is-on {
+    color: var(--ink);
+    background: var(--surface-hover);
+    border-color: var(--ink);
+  }
+  .source:focus-visible {
+    outline: 2px solid transparent;
+    box-shadow: var(--focus-ring);
+  }
+  .embed {
+    display: flex;
+    flex-direction: column;
+  }
+  .embed :global(.browser) {
+    padding: 0;
+    overflow: visible;
   }
   .layout {
     display: grid;

@@ -78,6 +78,8 @@ export interface DiscoverState {
   compatibleOnly: boolean
   hideInstalled: boolean
   page: number
+  /** Modpacks tab: where the modpacks come from (Modrinth is Discover itself). */
+  provider: ProviderId
 }
 
 const MAX_LOG_LINES = 5000
@@ -171,6 +173,7 @@ class AppState {
     compatibleOnly: true,
     hideInstalled: false,
     page: 0,
+    provider: 'modrinth',
   })
   targetId = $state<string | null>(stored('targetId', null))
   /** instance id → files identified on Modrinth */
