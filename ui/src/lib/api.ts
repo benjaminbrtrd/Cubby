@@ -118,6 +118,10 @@ export const api = {
   getProject: (idOrSlug: string) => call<Project>('get_project', { idOrSlug }),
   /** Mods, shader packs and resource packs from CurseForge, in the shape of searchProjects. */
   curseforgeSearch: (query: ProjectQuery) => call<SearchResults>('curseforge_search', { query }),
+  /** The categories CurseForge sorts mods, shader packs or resource packs into (ids are strings). */
+  curseforgeCategories: (kind: string) => call<{ id: string; name: string }[]>('curseforge_categories', { kind }),
+  searchProjects: (query: ProjectQuery) => call<SearchResults>('search_projects', { query }),
+  getProject: (idOrSlug: string) => call<Project>('get_project', { idOrSlug }),
   /** Newest first. `gameVersion` / `loader` null = every version. */
   listProjectVersions: (idOrSlug: string, gameVersion: string | null, loader: LoaderKind | null) =>
     call<ProjectVersion[]>('list_project_versions', { idOrSlug, gameVersion, loader }),

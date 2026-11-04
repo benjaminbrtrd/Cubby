@@ -708,6 +708,14 @@ export async function handle(command: string, args: Record<string, any>): Promis
     }
 
     // Discover
+    case 'curseforge_categories': {
+      const lists: Record<string, string[]> = {
+        mod: ['Adventure and RPG', 'Armor, Tools, and Weapons', 'Magic', 'Technology', 'World Gen'],
+        shader: ['Realistic', 'Fantasy', 'Vanilla-like', 'Lightweight'],
+        resourcepack: ['16x', '32x', '64x', 'Modern', 'Medieval'],
+      }
+      return (lists[args.kind as string] ?? []).map((name, i) => ({ id: String(100 + i), name }))
+    }
     case 'curseforge_search': {
       const q = args.query as ProjectQuery
       await sleep(300)

@@ -19,6 +19,17 @@ pub struct Pagination {
     pub total_count: u64,
 }
 
+/// A category of the catalogue (`/v1/categories`).
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct Category {
+    pub id: u64,
+    pub name: String,
+    pub slug: String,
+    pub class_id: Option<u64>,
+    pub is_class: Option<bool>,
+}
+
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Mod {

@@ -3,6 +3,7 @@
 
 use cubby_common::packs::{PackLoaderKind, PackSort};
 use cubby_curseforge::{ResourceKind, ResourceQuery};
+use serde::Serialize;
 use tauri::State;
 
 use crate::dto::{ProjectHitDto, ProjectQueryDto, SearchResultsDto};
@@ -48,8 +49,23 @@ fn loader_name(kind: PackLoaderKind) -> &'static str {
     }
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CategoryDto {
+    pub id: String,
+    pub name: String,
+}
+
+/// The categories of mods, shader packs or resource packs on CurseForge.
+#[tauri::command]
+pub async fn curseforge_categories(core: State<'_, Core>, kind: String) -> Result<Vec<CategoryDto>, String> {
+    let client = core.curseforge().ok_or_else(|| KEY_MESSAGE.to_string())?;
+    let categories = client.resource_categories(kind_of(&kind)?).await.map_err(crate::dto::message)?;
+    Ok(categories.into_iter().map(|c| CategoryDto { id: c.id.to_string(), name: c.name }).collect())
+}
+
 /// Searches CurseForge with the same query the Modrinth search takes. Categories and the client/server
-/// filter are Modrinth's, so they are ignored here.
+/// filter are Modrinth's: only the first category (a CurseForge category id) is used.
 #[tauri::command]
 pub async fn curseforge_search(core: State<'_, Core>, query: ProjectQueryDto) -> Result<SearchResultsDto, String> {
     let client = core.curseforge().ok_or_else(|| KEY_MESSAGE.to_string())?;
@@ -59,6 +75,7 @@ pub async fn curseforge_search(core: State<'_, Core>, query: ProjectQueryDto) ->
         text: query.query.clone(),
         game_version: query.game_version.clone(),
         loader: query.loader.as_deref().and_then(loader_of),
+        category: query.categories.first().and_then(|c| c.trim().parse().ok()),
         sort: sort_of(&query.sort),
         offset: query.offset,
         limit: query.limit,

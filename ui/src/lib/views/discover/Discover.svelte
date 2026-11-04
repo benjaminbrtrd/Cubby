@@ -90,6 +90,17 @@
 
   const PACK_SORT: Record<ProjectSort, PackSort> = { relevance: 'relevance', downloads: 'downloads', follows: 'downloads', updated: 'updated', newest: 'newest' }
 
+  /** CurseForge's categories, by tab. */
+  let cfCategories = $state<Record<string, { id: string; name: string }[]>>({})
+  $effect(() => {
+    const k = d.kind
+    if (!fromCf || cfCategories[k]) return
+    api
+      .curseforgeCategories(k)
+      .then((list) => (cfCategories[k] = list))
+      .catch(() => (cfCategories[k] = []))
+  })
+
   /** What a pack search returned, to open a pack page from its card. */
   let packRaw = $state<PackSummary[]>([])
   let openPack = $state<PackSummary | null>(null)
@@ -147,6 +158,7 @@
     packLoaders = []
     packVersions = []
     openPack = null
+    app.discover.categories = []
   })
 
   $effect(() => {
@@ -155,7 +167,7 @@
       kind,
       gameVersion: scoped ? targetMc : null,
       loader: scoped && kind === 'mod' ? targetLoader : null,
-      categories: fromCf ? [] : [...d.categories],
+      categories: [...d.categories],
       environment: kind === 'mod' && !fromCf ? d.environment : null,
       sort: d.sort,
       offset: d.page * PAGE_SIZE,
@@ -449,6 +461,24 @@
         {#if !clientPaged && (packLoaderChoices.length || packVersionChoices.length)}
           <p class="text-small muted hint">Filters apply to the packs on this page.</p>
         {/if}
+      {/if}
+
+      {#if fromCf && cfCategories[kind]?.length}
+        <section>
+          <h2 class="text-label muted">Categories</h2>
+          <ul>
+            {#each cfCategories[kind] as c (c.id)}
+              {@const on = d.categories.includes(c.id)}
+              <li>
+                <button type="button" class="check" aria-pressed={on} onclick={() => ((app.discover.categories = on ? [] : [c.id]), (app.discover.page = 0))}>
+                  <span class={['box', on && 'on']} aria-hidden="true">{#if on}<Icon name="check" size={9} />{/if}</span>
+                  <span class="text-body">{c.name}</span>
+                </button>
+              </li>
+            {/each}
+          </ul>
+          <p class="text-small muted hint">CurseForge filters by one category at a time.</p>
+        </section>
       {/if}
 
       {#each fromCf || packProvider ? [] : CATEGORIES[kind] as group (group.label)}

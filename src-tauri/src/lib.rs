@@ -81,6 +81,7 @@ pub fn run() {
             commands::check_updates,
             commands::apply_updates,
             cf_resources::curseforge_search,
+            cf_resources::curseforge_categories,
             update::check_update,
             update::download_update,
             update::install_update,

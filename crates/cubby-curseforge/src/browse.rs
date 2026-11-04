@@ -69,6 +69,13 @@ impl ResourceKind {
     }
 }
 
+/// A category players can filter a resource search by.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ResourceCategory {
+    pub id: u64,
+    pub name: String,
+}
+
 /// A search for mods, resource packs or shader packs.
 #[derive(Debug, Clone)]
 pub struct ResourceQuery {
@@ -78,6 +85,8 @@ pub struct ResourceQuery {
     pub game_version: Option<String>,
     /// Only mods for this loader (resource packs and shaders have none).
     pub loader: Option<PackLoaderKind>,
+    /// One category id (CurseForge filters by one at a time).
+    pub category: Option<u64>,
     pub sort: PackSort,
     pub offset: u32,
     pub limit: u32,
@@ -101,6 +110,9 @@ pub(crate) fn resource_params(q: &ResourceQuery) -> Vec<(&'static str, String)> 
     }
     if let Some(version) = q.game_version.as_deref().map(str::trim).filter(|v| !v.is_empty()) {
         params.push(("gameVersion", version.to_string()));
+    }
+    if let Some(id) = q.category {
+        params.push(("categoryId", id.to_string()));
     }
     if let (ResourceKind::Mod, Some(loader)) = (q.kind, q.loader) {
         params.push(("modLoaderType", loader_code(loader).to_string()));
@@ -238,6 +250,22 @@ impl CurseForgeClient {
         Ok(PackPage { hits: response.data.iter().map(summary_from_mod).collect(), total: response.pagination.map(|p| p.total_count) })
     }
 
+    /// The categories of mods, resource packs or shader packs, by name.
+    pub async fn resource_categories(&self, kind: ResourceKind) -> Result<Vec<ResourceCategory>> {
+        let class = kind.class_id();
+        let query = [("gameId", GAME_ID.to_string()), ("classId", class.to_string())];
+        let response: api::Envelope<Vec<api::Category>> = self.get("/v1/categories", &query, "CurseForge categories").await?;
+        let mut out: Vec<ResourceCategory> = response
+            .data
+            .into_iter()
+            .filter(|c| c.is_class != Some(true) && c.class_id.is_none_or(|id| id == u64::from(class)) && !c.name.trim().is_empty())
+            .map(|c| ResourceCategory { id: c.id, name: c.name.trim().to_string() })
+            .collect();
+        out.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+        out.dedup_by_key(|c| c.id);
+        Ok(out)
+    }
+
     /// The popular modpacks, for the screen shown before the player types anything.
     pub async fn featured(&self) -> Result<PackPage> {
         self.search("", PackSort::Downloads, 0, 20).await
@@ -311,12 +339,13 @@ mod tests {
 
     #[test]
     fn resource_search_params() {
-        let mut q = ResourceQuery { kind: ResourceKind::Mod, text: "sodium".into(), game_version: Some(" 1.21.1 ".into()), loader: Some(PackLoaderKind::Fabric), sort: PackSort::Downloads, offset: 0, limit: 20 };
+        let mut q = ResourceQuery { kind: ResourceKind::Mod, text: "sodium".into(), game_version: Some(" 1.21.1 ".into()), loader: Some(PackLoaderKind::Fabric), category: Some(409), sort: PackSort::Downloads, offset: 0, limit: 20 };
         let get = |p: &[(&str, String)], k: &str| p.iter().find(|(n, _)| *n == k).map(|(_, v)| v.clone());
         let p = resource_params(&q);
         assert_eq!(get(&p, "classId").as_deref(), Some("6"));
         assert_eq!(get(&p, "gameVersion").as_deref(), Some("1.21.1"));
         assert_eq!(get(&p, "modLoaderType").as_deref(), Some("4"));
+        assert_eq!(get(&p, "categoryId").as_deref(), Some("409"));
         assert_eq!(get(&p, "searchFilter").as_deref(), Some("sodium"));
         // shaders and resource packs have no loader
         q.kind = ResourceKind::Shader;
