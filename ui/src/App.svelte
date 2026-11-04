@@ -73,7 +73,8 @@
 
   /* The update chip in the title bar */
   const upd = $derived(app.update)
-  const chipShown = $derived(!!upd.info && ['available', 'downloading', 'ready', 'failed'].includes(upd.phase))
+  // Only once the strip under the title bar was closed: it says the same thing while it is there.
+  const chipShown = $derived(!!upd.info && upd.dismissed && ['available', 'downloading', 'ready', 'failed'].includes(upd.phase))
   const bannerShown = $derived(!onboarding && !!upd.info && !upd.dismissed && ['available', 'downloading', 'ready', 'failed'].includes(upd.phase))
   const waitingForGame = $derived(upd.phase === 'ready' && Object.keys(app.running).length > 0)
   const updPercent = $derived.by(() => {
@@ -218,7 +219,6 @@
   }
   .update {
     flex: none;
-    padding: var(--space-4) var(--space-6) 0;
   }
   main {
     flex: 1;

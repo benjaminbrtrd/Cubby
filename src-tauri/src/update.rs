@@ -57,6 +57,29 @@ fn dto(update: &Update, downloaded: bool) -> UpdateDto {
     }
 }
 
+/// Dev builds only: `CUBBY_FAKE_UPDATE=1` pretends a newer version exists, to try the interface without a release.
+fn fake() -> bool {
+    cfg!(debug_assertions) && std::env::var_os("CUBBY_FAKE_UPDATE").is_some()
+}
+
+fn fake_dto(downloaded: bool) -> UpdateDto {
+    UpdateDto {
+        version: "2026.11.0-alpha.2".into(),
+        current_version: env!("CARGO_PKG_VERSION").into(),
+        notes: "## New
+
+- Modpack updates show what changed before you accept them.
+- The library remembers your sort order.
+
+## Fixed
+
+- A crash when an instance has no Java yet.
+- Downloads that stalled behind a proxy.".into(),
+        date: None,
+        downloaded,
+    }
+}
+
 fn fail(what: &str, e: impl std::fmt::Display) -> String {
     log::warn!("update: {what}: {e}");
     format!("{what}: {e}")
@@ -65,6 +88,11 @@ fn fail(what: &str, e: impl std::fmt::Display) -> String {
 /// Looks for a newer version on the settings' channel. `None` when Cubby is up to date.
 #[tauri::command]
 pub async fn check_update(app: AppHandle, core: State<'_, Core>, pending: State<'_, PendingState>) -> CmdResult<Option<UpdateDto>> {
+    if fake() {
+        tokio::time::sleep(std::time::Duration::from_millis(600)).await;
+        let downloaded = pending.lock().expect("update lock").bytes.is_some();
+        return Ok(Some(fake_dto(downloaded)));
+    }
     let settings = core.settings();
     let mut builder = app
         .updater_builder()
@@ -103,6 +131,17 @@ pub async fn check_update(app: AppHandle, core: State<'_, Core>, pending: State<
 /// Downloads the installer found by `check_update`. Progress goes out on the `update` task.
 #[tauri::command]
 pub async fn download_update(core: State<'_, Core>, pending: State<'_, PendingState>) -> CmdResult<()> {
+    if fake() {
+        let label = "Downloading Cubby 2026.11.0-alpha.2";
+        let total: u64 = 61 * 1024 * 1024;
+        for step in 0..=20u64 {
+            core.sink.progress(TASK, label, total / 20 * step, total);
+            tokio::time::sleep(std::time::Duration::from_millis(150)).await;
+        }
+        pending.lock().expect("update lock").bytes = Some(Vec::new());
+        core.sink.finished(TASK, None);
+        return Ok(());
+    }
     let update = pending.lock().expect("update lock").update.clone().ok_or("There is no update to download.")?;
     if pending.lock().expect("update lock").bytes.is_some() {
         return Ok(());
@@ -139,6 +178,10 @@ pub async fn download_update(core: State<'_, Core>, pending: State<'_, PendingSt
 pub async fn install_update(app: AppHandle, core: State<'_, Core>, pending: State<'_, PendingState>) -> CmdResult<()> {
     if !core.games.running().is_empty() {
         return Err("Minecraft is still running. Close the game first.".into());
+    }
+    if fake() {
+        log::warn!("fake update: Cubby would restart and install here");
+        return Ok(());
     }
     let (update, bytes) = {
         let pending = pending.lock().expect("update lock");

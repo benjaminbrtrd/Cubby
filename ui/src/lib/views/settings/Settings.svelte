@@ -6,7 +6,7 @@
   import { tick, untrack } from 'svelte'
   import { api } from '../../api'
   import { app, type SettingsSection } from '../../state.svelte'
-  import { bytes, fold, num, appVersion } from '../../format'
+  import { bytes, fold, num } from '../../format'
   import type { DataFolder, JavaInstall, Settings } from '../../types'
   import { Button, Dialog, Icon, Logo, SegmentedControl, Slider, StatusTag, Switch, TextField } from '../../cubby'
 
@@ -722,10 +722,10 @@
             {@render heading('updates', 'Updates')}
             <div class="row">
               <div class="row__text">
-                <p class="text-body-strong">Cubby {#if app.info}<span class="text-mono">{appVersion(app.info.version)}</span>{/if}</p>
+                <p class="text-body-strong">Cubby {#if app.info}<span class="text-mono">{app.info.version}</span>{/if}</p>
                 <p class="text-small muted">
                   {#if u.phase === 'checking'}Looking for a new version…
-                  {:else if updating && u.info}{appVersion(u.info.version)} is {u.phase === 'ready' ? 'ready to install' : u.phase === 'downloading' ? 'downloading' : 'available'}. {checkedText}
+                  {:else if updating && u.info}{u.info.version} is {u.phase === 'ready' ? 'ready to install' : u.phase === 'downloading' ? 'downloading' : 'available'}. {checkedText}
                   {:else if u.error}{u.error}
                   {:else}{checkedText}{/if}
                 </p>
@@ -769,7 +769,7 @@
               <div class="row">
                 <div class="row__text">
                   <p class="text-body-strong">Skipped version</p>
-                  <p class="text-small muted">You chose to skip {appVersion(s.updates.skipped)}. Cubby stays quiet until a newer one comes out.</p>
+                  <p class="text-small muted">You chose to skip {s.updates.skipped}. Cubby stays quiet until a newer one comes out.</p>
                 </div>
                 <Button size="sm" onclick={async () => { await saveUpdates({ skipped: null }); await app.checkForUpdate() }}>Stop skipping</Button>
               </div>
@@ -782,7 +782,7 @@
             {@render heading('about', 'About')}
             <div class="about">
               <Logo size={32} />
-              <p class="text-body-strong">Cubby {#if app.info}<span class="text-mono">{appVersion(app.info.version)}</span>{/if}</p>
+              <p class="text-body-strong">Cubby {#if app.info}<span class="text-mono">{app.info.version}</span>{/if}</p>
               <p class="text-small muted">A free Minecraft launcher.</p>
               {#if app.info}
                 <div>

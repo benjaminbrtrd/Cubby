@@ -114,10 +114,3 @@ export function fold(text: string): string {
   return text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 }
 
-/** Cubby's calendar version as players read it: "2026.11.0" → "2026.11", "2026.11.0-alpha.1" → "2026.11 alpha 1". */
-export function appVersion(v: string): string {
-  const m = /^(\d+\.\d+)\.(\d+)(?:-([a-z]+)\.?(\d+)?)?/.exec(v)
-  if (!m) return v
-  const base = m[2] === '0' ? m[1] : `${m[1]}.${m[2]}`
-  return m[3] ? `${base} ${m[3]}${m[4] ? ` ${m[4]}` : ''}` : base
-}

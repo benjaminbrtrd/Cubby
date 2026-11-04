@@ -2,8 +2,7 @@
 <script lang="ts">
   import { api } from '../../api'
   import { app } from '../../state.svelte'
-  import { appVersion } from '../../format'
-  import { Button, Dialog, StatusTag } from '../../cubby'
+  import { Button, Dialog, MetaChip } from '../../cubby'
   import Markdown from '../discover/Markdown.svelte'
 
   const RELEASES = 'https://github.com/benjaminbrtrd/Cubby/releases/tag/v'
@@ -11,7 +10,7 @@
   const kind = $derived(app.updateDialog)
   const info = $derived(app.update.info)
   const ready = $derived(app.update.phase === 'ready')
-  const name = $derived(info ? `Cubby ${appVersion(info.version)}` : 'Cubby')
+  const name = $derived(info ? `Cubby ${info.version}` : 'Cubby')
   const close = () => (app.updateDialog = null)
   const game = $derived(Object.keys(app.running).map((id) => app.instance(id)?.name)[0])
 
@@ -37,15 +36,15 @@
   {/snippet}
   <Dialog wide tone="info" icon="download" title={name} onClose={close} actions={notesActions}>
     <p class="text-small">
-      You have <span class="text-mono">{appVersion(app.info?.version ?? info.currentVersion)}</span>. New: <span class="text-mono">{appVersion(info.version)}</span>
-      {#if app.settings?.updates.channel === 'preview' && info.version.includes('-')}<StatusTag state="update">Preview</StatusTag>{/if}
+      You have <span class="text-mono">{app.info?.version ?? info.currentVersion}</span>. New: <span class="text-mono">{info.version}</span>
+      {#if app.settings?.updates.channel === 'preview' && info.version.includes('-')}<MetaChip tone="snapshot">Preview</MetaChip>{/if}
     </p>
     {#if info.notes.trim()}
       <Markdown source={info.notes} level={3} />
     {:else}
       <p>No release notes for this version.</p>
     {/if}
-    <p class="text-small">The notes come from the release page on GitHub. Your instances, worlds and accounts are not touched by the update.</p>
+    <p class="text-small notes-note">The notes come from the release page on GitHub. Your instances, worlds and accounts are not touched by the update.</p>
   </Dialog>
 {:else if kind === 'restart'}
   {#snippet restartActions()}
@@ -68,6 +67,16 @@
     <Button variant="primary" onclick={close}>Got it</Button>
   {/snippet}
   <Dialog tone="success" icon="check" title="Cubby is up to date" onClose={close} actions={updatedActions}>
-    <p>You’re now on <span class="text-mono">{appVersion(app.info?.version ?? '')}</span>{app.updatedFrom ? ` (it was ${appVersion(app.updatedFrom)})` : ''}.</p>
+    <p>You’re now on <span class="text-mono">{app.info?.version ?? ''}</span>{app.updatedFrom ? ` (it was ${app.updatedFrom})` : ''}.</p>
   </Dialog>
 {/if}
+
+<style>
+  .notes-note {
+    margin-top: var(--space-3);
+    color: var(--ink-muted);
+  }
+  p :global(.cb-chip) {
+    margin-inline-start: var(--space-2);
+  }
+</style>
