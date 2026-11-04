@@ -564,7 +564,7 @@
               />
             </div>
             {@render switchRow(
-              'updates',
+              'mod-updates',
               'Check mod updates when I open an instance',
               'Looks for new versions on Modrinth. Cubby always asks before updating.',
               s.checkUpdates,
