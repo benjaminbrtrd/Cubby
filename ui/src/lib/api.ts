@@ -3,6 +3,7 @@
 import type {
   Account,
   AppInfo,
+  AppUpdate,
   ContentSource,
   BlockedFile,
   ContentUpdate,
@@ -127,6 +128,12 @@ export const api = {
     call<Instance>('install_modpack', { versionId, name, group, icon }),
   /** Identifies the instance's files on Modrinth by SHA-1 (mods, resource packs and shader packs). */
   contentSources: (instanceId: string) => call<ContentSource[]>('content_sources', { instanceId }),
+  /** Looks for a newer Cubby on the settings' channel; null when up to date. */
+  checkUpdate: () => call<AppUpdate | null>('check_update'),
+  /** Downloads the update found by checkUpdate (task `self-update`). */
+  downloadUpdate: () => call<void>('download_update'),
+  /** Installs the downloaded update and restarts Cubby. Fails while a game is running. */
+  installUpdate: () => call<void>('install_update'),
   checkUpdates: (instanceId: string) => call<ContentUpdate[]>('check_updates', { instanceId }),
   /** Replaces each file by its latest compatible version (task `update:<instanceId>`). Backs up the old files into <instance>/backups/content-<date>/. */
   applyUpdates: (instanceId: string, fileNames: string[]) => call<void>('apply_updates', { instanceId, fileNames }),

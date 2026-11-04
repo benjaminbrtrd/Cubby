@@ -2,9 +2,11 @@
   import { onMount } from 'svelte'
   import { app, sectionOf } from './lib/state.svelte'
   import { windowAction } from './lib/api'
-  import { Hotbar, TitleBar, Tooltips, type HotbarItem } from './lib/cubby'
+  import { Button, Hotbar, TitleBar, Tooltips, type HotbarItem } from './lib/cubby'
   import Toasts from './lib/views/shell/Toasts.svelte'
   import Palette from './lib/views/shell/Palette.svelte'
+  import UpdateBanner from './lib/views/shell/UpdateBanner.svelte'
+  import UpdateDialogs from './lib/views/shell/UpdateDialogs.svelte'
   import Library from './lib/views/library/Library.svelte'
   import DeleteInstanceDialog from './lib/views/library/DeleteInstanceDialog.svelte'
   import ImportDialog from './lib/views/library/ImportDialog.svelte'
@@ -66,7 +68,19 @@
       : undefined,
   )
 
+
   const onboarding = $derived(app.loaded && !!app.settings && !app.settings.onboarded)
+
+  /* The update chip in the title bar */
+  const upd = $derived(app.update)
+  const chipShown = $derived(!!upd.info && ['available', 'downloading', 'ready', 'failed'].includes(upd.phase))
+  const bannerShown = $derived(!onboarding && !!upd.info && !upd.dismissed && ['available', 'downloading', 'ready', 'failed'].includes(upd.phase))
+  const waitingForGame = $derived(upd.phase === 'ready' && Object.keys(app.running).length > 0)
+  const updPercent = $derived.by(() => {
+    const t = app.tasks['self-update']
+    return t && t.total ? Math.round((t.done / t.total) * 100) : null
+  })
+
 
   /** No browser menu (Back, Reload, Print…) in a desktop app; text fields keep theirs for cut, copy and paste. */
   function oncontextmenu(e: MouseEvent) {
@@ -112,6 +126,7 @@
 <div class="window">
   <TitleBar
     {account}
+    children={chipShown ? updateChip : undefined}
     onAccount={() => app.navigate({ name: 'accounts' })}
     onSearch={() => (app.paletteOpen = true)}
     onMinimize={() => windowAction('minimize')}
@@ -120,6 +135,8 @@
   />
   <div class="body">
     <Hotbar items={nav} footer={navFoot} value={sectionOf(app.route)} onChange={go} />
+    <div class="stage">
+    {#if bannerShown}<div class="update"><UpdateBanner /></div>{/if}
     <main id="content" tabindex="-1">
       {#if !app.loaded}
         <p class="loading text-small">Loading your instances…</p>
@@ -153,13 +170,28 @@
         <Settings section={app.route.section} />
       {/if}
     </main>
+    </div>
   </div>
 </div>
+
+{#snippet updateChip()}
+  {#if upd.phase === 'available'}
+    <Button size="sm" icon="download" onclick={() => (app.updateDialog = 'notes')}>Update available</Button>
+  {:else if upd.phase === 'downloading'}
+    <Button size="sm" icon="download" disabled>Updating{updPercent != null ? ` ${updPercent}%` : ''}</Button>
+  {:else if waitingForGame}
+    <Button size="sm" icon="clock" onclick={() => (app.updateDialog = 'playing')}>Update after play</Button>
+  {:else if upd.phase === 'ready'}
+    <Button size="sm" variant="primary" icon="update" onclick={() => (app.updateDialog = 'restart')}>Restart to update</Button>
+  {:else if upd.phase === 'failed'}
+    <Button size="sm" icon="warning" onclick={() => app.downloadUpdate()}>Update failed</Button>
+  {/if}
+{/snippet}
 
 {#if app.paletteOpen && !onboarding}<Palette onClose={() => (app.paletteOpen = false)} />{/if}
 {#if app.deletingId}<DeleteInstanceDialog id={app.deletingId} />{/if}
 {#if app.prismImportOpen}<ImportDialog />{/if}
-{#if onboarding}<Onboarding />{/if}
+{#if onboarding}<Onboarding />{:else}<UpdateDialogs />{/if}
 <Toasts />
 <Tooltips />
 
@@ -177,8 +209,20 @@
     display: flex;
     overflow: clip;
   }
+  .stage {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg);
+  }
+  .update {
+    flex: none;
+    padding: var(--space-4) var(--space-6) 0;
+  }
   main {
     flex: 1;
+    min-height: 0;
     min-width: 0;
     overflow: auto;
     background: var(--bg);

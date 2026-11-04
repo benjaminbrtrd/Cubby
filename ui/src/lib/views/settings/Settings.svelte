@@ -14,7 +14,7 @@
 
   const uid = $props.id()
 
-  type BlockId = 'language' | 'java' | 'game' | 'downloads' | 'storage' | 'accounts' | 'about'
+  type BlockId = 'language' | 'java' | 'game' | 'downloads' | 'storage' | 'accounts' | 'updates' | 'about'
 
   /** The blocks, in page order; `words` feed the search field. */
   const BLOCKS: { id: BlockId; label: string; words: string }[] = [
@@ -24,6 +24,7 @@
     { id: 'downloads', label: 'Downloads', words: 'parallel concurrency mod updates check modrinth proxy network system manual address' },
     { id: 'storage', label: 'Storage', words: 'data folder disk space size cache clean up instances libraries assets logs trash open' },
     { id: 'accounts', label: 'Accounts', words: 'microsoft application client id azure sign in curseforge api key' },
+    { id: 'updates', label: 'Updates', words: 'update version new release download install automatic preview stable channel skip check restart' },
     { id: 'about', label: 'About', words: 'version license source code github gpl data folder' },
   ]
 
@@ -331,6 +332,32 @@
     // the key decides whether CurseForge shows up in New instance
     await app.refreshInfo()
     await app.loadProviders()
+  }
+
+  /* Updates of Cubby */
+  const UPDATE_MODES = [
+    { value: 'auto', label: 'Install it for me' },
+    { value: 'ask', label: 'Ask me' },
+    { value: 'off', label: 'Don’t check' },
+  ]
+  const UPDATE_MODE_HINT: Record<Settings['updates']['mode'], string> = {
+    auto: 'Cubby downloads it in the background and installs it when you close the app. It never interrupts a game.',
+    ask: 'Cubby tells you when a new version is out and waits for your OK before downloading it.',
+    off: 'Cubby never looks by itself. You can still check by hand.',
+  }
+  const CHANNELS = [
+    { value: 'stable', label: 'Stable' },
+    { value: 'preview', label: 'Preview' },
+  ]
+  const u = $derived(app.update)
+  const updating = $derived(u.phase === 'available' || u.phase === 'downloading' || u.phase === 'ready' || u.phase === 'failed')
+  const checkedText = $derived(
+    u.checkedAt ? `Last checked ${new Date(u.checkedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.` : 'Not checked yet.',
+  )
+  const saveUpdates = (patch: Partial<Settings['updates']>) => s && save({ updates: { ...s.updates, ...patch } })
+  async function changeChannel(channel: Settings['updates']['channel']) {
+    await saveUpdates({ channel })
+    await app.checkForUpdate(true)
   }
 
   /* About */
@@ -687,6 +714,66 @@
                 hint="Saved on this PC. Leave it empty to use the key included in Cubby, if there is one."
               />
             </div>
+          </section>
+        {/if}
+
+        {#if visible.has('updates')}
+          <section id="{uid}-updates" class="block" aria-labelledby="{uid}-h-updates">
+            {@render heading('updates', 'Updates')}
+            <div class="row">
+              <div class="row__text">
+                <p class="text-body-strong">Cubby {#if app.info}<span class="text-mono">{appVersion(app.info.version)}</span>{/if}</p>
+                <p class="text-small muted">
+                  {#if u.phase === 'checking'}Looking for a new version…
+                  {:else if updating && u.info}{appVersion(u.info.version)} is {u.phase === 'ready' ? 'ready to install' : u.phase === 'downloading' ? 'downloading' : 'available'}. {checkedText}
+                  {:else if u.error}{u.error}
+                  {:else}{checkedText}{/if}
+                </p>
+              </div>
+              {#if u.phase === 'checking'}
+                <Button size="sm" busy disabled>Checking…</Button>
+              {:else if u.phase === 'available'}
+                <StatusTag state="update">Update available</StatusTag>
+                <Button size="sm" variant="primary" icon="download" onclick={() => app.downloadUpdate()}>Download update</Button>
+              {:else if u.phase === 'downloading'}
+                <StatusTag state="download">Downloading</StatusTag>
+              {:else if u.phase === 'ready'}
+                <StatusTag state="ready">Ready</StatusTag>
+                <Button size="sm" variant="primary" icon="update" onclick={() => (app.updateDialog = 'restart')}>Restart and update</Button>
+              {:else if u.phase === 'failed'}
+                <StatusTag state="crashed">Failed</StatusTag>
+                <Button size="sm" icon="update" onclick={() => app.downloadUpdate()}>Try again</Button>
+              {:else}
+                {#if u.error}<StatusTag state="offline">Not checked</StatusTag>
+                {:else if s.updates.mode === 'off'}<StatusTag state="disabled">Off</StatusTag>
+                {:else if u.checkedAt}<StatusTag state="ready">Up to date</StatusTag>{/if}
+                <Button size="sm" icon="update" onclick={() => app.checkForUpdate(true)}>{u.error ? 'Try again' : 'Check for updates'}</Button>
+              {/if}
+            </div>
+            <div class="row row--stack">
+              <p class="text-body-strong">When an update is available</p>
+              <SegmentedControl
+                label="When an update is available"
+                options={UPDATE_MODES}
+                value={s.updates.mode}
+                onChange={(v) => saveUpdates({ mode: v as Settings['updates']['mode'] })}
+              />
+              <p class="text-small muted">{UPDATE_MODE_HINT[s.updates.mode]}</p>
+            </div>
+            <div class="row row--stack">
+              <p class="text-body-strong">Version channel</p>
+              <SegmentedControl label="Version channel" options={CHANNELS} value={s.updates.channel} onChange={(v) => changeChannel(v as Settings['updates']['channel'])} />
+              <p class="text-small muted">Preview gets new versions earlier, with rough edges. Stable only gets finished releases.</p>
+            </div>
+            {#if s.updates.skipped}
+              <div class="row">
+                <div class="row__text">
+                  <p class="text-body-strong">Skipped version</p>
+                  <p class="text-small muted">You chose to skip {appVersion(s.updates.skipped)}. Cubby stays quiet until a newer one comes out.</p>
+                </div>
+                <Button size="sm" onclick={async () => { await saveUpdates({ skipped: null }); await app.checkForUpdate() }}>Stop skipping</Button>
+              </div>
+            {/if}
           </section>
         {/if}
 

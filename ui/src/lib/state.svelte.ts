@@ -1,8 +1,8 @@
 import { api, onEvent } from './api'
-import type { Account, AppInfo, ContentSource, ContentUpdate, Instance, LogLine, ProjectKind, PackProvider, ProjectSort, ProviderId, Settings, CubbyEvent } from './types'
+import type { Account, AppInfo, AppUpdate, ContentSource, ContentUpdate, Instance, LogLine, ProjectKind, PackProvider, ProjectSort, ProviderId, Settings, CubbyEvent } from './types'
 
 export type InstanceTab = 'overview' | 'mods' | 'resourcepacks' | 'shaders' | 'worlds' | 'screenshots' | 'servers' | 'settings'
-export type SettingsSection = 'general' | 'appearance' | 'language' | 'java' | 'game' | 'downloads' | 'storage' | 'accounts' | 'keyboard' | 'privacy' | 'about'
+export type SettingsSection = 'general' | 'appearance' | 'language' | 'java' | 'game' | 'downloads' | 'storage' | 'accounts' | 'keyboard' | 'privacy' | 'updates' | 'about'
 
 /** A game that stopped with an error, shown by the crash screen. */
 export interface Crash {
@@ -104,6 +104,25 @@ export function taskKind(id: string): string {
   return id.split(':')[0]
 }
 
+/** Where an update of Cubby stands. */
+export interface UpdateState {
+  phase: 'idle' | 'checking' | 'available' | 'downloading' | 'ready' | 'failed'
+  info: AppUpdate | null
+  /** What went wrong: a failed download, or a manual check that couldn't reach GitHub. */
+  error: string | null
+  /** When the last check finished (ms). */
+  checkedAt: number | null
+  /** The banner was closed for this session; the title bar chip stays. */
+  dismissed: boolean
+}
+
+/** Which update dialog is open. "updated" shows once after Cubby came back on a new version. */
+export type UpdateDialog = 'notes' | 'restart' | 'playing' | 'updated'
+
+const CHECK_EVERY_MS = 6 * 60 * 60 * 1000
+const FIRST_CHECK_MS = 8000
+const SEEN_VERSION_KEY = 'cubby.seenVersion'
+
 class AppState {
   route = $state<Route>({ name: 'library' })
   /** Previous routes, for Back (Alt Left). */
@@ -124,6 +143,10 @@ class AppState {
   groupFilter = $state<string>('all')
   libraryView = $state<'grid' | 'list'>(stored('libraryView', 'grid'))
   paletteOpen = $state(false)
+  update = $state<UpdateState>({ phase: 'idle', info: null, error: null, checkedAt: null, dismissed: false })
+  updateDialog = $state<UpdateDialog | null>(null)
+  /** Version Cubby was on before an update, for the "up to date" dialog. */
+  updatedFrom = $state<string | null>(null)
   prismImportOpen = $state(false)
   /** New instance: the source shown (Custom, Import or a modpack provider). */
   newSource = $state<'custom' | 'import' | ProviderId>('custom')
@@ -218,6 +241,8 @@ class AppState {
       this.error(e)
     }
     this.loaded = true
+    this.noticeNewVersion()
+    this.startUpdateChecks()
     return unlisten
   }
 
@@ -358,6 +383,96 @@ class AppState {
   instanceTask(id: string): (Task & { kind: string }) | undefined {
     const key = Object.keys(this.tasks).find((k) => k.split(':')[1] === id)
     return key ? { ...this.tasks[key], kind: taskKind(key) } : undefined
+  }
+
+  /* Updates of Cubby */
+
+  /** The first check a few seconds after start (so it never slows the launch), then every few hours. */
+  private startUpdateChecks() {
+    const run = () => {
+      if (this.settings && this.settings.updates.mode !== 'off') void this.checkForUpdate()
+    }
+    setTimeout(run, FIRST_CHECK_MS)
+    setInterval(run, CHECK_EVERY_MS)
+  }
+
+  /** After an update Cubby opens on a new version: tell the player once. */
+  private noticeNewVersion() {
+    const now = this.info?.version
+    if (!now) return
+    try {
+      const seen = localStorage.getItem(SEEN_VERSION_KEY)
+      if (seen && seen !== now) {
+        this.updatedFrom = seen
+        this.updateDialog = 'updated'
+      }
+      localStorage.setItem(SEEN_VERSION_KEY, now)
+    } catch {
+      /* private mode: no notice */
+    }
+  }
+
+  /** Looks for a newer Cubby. A manual check (the Check button) also reports a failure. */
+  async checkForUpdate(manual = false) {
+    const phase = this.update.phase
+    if (phase === 'checking' || phase === 'downloading') return
+    this.update.phase = 'checking'
+    this.update.error = null
+    try {
+      const info = await api.checkUpdate()
+      this.update.checkedAt = Date.now()
+      if (info && info.version !== this.update.info?.version) this.update.dismissed = false
+      this.update.info = info
+      if (!info || (!manual && this.settings?.updates.skipped === info.version)) {
+        this.update.phase = 'idle'
+        return
+      }
+      this.update.phase = info.downloaded ? 'ready' : 'available'
+      // Automatic mode downloads right away and installs when Cubby closes.
+      if (this.settings?.updates.mode === 'auto' && !info.downloaded) void this.downloadUpdate()
+    } catch (e) {
+      console.warn(e)
+      this.update.phase = 'idle'
+      this.update.checkedAt = Date.now()
+      if (manual) this.update.error = typeof e === 'string' ? e : 'Couldn’t reach GitHub.'
+    }
+  }
+
+  async downloadUpdate() {
+    if (!this.update.info || this.update.phase === 'downloading') return
+    this.update.phase = 'downloading'
+    this.update.error = null
+    this.update.dismissed = false
+    try {
+      await api.downloadUpdate()
+      this.update.info = { ...this.update.info, downloaded: true }
+      this.update.phase = 'ready'
+    } catch (e) {
+      this.update.error = typeof e === 'string' ? e : 'The download didn’t finish.'
+      this.update.phase = 'failed'
+    }
+  }
+
+  /** Installs and restarts; with a game running, explains that the update waits for the game to close. */
+  async installUpdate() {
+    if (Object.keys(this.running).length) {
+      this.updateDialog = 'playing'
+      return
+    }
+    try {
+      await api.installUpdate()
+    } catch (e) {
+      this.updateDialog = null
+      this.error(e)
+    }
+  }
+
+  async skipUpdate() {
+    const info = this.update.info
+    if (!info || !this.settings) return
+    this.updateDialog = null
+    this.update.phase = 'idle'
+    await this.saveSettings({ updates: { ...this.settings.updates, skipped: info.version } })
   }
 
   toast(text: string, kind: Toast['kind'] = 'info', action?: Toast['action']) {

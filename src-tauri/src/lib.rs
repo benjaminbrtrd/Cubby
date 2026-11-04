@@ -5,6 +5,7 @@ mod dto;
 mod events;
 mod packs;
 mod state;
+mod update;
 
 use tauri::Manager;
 
@@ -18,6 +19,8 @@ pub fn run() {
         )
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .manage(update::PendingState::default())
         .setup(|app| {
             let core = state::Core::new(app.handle().clone())?;
             // Lets the webview load instance icons, world icons and screenshots, wherever the data lives.
@@ -76,6 +79,9 @@ pub fn run() {
             commands::content_sources,
             commands::check_updates,
             commands::apply_updates,
+            update::check_update,
+            update::download_update,
+            update::install_update,
             commands::backup_world,
             commands::list_backups,
             commands::restore_backup,
@@ -93,6 +99,12 @@ pub fn run() {
             packs::blocked_files,
             packs::find_blocked_files,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running Cubby");
+        .build(tauri::generate_context!())
+        .expect("error while building Cubby")
+        .run(|app, event| {
+            // A downloaded update goes in when Cubby closes.
+            if let tauri::RunEvent::Exit = event {
+                update::install_on_exit(app);
+            }
+        });
 }

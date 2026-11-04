@@ -50,6 +50,9 @@ jobs:
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Signs the installer for the in-app updater; the public key is in tauri.conf.json.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           # Optional: without them, CurseForge search is off and only the demo can be played.
           CUBBY_CURSEFORGE_API_KEY: ${{ secrets.CUBBY_CURSEFORGE_API_KEY }}
           CUBBY_MSA_CLIENT_ID: ${{ vars.CUBBY_MSA_CLIENT_ID }}

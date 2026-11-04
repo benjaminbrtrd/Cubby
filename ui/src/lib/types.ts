@@ -110,6 +110,17 @@ export interface JavaInstall {
   managed: boolean
 }
 
+/** A newer version of Cubby, found on GitHub. */
+export interface AppUpdate {
+  version: string
+  currentVersion: string
+  /** Release notes (Markdown). */
+  notes: string
+  date: string | null
+  /** The installer is downloaded and waiting. */
+  downloaded: boolean
+}
+
 export interface Settings {
   language: string
   /** 'night' | 'day' | 'contrast' | 'system' (older values: 'dark' = night, 'light' = day) */
@@ -133,6 +144,8 @@ export interface Settings {
   showPlayTime: boolean
   /** Applied at the next start of Cubby. */
   proxy: { mode: 'system' | 'none' | 'manual'; url: string }
+  /** Updates of Cubby itself. */
+  updates: { mode: 'ask' | 'auto' | 'off'; channel: 'stable' | 'preview'; skipped: string | null }
   /** User's own CurseForge API key, if any. */
   curseforgeApiKey: string | null
   /** The first-launch assistant was completed or skipped. */

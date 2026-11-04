@@ -86,6 +86,45 @@ impl Default for ProxySettings {
     }
 }
 
+/// What Cubby does when a new version of itself is out.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum UpdateMode {
+    /// Tell the player and wait for an OK before downloading.
+    Ask,
+    /// Download in the background and install when Cubby closes.
+    Auto,
+    /// Never look for updates by itself.
+    Off,
+}
+
+/// Where new versions of Cubby come from.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum UpdateChannel {
+    Stable,
+    /// Preview builds too (alpha, beta).
+    Preview,
+}
+
+/// Self-update settings.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct UpdateSettings {
+    pub mode: UpdateMode,
+    pub channel: UpdateChannel,
+    /// A version the player chose to skip.
+    pub skipped: Option<String>,
+}
+
+impl Default for UpdateSettings {
+    fn default() -> Self {
+        // A preview build (2026.11.0-alpha.1) follows the preview channel, a release follows stable.
+        let channel = if env!("CARGO_PKG_VERSION").contains('-') { UpdateChannel::Preview } else { UpdateChannel::Stable };
+        Self { mode: UpdateMode::Ask, channel, skipped: None }
+    }
+}
+
 /// Launcher settings. Every field has a default and unknown fields are ignored.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
@@ -111,6 +150,8 @@ pub struct Settings {
     /// Show play time in the UI.
     pub show_play_time: bool,
     pub proxy: ProxySettings,
+    /// Updates of Cubby itself (`check_updates` is about mods).
+    pub updates: UpdateSettings,
     /// CurseForge API key, if the user provided one.
     pub curseforge_api_key: Option<String>,
     /// The first-run onboarding has been completed.
@@ -136,6 +177,7 @@ impl Default for Settings {
             track_play_time: true,
             show_play_time: true,
             proxy: ProxySettings::default(),
+            updates: UpdateSettings::default(),
             curseforge_api_key: None,
             onboarded: false,
         }
@@ -219,6 +261,9 @@ mod tests {
         assert!(s.track_play_time && s.show_play_time && !s.onboarded);
         assert_eq!(s.proxy, ProxySettings { mode: ProxyMode::System, url: String::new() });
         assert_eq!(s.curseforge_api_key, None);
+        assert_eq!(s.updates.mode, UpdateMode::Ask);
+        assert_eq!(s.updates.skipped, None);
+        s.updates = UpdateSettings { mode: UpdateMode::Auto, channel: UpdateChannel::Stable, skipped: Some("2026.12.0".into()) };
         s.proxy = ProxySettings { mode: ProxyMode::Manual, url: "http://p:8080".into() };
         s.curseforge_api_key = Some("k".into());
         s.save(&paths).unwrap();

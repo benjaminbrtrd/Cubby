@@ -1,0 +1,37 @@
+name: Update manifest
+
+# When a release is published, point the update channels at it. Cubby reads `latest.json` from a fixed
+# release per channel (GitHub's "latest release" skips previews, and a draft is invisible until published):
+#   updates-preview  every published release, previews included
+#   updates-stable   finished releases only
+# The two channel releases are marked as previews so they never show up as the project's latest release.
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  manifest:
+    if: ${{ !startsWith(github.event.release.tag_name, 'updates-') }}
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ github.event.release.tag_name }}
+      PRERELEASE: ${{ github.event.release.prerelease }}
+    steps:
+      - name: Get the manifest of this release
+        run: gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern latest.json
+
+      - name: Point the channels at it
+        run: |
+          channels="preview"
+          if [ "$PRERELEASE" != "true" ]; then channels="$channels stable"; fi
+          for channel in $channels; do
+            gh release view "updates-$channel" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 \
+              || gh release create "updates-$channel" --repo "$GITHUB_REPOSITORY" --target "${{ github.event.repository.default_branch }}" \
+                   --prerelease --latest=false --title "Update channel: $channel" \
+                   --notes "Read by Cubby to find new versions. Nothing to download here."
+            gh release upload "updates-$channel" latest.json --repo "$GITHUB_REPOSITORY" --clobber
+          done

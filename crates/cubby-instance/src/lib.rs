@@ -18,7 +18,7 @@ pub use servers::{read_servers, write_servers, ServerEntry};
 pub use backups::{backup_stamp, WorldBackup};
 pub use model::{Instance, JavaOverrides, Loader, ModpackInfo, NewInstance, WindowSize};
 pub use prism::{import_prism, list_prism_instances, PrismInstanceInfo};
-pub use settings::{FrameMode, GameSettings, JavaSettings, OnLaunch, ProxyMode, ProxySettings, Settings};
+pub use settings::{FrameMode, GameSettings, JavaSettings, OnLaunch, ProxyMode, ProxySettings, Settings, UpdateChannel, UpdateMode, UpdateSettings};
 pub use store::{GroupInfo, InstanceStore};
 
 #[cfg(test)]

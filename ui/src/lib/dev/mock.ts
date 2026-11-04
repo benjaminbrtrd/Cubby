@@ -6,6 +6,7 @@ import { pixelArt, svgUrl } from './pixelart'
 import { OPTIONAL_MODS, PACKS, PACK_DESCRIPTION, PACK_MARKDOWN, PROVIDERS, SORTERS, morePacks, type MockPackDef } from './mockPacks'
 import type {
   Account,
+  AppUpdate,
   BlockedFile,
   ContentSource,
   ContentUpdate,
@@ -136,6 +137,28 @@ let accounts: Account[] = [
   { id: 'a2', username: 'Lou_Builds', kind: 'microsoft', isDefault: false, skinUrl: SKINS.lou },
 ]
 
+/** Browser dev: add `?update` to the address to see an update offered. */
+const mockUpdate: AppUpdate | null =
+  typeof location !== 'undefined' && location.search.includes('update')
+    ? {
+        version: '2026.11.0-alpha.2',
+        currentVersion: '0.1.0',
+        notes: [
+          '## New',
+          '',
+          '- Modpack updates show what changed before you accept them.',
+          '- The library remembers your sort order.',
+          '',
+          '## Fixed',
+          '',
+          '- A crash when an instance has no Java yet.',
+          '- Downloads that stalled behind a proxy.',
+        ].join('\n'),
+        date: '2026-11-06T10:00:00Z',
+        downloaded: false,
+      }
+    : null
+
 let settings: Settings = {
   language: 'en-US',
   theme: 'night',
@@ -153,6 +176,7 @@ let settings: Settings = {
   trackPlayTime: true,
   showPlayTime: true,
   proxy: { mode: 'system', url: '' },
+  updates: { mode: 'ask', channel: 'preview', skipped: null },
   curseforgeApiKey: null,
   onboarded: typeof location === 'undefined' || !location.search.includes('onboarding'),
 }
@@ -643,6 +667,22 @@ export async function handle(command: string, args: Record<string, any>): Promis
       return
     case 'get_settings':
       return structuredClone(settings)
+    case 'check_update':
+      await sleep(700)
+      return mockUpdate ? { ...mockUpdate } : null
+    case 'download_update': {
+      const total = 61 * 1024 * 1024
+      for (let done = 0; done <= total; done += total / 20) {
+        emit({ type: 'progress', task: 'self-update', label: 'Downloading Cubby 2026.11 alpha 2', done: Math.min(done, total), total })
+        await sleep(150)
+      }
+      emit({ type: 'taskFinished', task: 'self-update', error: null })
+      if (mockUpdate) mockUpdate.downloaded = true
+      return
+    }
+    case 'install_update':
+      if (running.size) throw 'Minecraft is still running. Close the game first.'
+      return
     case 'save_settings':
       settings = args.settings
       return settings
