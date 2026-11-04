@@ -22,12 +22,20 @@
   import { CATEGORIES, KINDS, KIND_ORDER, PAGE_SIZE, categoryLabel, hitFit, type Fit } from './discover'
 
   const d = $derived(app.discover)
-  /** The modpack sources, Modrinth (Discover itself) first. */
-  const sources = $derived([...(app.providers ?? [])].sort((a, b) => (a.id === 'modrinth' ? -1 : b.id === 'modrinth' ? 1 : a.name.localeCompare(b.name))))
+  /** Where this tab can look: every provider for modpacks, Modrinth and CurseForge for the rest. Modrinth first. */
+  const sources = $derived(
+    [...(app.providers ?? [])]
+      .filter((p) => d.kind === 'modpack' || p.id === 'modrinth' || p.id === 'curseforge')
+      .sort((a, b) => (a.id === 'modrinth' ? -1 : b.id === 'modrinth' ? 1 : a.name.localeCompare(b.name))),
+  )
+  /** The chosen source, or Modrinth when this tab doesn't offer it. */
+  const source = $derived(sources.some((p) => p.id === d.provider) ? d.provider : 'modrinth')
   /** Another provider's modpacks use its own browser instead of the Modrinth search below. */
-  const embedded = $derived(d.kind === 'modpack' && d.provider !== 'modrinth' ? (app.providers?.find((p) => p.id === d.provider) ?? null) : null)
+  const embedded = $derived(d.kind === 'modpack' && source !== 'modrinth' ? (sources.find((p) => p.id === source) ?? null) : null)
+  /** CurseForge mods, shader packs and resource packs are not in Cubby yet. */
+  const notYet = $derived(d.kind !== 'modpack' && source === 'curseforge')
   $effect(() => {
-    if (d.kind === 'modpack' && !app.providers && !app.providersError) void app.loadProviders()
+    if (!app.providers && !app.providersError) void app.loadProviders()
   })
   const kind = $derived(d.kind)
   const words = $derived(KINDS[kind])
@@ -247,10 +255,12 @@
   </button>
 {/snippet}
 
+{#snippet backToModrinth()}<Button size="sm" onclick={() => (app.discover.provider = 'modrinth')}>Search on Modrinth</Button>{/snippet}
+
 <div class="screen">
   <div class="top">
     <h1 class="text-title">Discover</h1>
-    {#if !embedded}
+    {#if !embedded && !notYet}
     <div class="search">
       <TextField
         label="Search {words.many}"
@@ -281,7 +291,7 @@
     <div class="tabs">
       <Tabs label="What to discover" items={tabs} value={kind} onChange={setKind} />
     </div>
-    {#if !embedded}
+    {#if !embedded && !notYet}
     <div class="sort">
       <Picker items={sorts} value={d.sort} onSelect={setSort} label="Sort by" buttonLabel="Sort by {sortLabel}. Change" variant="ghost" listWidth={200}>
         {#snippet trigger()}<span class="text-body">Sort: <span class="text-body-strong ink">{sortLabel}</span></span>{/snippet}
@@ -291,11 +301,11 @@
     {/if}
   </div>
 
-  {#if kind === 'modpack' && sources.length > 1}
-    <div class="sources" role="group" aria-label="Modpack source">
+  {#if sources.length > 1}
+    <div class="sources" role="group" aria-label="Source">
       <span class="text-label muted">Source</span>
       {#each sources as p (p.id)}
-        <button type="button" class={['source', d.provider === p.id && 'is-on']} aria-pressed={d.provider === p.id} onclick={() => (app.discover.provider = p.id)}>
+        <button type="button" class={['source', source === p.id && 'is-on']} aria-pressed={source === p.id} onclick={() => (app.discover.provider = p.id)}>
           <ProviderMark id={p.id} size={22} />
           <span class="text-body-strong">{p.name}</span>
         </button>
@@ -303,7 +313,13 @@
     </div>
   {/if}
 
-  {#if embedded}
+  {#if notYet}
+    <div class="soon">
+      <Banner tone="info" icon="info" title="CurseForge {words.many} aren’t in Cubby yet" actions={backToModrinth}>
+        Cubby can install CurseForge modpacks for now. Modrinth has {words.many} for the same games.
+      </Banner>
+    </div>
+  {:else if embedded}
     <div class="embed">
       {#key embedded.id}<ProviderBrowser provider={embedded} />{/key}
     </div>
@@ -662,6 +678,9 @@
   .source:focus-visible {
     outline: 2px solid transparent;
     box-shadow: var(--focus-ring);
+  }
+  .soon {
+    max-width: 720px;
   }
   .embed {
     display: flex;
