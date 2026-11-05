@@ -29,7 +29,7 @@ It's a native app built with Rust and Tauri, so there's no bundled browser and n
 
 Cubby runs on Windows 10 and 11 (64-bit). Get the installer from the [releases page](https://github.com/benjaminbrtrd/Cubby/releases). macOS and Linux builds are planned.
 
-The full game needs a signed-in Microsoft account that owns Minecraft: Java Edition. Without one, Cubby only starts the Minecraft demo. Microsoft sign-in is waiting for Mojang to approve the app.
+The full game needs a signed-in Microsoft account that owns Minecraft: Java Edition. Without one, Cubby only starts the Minecraft demo.
 
 ## Versions
 
@@ -51,10 +51,10 @@ npm run tauri dev
 
 `npm run tauri build` makes the installer in `target/release/bundle/`.
 
-Two values are read at build time, and neither is in this repository:
+Two values can be set at build time:
 
 - `CUBBY_CURSEFORGE_API_KEY`: a [CurseForge API key](https://console.curseforge.com). Without it, CurseForge search is turned off, and everything else works.
-- `CUBBY_MSA_CLIENT_ID`: an Azure application id approved for the Minecraft API. Without it, nobody can sign in, so only the demo can be played.
+- `CUBBY_MSA_CLIENT_ID`: optional. Cubby already has its own Azure application id, approved by Mojang; set this only to sign in through another one.
 
 The interface also runs in a plain browser with sample data, which is handy for working on screens: `npm run dev` in `ui/`.
 

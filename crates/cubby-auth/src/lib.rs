@@ -16,9 +16,9 @@ pub use store::AccountStore;
 /// Cancellation signal for [`finish_device_login`]: send `true` (or drop the sender) to abort.
 pub type Cancel = tokio::sync::watch::Receiver<bool>;
 
-/// Cubby's own Azure application (client) id, once it is registered and approved by Mojang. It is
-/// not a secret: every copy of the app sends it to Microsoft. Empty = this build has none.
-pub const BUILT_IN_CLIENT_ID: &str = "";
+/// Cubby's own Azure application (client) id, approved by Mojang for the Minecraft API. It is not a
+/// secret: every copy of the app sends it to Microsoft.
+pub const BUILT_IN_CLIENT_ID: &str = "d1796aa7-8d30-436e-a810-53190de79346";
 
 /// Where the client id returned by [`client_id`] comes from.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
