@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../i18n.svelte'
   import { tick, untrack } from 'svelte'
   import { api } from '../../api'
   import { Button, Dialog, Icon, IconButton, MetaChip, PlayButton, SegmentedControl, ServerRow, StatusTag, TextField } from '../../cubby'
@@ -95,7 +96,7 @@
     e.preventDefault()
     const addr = address.trim()
     if (!addr || /\s/.test(addr)) {
-      addError = 'Enter the server address, like play.example.net'
+      addError = t('Enter the server address, like play.example.net')
       return
     }
     addError = ''
@@ -105,7 +106,7 @@
       name = ''
       selected = servers.length - 1
       void ping(addr)
-      app.toast(`${server.name} added.`, 'success')
+      app.toast(t('{name} added.', { name: server.name }), 'success')
     }
   }
 
@@ -128,7 +129,7 @@
     if (!sel) return
     const addr = editAddress.trim()
     if (!addr || /\s/.test(addr)) {
-      editError = 'Enter the server address, like play.example.net'
+      editError = t('Enter the server address, like play.example.net')
       return
     }
     const changed = addr !== sel.address
@@ -170,7 +171,7 @@
   async function copy(text: string) {
     try {
       await navigator.clipboard.writeText(text)
-      app.toast('Address copied.', 'success')
+      app.toast(t('Address copied.'), 'success')
     } catch (e) {
       app.error(e)
     }
@@ -180,39 +181,39 @@
   const versionDiffers = $derived(!!selStatus?.version && !selStatus.version.includes(instance.minecraft))
 </script>
 
-<div class="ip-body" role="tabpanel" id="instance-panel" aria-label="Servers">
+<div class="ip-body" role="tabpanel" id="instance-panel" aria-label={t('Servers')}>
   <div class="toolbar">
     <div class="toolbar__title">
-      <h2 class="text-heading">{data.servers ? plural(servers.length, 'server', 'servers') : 'Servers'}</h2>
-      <p class="text-small muted">The Multiplayer list of this instance.</p>
+      <h2 class="text-heading">{data.servers ? plural(servers.length, 'server', 'servers') : t('Servers')}</h2>
+      <p class="text-small muted">{t('The Multiplayer list of this instance.')}</p>
     </div>
-    <Button icon="update" busy={anyPending} disabled={!servers.length} onclick={refresh}>Refresh</Button>
+    <Button icon="update" busy={anyPending} disabled={!servers.length} onclick={refresh}>{t('Refresh')}</Button>
   </div>
 
   <form class="block" aria-labelledby="add-title" onsubmit={add} novalidate>
-    <h3 id="add-title" class="text-label muted">Add a server</h3>
+    <h3 id="add-title" class="text-label muted">{t('Add a server')}</h3>
     <div class="add">
       <div class="add__address">
-        <TextField label="Server address" icon="globe" mono placeholder="play.example.net" bind:value={address} error={addError || undefined} autocomplete="off" spellcheck={false} />
+        <TextField label={t('Server address')} icon="globe" mono placeholder="play.example.net" bind:value={address} error={addError || undefined} autocomplete="off" spellcheck={false} />
       </div>
       <div class="add__name">
-        <TextField label="Name" placeholder="Shown in your list" bind:value={name} autocomplete="off" />
+        <TextField label={t('Name')} placeholder={t('Shown in your list')} bind:value={name} autocomplete="off" />
       </div>
-      <Button type="submit" variant="primary" icon="plus">Add server</Button>
+      <Button type="submit" variant="primary" icon="plus">{t('Add server')}</Button>
     </div>
   </form>
 
   {#if data.servers === null}
-    <p class="muted text-body">Reading the server list…</p>
+    <p class="muted text-body">{t('Reading the server list…')}</p>
   {:else if !servers.length}
     <div class="empty">
-      <p class="text-heading">No servers yet</p>
-      <p class="muted text-body">Add one above. It also shows up in the game’s Multiplayer list.</p>
+      <p class="text-heading">{t('No servers yet')}</p>
+      <p class="muted text-body">{t('Add one above. It also shows up in the game’s Multiplayer list.')}</p>
     </div>
   {:else}
     <section class="stack" aria-labelledby="saved-title">
       <div class="head">
-        <h3 id="saved-title" class="text-label muted">Saved servers</h3>
+        <h3 id="saved-title" class="text-label muted">{t('Saved servers')}</h3>
         <span class="text-counter muted">{num(servers.length)}</span>
       </div>
       {#each servers as s, i (i + s.address)}
@@ -229,9 +230,9 @@
                 motd={st.motd}
                 online={st.online}
                 players={st.online ? { online: st.playersOnline, max: st.playersMax } : undefined}
-                playersLabel={`${num(st.playersOnline)} of ${num(st.playersMax)} players online`}
+                playersLabel={t('{n} of {n2} players online', { n: num(st.playersOnline), n2: num(st.playersMax) })}
                 ping={st.pingMs ?? undefined}
-                joinLabel={`Join ${s.name} with ${instance.name}`}
+                joinLabel={t('Join {name} with {name2}', { name: s.name, name2: instance.name })}
                 onJoin={() => join(s)}
               />
             {:else}
@@ -245,30 +246,30 @@
                   <p class="cb-server__motd text-mono">Checking the server…</p>
                 </div>
                 <div class="cb-server__join">
-                  <Button icon="play" aria-label={`Join ${s.name} with ${instance.name}`} onclick={() => join(s)}>Join</Button>
+                  <Button icon="play" aria-label={t('Join {name} with {name2}', { name: s.name, name2: instance.name })} onclick={() => join(s)}>{t('Join')}</Button>
                 </div>
               </div>
             {/if}
           </div>
-          <IconButton icon="more" label={`Details for ${s.name}`} onclick={() => details(i)} />
+          <IconButton icon="more" label={t('Details for {name}', { name: s.name })} onclick={() => details(i)} />
         </div>
       {/each}
     </section>
   {/if}
 </div>
 
-<aside class="ip-aside" aria-label="Server details">
+<aside class="ip-aside" aria-label={t('Server details')}>
   <div class="ip-aside__inner">
     {#if sel}
       {@const icon = selStatus?.iconUrl ?? sel.iconUrl}
       {#if editing}
         <form class="edit" onsubmit={saveEdit} novalidate>
-          <h2 class="text-heading">Edit server</h2>
-          <TextField label="Name" bind:value={editName} autocomplete="off" />
-          <TextField label="Server address" mono icon="globe" bind:value={editAddress} error={editError || undefined} autocomplete="off" spellcheck={false} />
+          <h2 class="text-heading">{t('Edit server')}</h2>
+          <TextField label={t('Name')} bind:value={editName} autocomplete="off" />
+          <TextField label={t('Server address')} mono icon="globe" bind:value={editAddress} error={editError || undefined} autocomplete="off" spellcheck={false} />
           <div class="row">
-            <Button variant="ghost" onclick={() => (editing = false)}>Cancel</Button>
-            <Button type="submit" icon="check">Save</Button>
+            <Button variant="ghost" onclick={() => (editing = false)}>{t('Cancel')}</Button>
+            <Button type="submit" icon="check">{t('Save')}</Button>
           </div>
         </form>
       {:else}
@@ -287,70 +288,70 @@
           size="lg"
           class="wide"
           state={running ? 'running' : preparing ? 'installing' : 'ready'}
-          label={running ? undefined : preparing ? undefined : 'Join'}
-          detail={running ? 'The game is running' : `Join ${sel.name} with ${instance.name}`}
+          label={running ? undefined : preparing ? undefined : t('Join')}
+          detail={running ? t('The game is running') : t('Join {name} with {name2}', { name: sel.name, name2: instance.name })}
           onclick={onPlay}
         />
         <div class="row">
-          <Button size="sm" icon="copy" onclick={() => sel && copy(sel.address)}>Copy address</Button>
-          <Button size="sm" icon="wrench" onclick={startEdit}>Edit</Button>
-          <IconButton size="sm" icon="update" label={`Move ${sel.name} up`} disabled={selIndex === 0} onclick={() => move(selIndex, selIndex - 1)} />
-          <IconButton size="sm" icon="download" label={`Move ${sel.name} down`} disabled={selIndex === servers.length - 1} onclick={() => move(selIndex, selIndex + 1)} />
+          <Button size="sm" icon="copy" onclick={() => sel && copy(sel.address)}>{t('Copy address')}</Button>
+          <Button size="sm" icon="wrench" onclick={startEdit}>{t('Edit')}</Button>
+          <IconButton size="sm" icon="update" label={t('Move {name} up', { name: sel.name })} disabled={selIndex === 0} onclick={() => move(selIndex, selIndex - 1)} />
+          <IconButton size="sm" icon="download" label={t('Move {name} down', { name: sel.name })} disabled={selIndex === servers.length - 1} onclick={() => move(selIndex, selIndex + 1)} />
         </div>
       {/if}
 
       {#if selStatus?.online && selStatus.motd}
         <div>
-          <p class="text-label muted label">Message of the day</p>
+          <p class="text-label muted label">{t('Message of the day')}</p>
           <p class="text-mono motd">{selStatus.motd}</p>
         </div>
       {/if}
 
       <dl class="facts">
-        <dt class="text-small muted">Status</dt>
+        <dt class="text-small muted">{t('Status')}</dt>
         <dd class="inline">
           {#if !selStatus}
-            <span class="text-body muted">Checking…</span>
+            <span class="text-body muted">{t('Checking…')}</span>
           {:else}
-            <StatusTag state={selStatus.online ? 'online' : 'offline'}>{selStatus.online ? 'Online' : 'Can’t reach server'}</StatusTag>
+            <StatusTag state={selStatus.online ? 'online' : 'offline'}>{selStatus.online ? t('Online') : t('Can’t reach server')}</StatusTag>
             {#if selStatus.online && selStatus.pingMs != null}<span class="text-mono">{num(selStatus.pingMs)} ms</span>{/if}
           {/if}
         </dd>
         {#if selStatus?.online}
-          <dt class="text-small muted">Players</dt>
-          <dd class="text-body">{num(selStatus.playersOnline)} of {num(selStatus.playersMax)}</dd>
+          <dt class="text-small muted">{t('Players')}</dt>
+          <dd class="text-body">{t('{n} of {n2}', { n: num(selStatus.playersOnline), n2: num(selStatus.playersMax) })}</dd>
         {/if}
         {#if selStatus?.version}
-          <dt class="text-small muted">Version</dt>
+          <dt class="text-small muted">{t('Version')}</dt>
           <dd class="inline"><MetaChip>{selStatus.version}</MetaChip></dd>
         {/if}
       </dl>
       {#if versionDiffers}
-        <p class="text-small flag"><span class="warn icon"><Icon name="warning" size={18} label="Warning" /></span><span>This instance runs <span class="text-mono">{instance.minecraft}</span>. Check that the server accepts it.</span></p>
+        <p class="text-small flag"><span class="warn icon"><Icon name="warning" size={18} label={t('Warning')} /></span><span>{t('This instance runs')} <span class="text-mono">{instance.minecraft}</span>{t('. Check that the server accepts it.')}</span></p>
       {/if}
 
       <div class="part">
-        <span class="text-body-strong" aria-hidden="true">Server resource packs</span>
+        <span class="text-body-strong" aria-hidden="true">{t('Server resource packs')}</span>
         <SegmentedControl
-          label="Server resource packs"
+          label={t('Server resource packs')}
           options={[
-            { value: 'ask', label: 'Ask' },
-            { value: 'accept', label: 'Accept' },
-            { value: 'refuse', label: 'Refuse' },
+            { value: 'ask', label: t('Ask') },
+            { value: 'accept', label: t('Accept') },
+            { value: 'refuse', label: t('Refuse') },
           ]}
           value={textures}
           onChange={setTextures}
         />
-        <p class="text-small muted">What the game does when this server sends its own resource pack.</p>
+        <p class="text-small muted">{t('What the game does when this server sends its own resource pack.')}</p>
       </div>
 
       <div class="danger">
-        <Button size="sm" variant="danger" icon="trash" onclick={() => (removing = selIndex)}>Remove</Button>
-        <span class="text-small muted">Takes it off this list only.</span>
+        <Button size="sm" variant="danger" icon="trash" onclick={() => (removing = selIndex)}>{t('Remove')}</Button>
+        <span class="text-small muted">{t('Takes it off this list only.')}</span>
       </div>
     {:else}
-      <p class="text-label muted">Server details</p>
-      <p class="text-body muted">Add a server to see who’s online and join in one click.</p>
+      <p class="text-label muted">{t('Server details')}</p>
+      <p class="text-body muted">{t('Add a server to see who’s online and join in one click.')}</p>
     {/if}
   </div>
 </aside>
@@ -358,11 +359,11 @@
 {#if removing !== null && servers[removing]}
   {@const s = servers[removing]}
   {#snippet removeActions()}
-    <Button variant="ghost" onclick={() => (removing = null)}>Cancel</Button>
-    <Button variant="danger" icon="trash" onclick={remove}>Remove</Button>
+    <Button variant="ghost" onclick={() => (removing = null)}>{t('Cancel')}</Button>
+    <Button variant="danger" icon="trash" onclick={remove}>{t('Remove')}</Button>
   {/snippet}
-  <Dialog tone="danger" icon="trash" title={`Remove ${s.name}?`} onClose={() => (removing = null)} actions={removeActions}>
-    <p>Takes <span class="text-mono">{s.address}</span> off the server list of this instance. You can add it again any time.</p>
+  <Dialog tone="danger" icon="trash" title={t('Remove {name}?', { name: s.name })} onClose={() => (removing = null)} actions={removeActions}>
+    <p>{t('Takes')} <span class="text-mono">{s.address}</span> {t('off the server list of this instance. You can add it again any time.')}</p>
   </Dialog>
 {/if}
 

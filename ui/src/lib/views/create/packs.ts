@@ -1,3 +1,4 @@
+import { t } from '../../i18n.svelte'
 // Small helpers shared by the modpack source screens.
 
 /** Compares Minecraft versions like "1.20.1" and "1.7.10" (numbers by value). */
@@ -28,4 +29,4 @@ export function paragraphs(text: string): string[] {
     .filter(Boolean)
 }
 
-export const CHANNEL_WORD = { release: 'Release', beta: 'Beta', alpha: 'Alpha' } as const
+export const CHANNEL_WORD = { release: t('Release'), beta: t('Beta'), alpha: t('Alpha') } as const

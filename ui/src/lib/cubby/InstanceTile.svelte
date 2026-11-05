@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../i18n.svelte'
   import Content from './Content.svelte';
   import IconButton from './IconButton.svelte';
   import InstanceIcon from './InstanceIcon.svelte';
@@ -29,7 +30,7 @@
 
   const status = $derived(statusProp || 'ready');
   const running = $derived(status === 'running');
-  const playName = $derived(playLabel || (running ? 'Stop ' : 'Play ') + name);
+  const playName = $derived(playLabel || (running ? t('Stop ') : t('Play ')) + name);
 </script>
 
 <div class={['cb-tile', selected && 'is-selected', 'cb-tile--' + status, className]}>

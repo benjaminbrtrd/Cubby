@@ -2,9 +2,10 @@
   import type { Status } from '../../cubby'
   import { app, taskKind, type Task } from '../../state.svelte'
   import { playTime, relativeTime } from '../../format'
+  import { t } from '../../i18n.svelte'
   import type { Instance } from '../../types'
 
-  /** What an instance is doing right now, read from the live state. Shared by the library, the inspector and the palette. */
+  /** What an instance is doing right now, read from the live state. Shared by the library, the stage and the palette. */
   export interface Live {
     status: Status
     task: Task | undefined
@@ -50,9 +51,9 @@
 
   /** "Played 2h ago · 41h", "Played yesterday", "Never played" */
   export function playedLine(instance: Instance): string {
-    if (!instance.lastPlayed) return 'Never played'
+    if (!instance.lastPlayed) return t('Never played')
     const rel = relativeTime(instance.lastPlayed)
-    const when = `Played ${rel.charAt(0).toLowerCase()}${rel.slice(1)}`
+    const when = t('Played {when}', { when: rel.charAt(0).toLowerCase() + rel.slice(1) })
     if (app.settings?.showPlayTime === false || instance.totalPlayedSecs < 60) return when
     return `${when} · ${playTime(instance.totalPlayedSecs)}`
   }
@@ -66,24 +67,26 @@
   export function taskVerb(kind: string | null): string {
     switch (kind) {
       case 'launch':
-        return 'Starting'
+        return t('Starting')
       case 'update':
-        return 'Updating'
+        return t('Updating')
       case 'repair':
-        return 'Repairing'
+        return t('Repairing')
       default:
-        return 'Installing'
+        return t('Installing')
     }
   }
 </script>
 
 <script lang="ts">
-  import { Button, Icon, IconButton, InstanceRow, InstanceTile, Logo, SegmentedControl, Tabs, TextField, type TabItem } from '../../cubby'
+  import { Button, Icon, IconButton, InstanceRow, ProgressBar, SegmentedControl, TextField } from '../../cubby'
   import { api } from '../../api'
   import { iconOf } from '../../icon'
-  import { fold, loaderFull, loaderName, num, plural, session } from '../../format'
-  import Inspector from './Inspector.svelte'
+  import { fold, loaderFull, num, plural, session } from '../../format'
   import DeleteInstanceDialog from './DeleteInstanceDialog.svelte'
+  import FirstGame from './FirstGame.svelte'
+  import InstanceCard from './InstanceCard.svelte'
+  import Stage from './Stage.svelte'
 
   type Sort = 'played' | 'name' | 'time' | 'created'
   const SORTS: { id: Sort; label: string }[] = [
@@ -93,20 +96,22 @@
     { id: 'created', label: 'Recently added' },
   ]
   const VIEWS = [
-    { value: 'grid', label: 'Grid', icon: 'library' as const },
-    { value: 'list', label: 'List', icon: 'servers' as const },
+    { value: 'grid', label: 'Cards', icon: 'library' as const },
+    { value: 'list', label: 'Rows', icon: 'servers' as const },
   ]
   const byName = new Intl.Collator('en-US', { sensitivity: 'base', numeric: true })
 
   let sort = $state<Sort>('played')
   let filter = $state('')
-  /** List view: instances picked with Ctrl click, Shift click or Space. */
+  /** Rows view: instances picked with Ctrl click, Shift click or Space. */
   let marked = $state<string[]>([])
   let menu = $state<'sort' | 'group' | null>(null)
   let bulkDelete = $state<string[] | null>(null)
   let now = $state(Date.now())
-  /** List view: number of mod files per instance. */
+  /** Rows view: number of mod files per instance. */
   let mods = $state<Record<string, number>>({})
+  /** instance id → URL of its newest screenshot */
+  let covers = $state<Record<string, string>>({})
   let body: HTMLElement | undefined = $state()
   let sortAnchor: HTMLElement | undefined = $state()
   let groupAnchor: HTMLElement | undefined = $state()
@@ -117,14 +122,14 @@
 
   const ungrouped = $derived(app.instances.filter((i) => !i.group).length)
   const groupNames = $derived(app.groups.map((g) => g.name).sort(byName.compare))
-  const tabs = $derived<TabItem[]>([
-    { id: 'all', label: 'All', count: app.instances.length },
+  const chips = $derived([
+    { id: 'all', label: t('All'), count: app.instances.length },
     ...groupNames.map((name) => ({ id: name, label: name, count: app.groups.find((g) => g.name === name)?.count ?? 0 })),
-    ...(ungrouped && app.groups.length ? [{ id: '', label: 'No group', count: ungrouped }] : []),
+    ...(ungrouped && app.groups.length ? [{ id: '', label: t('No group'), count: ungrouped }] : []),
   ])
 
   $effect(() => {
-    if (!tabs.some((t) => t.id === app.groupFilter)) app.groupFilter = 'all'
+    if (!chips.some((c) => c.id === app.groupFilter)) app.groupFilter = 'all'
   })
 
   // what is shown, in which order
@@ -145,26 +150,25 @@
   const query = $derived(fold(filter.trim()))
   const visible = $derived.by(() => {
     const inGroup = app.instances.filter((i) => app.groupFilter === 'all' || (i.group ?? '') === app.groupFilter)
-    const shown =
-      isList && query
-        ? inGroup.filter((i) => [i.name, i.minecraft, loaderFull(i.loader), i.group ?? ''].some((t) => fold(t).includes(query)))
-        : inGroup
+    const shown = query ? inGroup.filter((i) => [i.name, i.minecraft, loaderFull(i.loader), i.group ?? ''].some((t) => fold(t).includes(query))) : inGroup
     return [...shown].sort(compare)
   })
 
-  const headed = $derived(app.groupFilter === 'all' && app.groups.length > 0)
+  const headed = $derived(isList && app.groupFilter === 'all' && app.groups.length > 0)
   const sections = $derived.by(() => {
     if (!headed) return [{ key: '*', name: '', items: visible }]
     const map = new Map<string, Instance[]>()
     for (const i of visible) map.set(i.group ?? '', [...(map.get(i.group ?? '') ?? []), i])
     return [...map.entries()]
       .sort(([a], [b]) => (a === '' ? 1 : b === '' ? -1 : byName.compare(a, b)))
-      .map(([name, items]) => ({ key: name || '*none', name: name || 'No group', items }))
+      .map(([name, items]) => ({ key: name || '*none', name: name || t('No group'), items }))
   })
 
   /** Visual order, for the arrow keys. */
   const order = $derived(isList ? sections.flatMap((s) => s.items) : visible)
   const current = $derived(order.find((i) => i.id === app.selected) ?? order[0])
+  /** The stage keeps the selected instance even when the filter hides it. */
+  const staged = $derived(app.instance(app.selected) ?? current ?? app.recent[0])
   const markedVisible = $derived(marked.filter((id) => order.some((i) => i.id === id)))
   const totalSecs = $derived(order.reduce((s, i) => s + i.totalPlayedSecs, 0))
 
@@ -178,14 +182,44 @@
     return () => clearInterval(timer)
   })
 
-  // The list shows mod counts: read each modded instance's mods folder, one at a time, again after installs and updates.
+  const lastFinished = $derived(app.finished[0]?.at ?? 0)
+
+  // Covers: the newest screenshot of each played instance, read one at a time, again after each session.
+  const playedIds = $derived(
+    app.instances
+      .filter((i) => i.lastPlayed)
+      .map((i) => `${i.id}@${i.lastPlayed}`)
+      .join('\n'),
+  )
+  $effect(() => {
+    if (!playedIds) return
+    const ids = playedIds.split('\n').map((k) => k.slice(0, k.lastIndexOf('@')))
+    let stale = false
+    void (async () => {
+      for (const id of ids) {
+        if (stale) return
+        try {
+          const shots = await api.listScreenshots(id)
+          if (stale) return
+          if (shots[0]) covers[id] = shots[0].url
+          else delete covers[id]
+        } catch {
+          /* no cover: the card shows the emblem */
+        }
+      }
+    })()
+    return () => {
+      stale = true
+    }
+  })
+
+  // The rows show mod counts: read each modded instance's mods folder, one at a time, again after installs and updates.
   const moddedIds = $derived(
     app.instances
       .filter((i) => i.loader.kind !== 'vanilla')
       .map((i) => i.id)
       .join('\n'),
   )
-  const lastFinished = $derived(app.finished[0]?.at ?? 0)
   $effect(() => {
     if (!isList || !moddedIds) return
     void lastFinished
@@ -214,27 +248,26 @@
     return undefined
   }
 
-  function tileMeta(instance: Instance, live: Live): string {
-    if (live.status === 'installing' && live.task) return live.task.label
-    if (live.status === 'download') return 'Play downloads it first'
-    return playedLine(instance)
-  }
-
   function rowSub(instance: Instance, live: Live): string | undefined {
-    if (instance.modpack) return `Modpack ${instance.modpack.versionNumber}`
-    if (live.status === 'download') return 'Play downloads it first'
-    if (instance.totalPlayedSecs >= 60) return `${playTime(instance.totalPlayedSecs)} played`
+    if (instance.modpack) return t('Modpack {version}', { version: instance.modpack.versionNumber })
+    if (live.status === 'download') return t('Play downloads it first')
+    if (instance.totalPlayedSecs >= 60) return t('{time} played', { time: playTime(instance.totalPlayedSecs) })
     return undefined
   }
+
+  /** The first task in the queue, for the bar at the bottom. */
+  const firstTask = $derived(Object.entries(app.tasks)[0])
+  const taskCount = $derived(Object.keys(app.tasks).length)
 
   // actions
 
   function playOrStop(id: string) {
+    app.selected = id
     if (app.running[id]) void app.kill(id)
     else void app.launch(id)
   }
 
-  /** Enter on a tile or a row. */
+  /** Enter on a card or a row. */
   function play(id: string, offline: boolean) {
     if (app.running[id]) app.navigate({ name: 'running', id })
     else if (!app.instanceTask(id)) void app.launch(id, offline)
@@ -285,23 +318,20 @@
     }
     if (!moved) return
     const what = plural(moved, 'instance', 'instances')
-    app.toast(group ? `Moved ${what} to ${group}.` : `Took ${what} out of their group.`, 'success')
+    app.toast(group ? t('Moved {what} to {group}.', { what, group }) : t('Took {what} out of their group.', { what }), 'success')
   }
 
-  function discoverModpacks() {
-    app.discover.kind = 'modpack'
-    app.navigate({ name: 'discover' })
-  }
+  // keyboard: one tab stop in the cards or rows, then the arrows
 
-  // keyboard: one tab stop in the grid or list, then the arrows
+  const MAIN = '.card__main, .cb-irow__main'
 
   function mainOf(cell: Element | null | undefined) {
-    return cell?.querySelector<HTMLElement>('.cb-tile__main, .cb-irow__main') ?? null
+    return cell?.querySelector<HTMLElement>(MAIN) ?? null
   }
 
   function cellFrom(e: Event): HTMLElement | null {
     const target = e.target as HTMLElement | null
-    if (!target?.matches('.cb-tile__main, .cb-irow__main')) return null
+    if (!target?.matches(MAIN)) return null
     return target.closest<HTMLElement>('[data-cell]')
   }
 
@@ -383,7 +413,7 @@
     if (e.key === ' ' && isList && cellFrom(e)) e.preventDefault()
   }
 
-  // Ctrl click and Shift click in the list mark rows instead of selecting one.
+  // Ctrl click and Shift click in the rows mark them instead of selecting one.
   function clickCapture(e: MouseEvent, id: string) {
     if (!isList || !(e.ctrlKey || e.metaKey || e.shiftKey)) return
     if (!(e.target as HTMLElement).closest('.cb-irow__main')) return
@@ -394,14 +424,14 @@
     app.selected = id
   }
 
-  // A double click opens the instance (the component would play it).
+  // A double click opens the instance (the row component would play it).
   function dblclickCapture(e: MouseEvent, id: string) {
-    if (!(e.target as HTMLElement).closest('.cb-tile__main, .cb-irow__main')) return
+    if (!(e.target as HTMLElement).closest(MAIN)) return
     e.stopPropagation()
     app.openInstance(id)
   }
 
-  // Only the selected tile or row is in the tab order; its Play button is reached with Enter.
+  // Only the selected card or row is in the tab order; its Play button is reached with Enter.
   $effect(() => {
     const root = body
     const focusId = current?.id
@@ -411,7 +441,7 @@
     for (const cell of root.querySelectorAll<HTMLElement>('[data-cell]')) {
       const main = mainOf(cell)
       if (main) main.tabIndex = cell.dataset.cell === focusId ? 0 : -1
-      for (const b of cell.querySelectorAll<HTMLElement>('.cb-tile__play button, .cb-irow__action button')) b.tabIndex = -1
+      for (const b of cell.querySelectorAll<HTMLElement>('.card__play button, .cb-irow__action button')) b.tabIndex = -1
     }
   })
 
@@ -458,91 +488,82 @@
 
 <div class="library">
   {#if app.instances.length === 0}
-    <section class="empty" aria-labelledby="library-empty-title">
-      <Logo size={64} wordmark={false} />
-      <h1 id="library-empty-title" class="text-title">No instances yet</h1>
-      <p class="text-body muted">An instance is a copy of the game with its own version, mods and worlds. Make one, bring yours from Prism Launcher, or start from a modpack.</p>
-      <div class="empty__actions">
-        <Button variant="primary" icon="plus" onclick={() => app.navigate({ name: 'create' })}>New instance</Button>
-        <Button icon="import" onclick={() => (app.prismImportOpen = true)}>Import from Prism Launcher</Button>
-        <Button variant="ghost" icon="discover" onclick={discoverModpacks}>Discover modpacks</Button>
-      </div>
-    </section>
+    <FirstGame />
   {:else}
-    <div class="split">
-      <div class="content">
-        <div class="head">
-          <h1 class="text-title">Library</h1>
-          <span class="grow"></span>
-          <SegmentedControl label="View" options={VIEWS} value={app.libraryView} onChange={setView} />
-          <Button icon="import" onclick={() => (app.prismImportOpen = true)}>Import</Button>
-          <Button variant="primary" icon="plus" onclick={() => app.navigate({ name: 'create' })}>New instance</Button>
-        </div>
+    <div class="scroll">
+      {#if staged}
+        <Stage id={staged.id} cover={covers[staged.id] ?? null} />
+      {/if}
 
-        {#if tabs.length > 1}
-          <Tabs label="Groups" items={tabs} bind:value={app.groupFilter} />
-        {/if}
-
-        {#if isList}
-          <div class="tools">
-            <div class="filter">
-              <TextField label="Filter instances" hideLabel icon="search" placeholder="Filter instances" bind:value={filter} />
-            </div>
-            <div class="anchor" bind:this={sortAnchor} onfocusout={leaveMenu}>
-              <Button variant="ghost" iconEnd="chevron-down" aria-haspopup="menu" aria-expanded={menu === 'sort'} onclick={() => toggleMenu('sort')}>
-                <span class="text-body">Sort: <span class="sort-value">{SORTS.find((s) => s.id === sort)?.label}</span></span>
-              </Button>
-              {#if menu === 'sort'}
-                <div class="menu" role="menu" tabindex="-1" aria-label="Sort by" onkeydown={(e) => menuKeys(e, sortAnchor)} {@attach focusFirst}>
-                  {#each SORTS as s (s.id)}
-                    <button
-                      type="button"
-                      role="menuitemradio"
-                      aria-checked={sort === s.id}
-                      class="menu__item text-body"
-                      onclick={() => {
-                        sort = s.id
-                        closeMenu(sortAnchor)
-                      }}
-                    >
-                      <span class="menu__check">{#if sort === s.id}<Icon name="check" size={18} />{/if}</span>
-                      {s.label}
-                    </button>
-                  {/each}
-                </div>
-              {/if}
-            </div>
-            <span class="grow"></span>
-            {#if markedVisible.length}
-              <div class="selection" role="region" aria-label="Selection">
-                <Icon name="check" size={18} />
-                <span class="text-body-strong">{num(markedVisible.length)} selected</span>
-                <div class="anchor" bind:this={groupAnchor} onfocusout={leaveMenu}>
-                  <Button size="sm" icon="folder" iconEnd="chevron-down" aria-haspopup="menu" aria-expanded={menu === 'group'} onclick={() => toggleMenu('group')}>
-                    Move to group
-                  </Button>
-                  {#if menu === 'group'}
-                    <div class="menu menu--end" role="menu" tabindex="-1" aria-label="Move to group" onkeydown={(e) => menuKeys(e, groupAnchor)} {@attach focusFirst}>
-                      {#each groupNames as name (name)}
-                        <button type="button" role="menuitem" class="menu__item text-body" onclick={() => moveTo(name)}>
-                          <span class="menu__check"><Icon name="folder" size={18} /></span>{name}
-                        </button>
-                      {/each}
-                      <button type="button" role="menuitem" class="menu__item text-body" onclick={() => moveTo(null)}>
-                        <span class="menu__check"><Icon name="minimize" size={18} /></span>No group
+      <section class="shelf" aria-label={t('Instances')}>
+        <div class="tools">
+          {#if isList && markedVisible.length}
+            <div class="selection" role="region" aria-label={t('Selection')}>
+              <Icon name="check" size={18} />
+              <span class="text-body-strong">{t('{n} selected', { n: num(markedVisible.length) })}</span>
+              <div class="anchor" bind:this={groupAnchor} onfocusout={leaveMenu}>
+                <Button size="sm" icon="folder" iconEnd="chevron-down" aria-haspopup="menu" aria-expanded={menu === 'group'} onclick={() => toggleMenu('group')}>
+                  {t('Move to group')}
+                </Button>
+                {#if menu === 'group'}
+                  <div class="menu" role="menu" tabindex="-1" aria-label={t('Move to group')} onkeydown={(e) => menuKeys(e, groupAnchor)} {@attach focusFirst}>
+                    {#each groupNames as name (name)}
+                      <button type="button" role="menuitem" class="menu__item text-body" onclick={() => moveTo(name)}>
+                        <span class="menu__check"><Icon name="folder" size={18} /></span>{name}
                       </button>
-                      {#if !groupNames.length}
-                        <p class="menu__note text-small">Give an instance a group in its settings to see it here.</p>
-                      {/if}
-                    </div>
-                  {/if}
-                </div>
-                <Button size="sm" variant="danger" icon="trash" onclick={() => askDelete(markedVisible[0])}>Delete</Button>
-                <IconButton icon="close" size="sm" label="Clear selection" onclick={() => (marked = [])} />
+                    {/each}
+                    <button type="button" role="menuitem" class="menu__item text-body" onclick={() => moveTo(null)}>
+                      <span class="menu__check"><Icon name="minimize" size={18} /></span>{t('No group')}
+                    </button>
+                    {#if !groupNames.length}
+                      <p class="menu__note text-small">{t('Give an instance a group in its settings to see it here.')}</p>
+                    {/if}
+                  </div>
+                {/if}
+              </div>
+              <Button size="sm" variant="danger" icon="trash" onclick={() => askDelete(markedVisible[0])}>{t('Move to trash')}</Button>
+              <IconButton icon="close" size="sm" label={t('Clear selection')} onclick={() => (marked = [])} />
+            </div>
+          {:else if chips.length > 1}
+            <div class="chips" role="group" aria-label={t('Groups')}>
+              {#each chips as chip (chip.id)}
+                <button type="button" class={['chip', app.groupFilter === chip.id && 'is-on']} aria-pressed={app.groupFilter === chip.id} onclick={() => (app.groupFilter = chip.id)}>
+                  {chip.label}<span class="chip__count">{num(chip.count)}</span>
+                </button>
+              {/each}
+            </div>
+          {/if}
+          <span class="grow"></span>
+          <div class="filter">
+            <TextField label={t('Filter instances')} hideLabel icon="search" placeholder={t('Filter')} size="sm" bind:value={filter} />
+          </div>
+          <div class="anchor" bind:this={sortAnchor} onfocusout={leaveMenu}>
+            <Button variant="ghost" size="sm" iconEnd="chevron-down" aria-haspopup="menu" aria-expanded={menu === 'sort'} onclick={() => toggleMenu('sort')}>
+              <span class="text-body"><span class="muted">{t('Sort:')}</span> {t(SORTS.find((s) => s.id === sort)?.label ?? '')}</span>
+            </Button>
+            {#if menu === 'sort'}
+              <div class="menu menu--end" role="menu" tabindex="-1" aria-label={t('Sort by')} onkeydown={(e) => menuKeys(e, sortAnchor)} {@attach focusFirst}>
+                {#each SORTS as s (s.id)}
+                  <button
+                    type="button"
+                    role="menuitemradio"
+                    aria-checked={sort === s.id}
+                    class="menu__item text-body"
+                    onclick={() => {
+                      sort = s.id
+                      closeMenu(sortAnchor)
+                    }}
+                  >
+                    <span class="menu__check">{#if sort === s.id}<Icon name="check" size={18} />{/if}</span>
+                    {t(s.label)}
+                  </button>
+                {/each}
               </div>
             {/if}
           </div>
-        {/if}
+          <SegmentedControl label={t('View')} options={VIEWS.map((v) => ({ ...v, label: t(v.label) }))} value={app.libraryView} onChange={setView} />
+          <Button variant="primary" icon="plus" onclick={() => app.navigate({ name: 'create' })}>{t('New instance')}</Button>
+        </div>
 
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div class={isList ? 'list' : 'grid'} bind:this={body} {onkeydown} {onkeyup}>
@@ -574,7 +595,7 @@
                     statusDetail={detailOf(instance, live)}
                     group={rowSub(instance, live)}
                     mods={instance.loader.kind === 'vanilla' ? undefined : mods[instance.id]}
-                    lastPlayed={instance.lastPlayed ? relativeTime(instance.lastPlayed) : 'Never'}
+                    lastPlayed={instance.lastPlayed ? relativeTime(instance.lastPlayed) : t('Never')}
                     selected={markedVisible.length ? markedVisible.includes(instance.id) : current?.id === instance.id}
                     onSelect={() => select(instance.id)}
                     onPlay={() => playOrStop(instance.id)}
@@ -582,53 +603,57 @@
                 </div>
               {/each}
             {/each}
-            {#if !order.length}
-              <div class="none">
-                <p class="text-body">No instance matches “{filter.trim()}”.</p>
-                <Button size="sm" variant="ghost" icon="close" onclick={() => (filter = '')}>Clear filter</Button>
-              </div>
-            {/if}
           {:else}
             {#each visible as instance (instance.id)}
               {@const live = liveState(instance)}
-              {@const icon = iconOf(instance)}
               <!-- svelte-ignore a11y_no_static_element_interactions -->
               <div class="cell" data-cell={instance.id} ondblclickcapture={(e) => dblclickCapture(e, instance.id)}>
-                <InstanceTile
-                  name={instance.name}
-                  motif={icon.motif}
-                  ground={icon.ground}
-                  iconSrc={icon.src}
-                  version={instance.minecraft}
-                  snapshot={isSnapshot(instance.minecraft)}
-                  loader={instance.loader.kind === 'vanilla' ? undefined : loaderName(instance.loader)}
-                  status={live.status}
-                  statusDetail={detailOf(instance, live)}
-                  progress={live.progress}
-                  meta={tileMeta(instance, live)}
+                <InstanceCard
+                  {instance}
+                  {live}
+                  cover={covers[instance.id] ?? null}
+                  detail={detailOf(instance, live)}
                   selected={current?.id === instance.id}
                   onSelect={() => select(instance.id)}
                   onPlay={() => playOrStop(instance.id)}
                 />
               </div>
             {/each}
+            {#if !query && app.groupFilter === 'all'}
+              <button type="button" class="new text-body-strong" onclick={() => app.navigate({ name: 'create' })}>
+                <span class="new__icon"><Icon name="plus" size={22} /></span>
+                {t('New instance')}
+              </button>
+            {/if}
           {/if}
         </div>
 
-        {#if isList}
-          <div class="foot">
-            <span class="grow"></span>
-            <span class="text-small muted">
-              {plural(order.length, 'instance', 'instances')}{#if totalSecs >= 60}{' · '}{playTime(totalSecs)} played{/if}
-            </span>
+        {#if !order.length}
+          <div class="none">
+            <p class="text-body">{t('Nothing matches “{query}”.', { query: filter.trim() })}</p>
+            <Button size="sm" variant="ghost" icon="close" onclick={() => (filter = '')}>{t('Clear filter')}</Button>
           </div>
+        {:else if isList}
+          <p class="foot text-small muted">
+            {plural(order.length, 'instance', 'instances')}{#if totalSecs >= 60}{' · '}{t('{time} played', { time: playTime(totalSecs) })}{/if}
+          </p>
         {/if}
-      </div>
-
-      {#if !isList && current}
-        <Inspector id={current.id} />
-      {/if}
+      </section>
     </div>
+
+    {#if firstTask}
+      {@const [key, task] = firstTask}
+      <div class="activity" role="status">
+        <ProgressBar
+          value={taskProgress(task)}
+          tone="diamond"
+          label={app.instance(key.split(':')[1])?.name ?? task.label}
+          detail={taskCount > 1 ? t('{label} · {tasks} running', { label: task.label, tasks: plural(taskCount, 'task', 'tasks') }) : task.label}
+          class="activity__bar"
+        />
+        <Button size="sm" icon="download" onclick={() => app.navigate({ name: 'downloads' })}>{t('Open downloads')}</Button>
+      </div>
+    {/if}
   {/if}
 </div>
 
@@ -647,57 +672,114 @@
   .library {
     display: flex;
     flex-direction: column;
-    min-height: 100%;
     height: 100%;
+    min-height: 0;
   }
-  .split {
+  .scroll {
     flex: 1;
     min-height: 0;
-    display: flex;
+    overflow-y: auto;
   }
-  .content {
-    flex: 1;
-    min-width: 0;
-    overflow: auto;
+  .shelf {
     display: flex;
     flex-direction: column;
-    gap: var(--space-4);
-    padding: var(--space-6);
+    gap: var(--space-5);
+    padding: var(--space-5) var(--space-6) var(--space-8);
   }
-  .head,
-  .tools,
-  .foot {
+  .tools {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--space-3);
-  }
-  h1 {
-    margin: 0;
+    gap: var(--space-2);
+    min-height: 40px;
   }
   .grow {
     flex: 1;
-  }
-  .sort-value {
-    color: var(--ink);
-    font-weight: 500;
   }
   .muted {
     color: var(--ink-muted);
   }
   .filter {
-    flex: 0 1 280px;
-    min-width: 200px;
+    flex: 0 1 180px;
+    min-width: 140px;
+  }
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+  }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    height: 34px;
+    padding: 0 var(--space-3);
+    font: inherit;
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--ink-muted);
+    background: transparent;
+    border: var(--border-block) solid transparent;
+    cursor: pointer;
+  }
+  .chip:hover {
+    color: var(--ink);
+    background: var(--surface);
+  }
+  .chip.is-on {
+    color: var(--ink);
+    background: var(--surface);
+    border-color: var(--edge);
+    box-shadow: var(--shadow-block-sm);
+  }
+  .chip:focus-visible {
+    outline: 3px solid var(--focus);
+    outline-offset: 2px;
+  }
+  .chip__count {
+    font-size: 13px;
+    color: var(--ink-muted);
+  }
+  .chip.is-on .chip__count {
+    color: var(--grass-text);
   }
 
   .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: var(--space-5);
-    padding-bottom: var(--space-2);
   }
   .cell {
     display: grid;
+  }
+  .new {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-3);
+    min-height: 224px;
+    color: var(--ink-muted);
+    background: transparent;
+    border: var(--border-block) dashed var(--outline);
+    cursor: pointer;
+  }
+  .new:hover {
+    color: var(--ink);
+    background: color-mix(in srgb, var(--surface) 50%, transparent);
+  }
+  .new:focus-visible {
+    outline: 3px solid var(--focus);
+    outline-offset: 2px;
+  }
+  .new__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border: var(--border-block) solid currentColor;
   }
   .list {
     display: flex;
@@ -719,10 +801,13 @@
     flex-wrap: wrap;
     align-items: center;
     gap: var(--space-3);
-    padding: var(--space-4);
   }
-  .none p {
+  .none p,
+  .foot {
     margin: 0;
+  }
+  .foot {
+    text-align: end;
   }
 
   .selection {
@@ -737,6 +822,19 @@
   }
   .selection > :global(.cb-icon) {
     color: var(--grass-text);
+  }
+
+  .activity {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-2) var(--space-6);
+    background: var(--bg-chrome);
+    border-top: var(--border-chrome) solid var(--edge);
+  }
+  .activity :global(.activity__bar) {
+    flex: 1;
+    min-width: 0;
   }
 
   .anchor {
@@ -790,29 +888,5 @@
     padding: var(--space-2) var(--space-3);
     color: var(--ink-muted);
     border-top: var(--border-hair) solid var(--line);
-  }
-
-  .empty {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-4);
-    padding: var(--space-12) var(--space-6);
-    text-align: center;
-  }
-  .empty h1 {
-    margin: 0;
-  }
-  .empty p {
-    max-width: 520px;
-    margin: 0;
-  }
-  .empty__actions {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: var(--space-3);
   }
 </style>

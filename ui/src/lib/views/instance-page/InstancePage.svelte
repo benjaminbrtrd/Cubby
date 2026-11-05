@@ -1,6 +1,7 @@
 <script lang="ts" module>
   import { api } from '../../api'
   import { date, timeOfDay } from '../../format'
+  import { t } from '../../i18n.svelte'
   import { app } from '../../state.svelte'
   import type { ContentSource, ContentUpdate, Instance, ModFile, Pack, ProjectKind, Screenshot, Server, World, WorldBackup } from '../../types'
 
@@ -20,7 +21,7 @@
   export function when(iso: string, inline = false): string {
     const start = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime()
     const days = Math.round((start(new Date()) - start(new Date(iso))) / 86_400_000)
-    const text = `${days === 0 ? 'Today' : days === 1 ? 'Yesterday' : date(iso)} at ${timeOfDay(iso)}`
+    const text = t('{day} at {time}', { day: days === 0 ? t('Today') : days === 1 ? t('Yesterday') : date(iso), time: timeOfDay(iso) })
     return inline && days <= 1 ? text[0].toLowerCase() + text.slice(1) : text
   }
 
@@ -213,7 +214,7 @@
       try {
         const copy = await api.duplicateInstance(instance.id, `${instance.name} copy`)
         await app.refreshInstances()
-        app.toast(`Made a copy: ${copy.name}.`, 'success', { label: 'Open', run: () => app.openInstance(copy.id) })
+        app.toast(t('Made a copy: {name}.', { name: copy.name }), 'success', { label: t('Open'), run: () => app.openInstance(copy.id) })
       } catch (e) {
         app.error(e)
       } finally {
@@ -226,7 +227,7 @@
       if (app.tasks[`repair:${this.id}`]) return
       try {
         await api.repairInstance(this.id)
-        app.toast('Game files checked and repaired.', 'success')
+        app.toast(t('Game files checked and repaired.'), 'success')
       } catch (e) {
         app.error(e)
       }
@@ -309,14 +310,14 @@
     if (instance.totalPlayedSecs >= 60) parts.push(`${playTime(instance.totalPlayedSecs)} played`)
     if (instance.lastPlayed) parts.push(`last played ${relativeTime(instance.lastPlayed).toLowerCase()}`)
     const line = parts.join(' · ')
-    return line ? line[0].toUpperCase() + line.slice(1) : 'Never played'
+    return line ? line[0].toUpperCase() + line.slice(1) : t('Never played')
   })
 
-  const TASK_LABEL: Record<string, string> = { launch: 'Installing', install: 'Installing', modpack: 'Installing', update: 'Updating', repair: 'Repairing' }
+  const TASK_LABEL: Record<string, string> = { launch: t('Installing'), install: t('Installing'), modpack: t('Installing'), update: t('Updating'), repair: t('Repairing') }
   const taskId = $derived(Object.keys(app.tasks).find((k) => k.split(':')[1] === id))
 
   const play = $derived.by(() => {
-    if (startedAt) return { state: 'running' as const, label: undefined, detail: `Playing for ${session(now - startedAt)}`, progress: undefined }
+    if (startedAt) return { state: 'running' as const, label: undefined, detail: t('Playing for {startedAt}', { startedAt: session(now - startedAt) }), progress: undefined }
     if (task) {
       const progress = task.total > 0 ? (task.done / task.total) * 100 : undefined
       const kind = taskId?.split(':')[0] ?? ''
@@ -324,7 +325,7 @@
       const label = kind === 'launch' && instance?.installed ? 'Starting' : (TASK_LABEL[kind] ?? 'Working')
       return { state: 'installing' as const, label, detail: task.label, progress }
     }
-    const detail = !instance?.installed ? 'Downloads the game first' : undefined
+    const detail = !instance?.installed ? t('Downloads the game first') : undefined
     return { state: 'ready' as const, label: undefined, detail, progress: undefined }
   })
 
@@ -334,14 +335,14 @@
   }
 
   const TABS: { id: InstanceTab; label: string }[] = [
-    { id: 'overview', label: 'Overview' },
-    { id: 'mods', label: 'Mods' },
-    { id: 'resourcepacks', label: 'Resource packs' },
-    { id: 'shaders', label: 'Shader packs' },
-    { id: 'worlds', label: 'Worlds' },
-    { id: 'screenshots', label: 'Screenshots' },
-    { id: 'servers', label: 'Servers' },
-    { id: 'settings', label: 'Settings' },
+    { id: 'overview', label: t('Overview') },
+    { id: 'mods', label: t('Mods') },
+    { id: 'resourcepacks', label: t('Resource packs') },
+    { id: 'shaders', label: t('Shader packs') },
+    { id: 'worlds', label: t('Worlds') },
+    { id: 'screenshots', label: t('Screenshots') },
+    { id: 'servers', label: t('Servers') },
+    { id: 'settings', label: t('Settings') },
   ]
   const PANEL = 'instance-panel'
 
@@ -369,11 +370,12 @@
 
   type MenuItem = { id: string; label: string; icon: IconName; danger?: boolean; disabled?: boolean; run: () => void }
   const menuItems = $derived<MenuItem[]>([
-    { id: 'offline', label: 'Play offline', icon: 'offline', disabled: busy, run: () => void app.launch(id, true) },
-    { id: 'folder', label: 'Open folder', icon: 'folder', run: () => data.openFolder() },
-    { id: 'duplicate', label: 'Duplicate', icon: 'copy', disabled: data.duplicating, run: () => instance && void data.duplicate(instance) },
-    { id: 'repair', label: 'Repair', icon: 'wrench', disabled: busy, run: () => void data.repair() },
-    { id: 'delete', label: 'Delete', icon: 'trash', danger: true, disabled: !!startedAt, run: () => (app.deletingId = id) },
+    { id: 'offline', label: t('Play offline'), icon: 'offline', disabled: busy, run: () => void app.launch(id, true) },
+    { id: 'log', label: t('Game log'), icon: 'terminal', run: () => app.navigate({ name: 'running', id }) },
+    { id: 'folder', label: t('Open folder'), icon: 'folder', run: () => data.openFolder() },
+    { id: 'duplicate', label: t('Duplicate'), icon: 'copy', disabled: data.duplicating, run: () => instance && void data.duplicate(instance) },
+    { id: 'repair', label: t('Repair'), icon: 'wrench', disabled: busy, run: () => void data.repair() },
+    { id: 'delete', label: t('Delete'), icon: 'trash', danger: true, disabled: !!startedAt, run: () => (app.deletingId = id) },
   ])
 
   function trigger(): HTMLButtonElement | null {
@@ -431,8 +433,8 @@
   <div class="page">
     <div class="layout">
       <header class="head">
-        <nav aria-label="Breadcrumb" class="crumbs">
-          <button type="button" class="link text-body-strong" onclick={() => app.navigate({ name: 'library' })}>Library</button>
+        <nav aria-label={t('Breadcrumb')} class="crumbs">
+          <button type="button" class="link text-body-strong" onclick={() => app.navigate({ name: 'library' })}>{t('Library')}</button>
           <span class="crumbs__sep" aria-hidden="true"><Icon name="chevron-right" size={18} /></span>
           <span class="crumbs__here text-body" aria-current="page">{instance.name}</span>
         </nav>
@@ -444,7 +446,7 @@
             <div class="hero__meta">
               <MetaChip>{instance.minecraft}</MetaChip>
               <MetaChip>{loaderFull(instance.loader)}</MetaChip>
-              {#if instance.modpack}<MetaChip icon="download" title="Installed from this Modrinth modpack">{instance.modpack.title} {instance.modpack.versionNumber}</MetaChip>{/if}
+              {#if instance.modpack}<MetaChip icon="download" title={t('Installed from this Modrinth modpack')}>{instance.modpack.title} {instance.modpack.versionNumber}</MetaChip>{/if}
               <span class="muted text-small">{playedLine}</span>
             </div>
           </div>
@@ -453,14 +455,14 @@
             <IconButton
               icon="more"
               variant="secondary"
-              label="More actions"
+              label={t('More actions')}
               aria-haspopup="menu"
               aria-expanded={menuOpen}
               aria-controls={menuOpen ? menuId : undefined}
               onclick={() => (menuOpen ? closeMenu() : openMenu())}
             />
             {#if menuOpen}
-              <div class="menu" role="menu" id={menuId} aria-label="More actions" tabindex="-1" bind:this={menuEl} onkeydown={menuKeys}>
+              <div class="menu" role="menu" id={menuId} aria-label={t('More actions')} tabindex="-1" bind:this={menuEl} onkeydown={menuKeys}>
                 {#each menuItems as item (item.id)}
                   {#if item.danger}<div class="menu__sep" role="separator"></div>{/if}
                   <button type="button" role="menuitem" tabindex="-1" class={['menu__item text-body-strong', item.danger && 'is-danger']} disabled={item.disabled} onclick={() => pick(item)}>
@@ -474,22 +476,22 @@
         </div>
 
         {#if instance.blockedFiles > 0}
-          {#snippet showFiles()}<Button size="sm" icon="download" onclick={() => (blockedOpen = true)}>Show the files</Button>{/snippet}
-          <Banner tone="warning" title="{plural(instance.blockedFiles, 'file needs', 'files need')} to be downloaded by hand" actions={showFiles}>
-            The pack's authors don't let launchers download {instance.blockedFiles === 1 ? 'it' : 'them'}. You can still play meanwhile.
+          {#snippet showFiles()}<Button size="sm" icon="download" onclick={() => (blockedOpen = true)}>{t('Show the files')}</Button>{/snippet}
+          <Banner tone="warning" title={t('{n} to be downloaded by hand', { n: plural(instance.blockedFiles, 'file needs', 'files need') })} actions={showFiles}>
+            {instance.blockedFiles === 1 ? t('The pack\'s authors don\'t let launchers download it. You can still play meanwhile.') : t('The pack\'s authors don\'t let launchers download them. You can still play meanwhile.')}
           </Banner>
         {/if}
 
         {#if startedAt}
-          {#snippet showLog()}<Button size="sm" icon="terminal" onclick={() => app.navigate({ name: 'running', id })}>Show log</Button>{/snippet}
-          <Banner tone="success" icon="play" title="Playing now" actions={showLog}>
-            Changes to mods, packs and settings apply the next time you start the game.
+          {#snippet showLog()}<Button size="sm" icon="terminal" onclick={() => app.navigate({ name: 'running', id })}>{t('Show log')}</Button>{/snippet}
+          <Banner tone="success" icon="play" title={t('Playing now')} actions={showLog}>
+            {t('Changes to mods, packs and settings apply the next time you start the game.')}
           </Banner>
         {/if}
       </header>
 
       <div class="tabs-row">
-        <Tabs label="Instance sections" items={tabItems} value={current} onChange={(t) => app.openInstance(id, t as InstanceTab)} />
+        <Tabs label={t('Instance sections')} items={tabItems} value={current} onChange={(t) => app.openInstance(id, t as InstanceTab)} />
       </div>
 
       {#if current === 'mods'}
@@ -514,9 +516,9 @@
 {:else}
   <div class="page missing">
     <Icon name="cube" size={36} />
-    <h1 class="text-title">This instance is gone</h1>
-    <p class="muted text-body">It may have been deleted or moved to the trash.</p>
-    <Button variant="primary" icon="library" onclick={() => app.navigate({ name: 'library' })}>Back to library</Button>
+    <h1 class="text-title">{t('This instance is gone')}</h1>
+    <p class="muted text-body">{t('It may have been deleted or moved to the trash.')}</p>
+    <Button variant="primary" icon="library" onclick={() => app.navigate({ name: 'library' })}>{t('Back to library')}</Button>
   </div>
 {/if}
 

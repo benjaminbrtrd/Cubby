@@ -1,5 +1,6 @@
 <!-- One modpack provider (ATLauncher, CurseForge, FTB, Modrinth, Technic): search, sort, results, and the pack page. -->
 <script lang="ts">
+  import { t } from '../../i18n.svelte'
   import { api } from '../../api'
   import { Banner, Button, Icon, InstanceIcon, MetaChip, TextField } from '../../cubby'
   import { compactNum, loaderName, plural, relativeTime } from '../../format'
@@ -18,11 +19,11 @@
 
   const PAGE = 20
   const SORT_LABEL: Record<PackSort, string> = {
-    relevance: 'Relevance',
-    downloads: 'Most downloaded',
-    updated: 'Recently updated',
-    newest: 'Newest',
-    name: 'Name',
+    relevance: t('Relevance'),
+    downloads: t('Most downloaded'),
+    updated: t('Recently updated'),
+    newest: t('Newest'),
+    name: t('Name'),
   }
 
   const sorts = $derived(provider.sorts.map((id) => ({ id, label: SORT_LABEL[id] })))
@@ -118,12 +119,12 @@
       <h1 class="text-title">{provider.name}</h1>
       {#if provider.available}
         <div class="search">
-          <TextField label="Search {provider.name} modpacks" hideLabel icon="search" placeholder="Search {provider.name} modpacks" bind:value={text} />
+          <TextField label={t('Search {name} modpacks', { name: provider.name })} hideLabel icon="search" placeholder={t('Search {name} modpacks', { name: provider.name })} bind:value={text} />
         </div>
         <span class="grow"></span>
         {#if sorts.length > 1}
-          <Picker items={sorts} value={sort} onSelect={(id) => (picked = id as PackSort)} label="Sort by" buttonLabel="Sort by {sortLabel}. Change" variant="ghost" listWidth={200}>
-            {#snippet trigger()}<span class="text-body">Sort: <span class="text-body-strong ink">{sortLabel}</span></span>{/snippet}
+          <Picker items={sorts} value={sort} onSelect={(id) => (picked = id as PackSort)} label={t('Sort by')} buttonLabel={t('Sort by {sort}. Change', { sort: sortLabel })} variant="ghost" listWidth={200}>
+            {#snippet trigger()}<span class="text-body">{t('Sort:')} <span class="text-body-strong ink">{sortLabel}</span></span>{/snippet}
             {#snippet option(item, on)}<span class={['text-body', on && 'text-body-strong']}>{item.label}</span>{/snippet}
           </Picker>
         {/if}
@@ -133,31 +134,31 @@
     {#if !provider.available}
       <div class="setup">
         <span class="setup__ic" aria-hidden="true"><Icon name="key" size={27} /></span>
-        <h2 class="text-heading">{provider.name} needs setup</h2>
-        <p class="text-body muted">{provider.reason ?? `${provider.name} isn't available right now.`}</p>
+        <h2 class="text-heading">{t('{name} needs setup', { name: provider.name })}</h2>
+        <p class="text-body muted">{provider.reason ?? t('{name} isn\'t available right now.', { name: provider.name })}</p>
         {#if provider.id === 'curseforge'}
-          <Button variant="primary" icon="settings" onclick={() => app.navigate({ name: 'settings', section: 'accounts' })}>Open Settings</Button>
+          <Button variant="primary" icon="settings" onclick={() => app.navigate({ name: 'settings', section: 'accounts' })}>{t('Open Settings')}</Button>
         {/if}
       </div>
     {:else}
       <p class="text-small muted summary" aria-live="polite">
         {#if loading}
-          Searching {provider.name}…
+          {t('Searching {name}…', { name: provider.name })}
         {:else if error}
           &nbsp;
         {:else if query.trim()}
-          {total != null ? plural(total, 'pack', 'packs') : plural(hits.length, 'pack', 'packs')} for “{query.trim()}”.
+          {t('{n} for “{query}”.', { n: total != null ? plural(total, 'pack', 'packs') : plural(hits.length, 'pack', 'packs'), query: query.trim() })}
         {:else}
-          {total != null ? `${plural(total, 'pack', 'packs')} on ${provider.name}.` : `Packs on ${provider.name}.`}
-          Each one installs as a new instance.
+          {total != null ? t('{n} on {name}.', { n: plural(total, 'pack', 'packs'), name: provider.name }) : t('Packs on {name}.', { name: provider.name })}
+          {t('Each one installs as a new instance.')}
         {/if}
       </p>
 
       <div class="results" aria-busy={loading}>
         {#if error}
-          {#snippet retry()}<Button size="sm" icon="update" onclick={() => retries++}>Try again</Button>{/snippet}
-          <Banner tone="warning" icon={offline ? 'offline' : 'warning'} title={offline ? `Can't reach ${provider.name}` : "Search didn't work"} actions={retry}>
-            {offline ? 'Check your internet connection, then try again.' : error}
+          {#snippet retry()}<Button size="sm" icon="update" onclick={() => retries++}>{t('Try again')}</Button>{/snippet}
+          <Banner tone="warning" icon={offline ? 'offline' : 'warning'} title={offline ? t('Can\'t reach {name}', { name: provider.name }) : t('Search didn\'t work')} actions={retry}>
+            {offline ? t('Check your internet connection, then try again.') : error}
           </Banner>
         {:else if loading}
           <ul class="list" aria-hidden="true">
@@ -165,26 +166,26 @@
               <li class="row skeleton"><span class="sk-icon"></span><span class="sk-lines"><span class="sk w40"></span><span class="sk w90"></span><span class="sk w60"></span></span></li>
             {/each}
           </ul>
-          <span class="cb-visually-hidden" role="status">Loading packs</span>
+          <span class="cb-visually-hidden" role="status">{t('Loading packs')}</span>
         {:else if !hits.length}
           <div class="empty">
             <span class="setup__ic" aria-hidden="true"><Icon name="search" size={27} /></span>
-            <h2 class="text-heading">No packs found</h2>
+            <h2 class="text-heading">{t('No packs found')}</h2>
             <p class="text-body muted">
-              {query.trim() ? `Nothing on ${provider.name} matches “${query.trim()}”. Check the spelling or try fewer words.` : `${provider.name} has no packs to show right now.`}
+              {query.trim() ? t('Nothing on {name} matches “{query}”. Check the spelling or try fewer words.', { name: provider.name, query: query.trim() }) : t('{name} has no packs to show right now.', { name: provider.name })}
             </p>
-            {#if query.trim()}<Button onclick={() => (text = '')}>Clear search</Button>{/if}
+            {#if query.trim()}<Button onclick={() => (text = '')}>{t('Clear search')}</Button>{/if}
           </div>
         {:else}
           <ul class="list">
             {#each hits as h (h.id)}
               <li>
-                <button type="button" class="row" onclick={() => (selected = h)} aria-label="Open {h.name}">
+                <button type="button" class="row" onclick={() => (selected = h)} aria-label={t('Open {name}', { name: h.name })}>
                   <InstanceIcon {...art(h)} size={48} raised />
                   <span class="text">
                     <span class="line1">
                       <span class="text-body-strong">{h.name}</span>
-                      {#if h.authors.length}<span class="text-small muted">by {h.authors.slice(0, 2).join(', ')}{h.authors.length > 2 ? ' and others' : ''}</span>{/if}
+                      {#if h.authors.length}<span class="text-small muted">{t('by {authors}', { authors: h.authors.slice(0, 2).join(', ') + (h.authors.length > 2 ? t(' and others') : '') })}</span>{/if}
                     </span>
                     {#if h.summary}<span class="text-body muted summ">{h.summary}</span>{/if}
                     <span class="chips">
@@ -200,12 +201,12 @@
             {/each}
           </ul>
           {#if moreError}
-            <p class="text-small warn"><Icon name="warning" size={18} />Couldn't load more. {moreError}</p>
+            <p class="text-small warn"><Icon name="warning" size={18} />{t('Couldn\'t load more. {moreError}', { moreError })}</p>
           {/if}
           {#if hasMore || moreError}
-            <div class="more"><Button icon="download" busy={more} disabled={more} onclick={loadMore}>Load more</Button></div>
+            <div class="more"><Button icon="download" busy={more} disabled={more} onclick={loadMore}>{t('Load more')}</Button></div>
           {:else if provider.paged && hits.length > PAGE}
-            <p class="text-small muted end">That's everything.</p>
+            <p class="text-small muted end">{t('That\'s everything.')}</p>
           {/if}
         {/if}
       </div>

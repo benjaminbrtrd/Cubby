@@ -3,6 +3,7 @@
 <script lang="ts" module>
   import DOMPurify from 'dompurify'
   import { Marked } from 'marked'
+  import { t } from '../../i18n.svelte'
   import type { ProjectKind } from '../../types'
 
   const marked = new Marked({ gfm: true, breaks: false, async: false })
@@ -57,7 +58,7 @@
       }
       const a = doc.createElement('a')
       a.setAttribute('href', href)
-      a.textContent = /youtube/.test(href) ? 'Watch the video on YouTube' : 'Open the embedded page'
+      a.textContent = /youtube/.test(href) ? t('Watch the video on YouTube') : t('Open the embedded page')
       frame.replaceWith(a)
     }
 

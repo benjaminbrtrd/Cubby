@@ -1,5 +1,6 @@
 <!-- A modpack from a provider: what it is, and the form that installs it as a new instance. -->
 <script lang="ts">
+  import { t } from '../../i18n.svelte'
   import { untrack } from 'svelte'
   import { api } from '../../api'
   import { Banner, Button, Dialog, Icon, InstanceIcon, MetaChip, Switch, type Ground, type Motif } from '../../cubby'
@@ -136,10 +137,10 @@
   /** What a mod's choice does to the others, in words. */
   function notes(m: OptionalMod): string[] {
     const out: string[] = []
-    if (m.depends.length) out.push(`Needs ${m.depends.join(', ')}`)
+    if (m.depends.length) out.push(t('Needs {mods}', { mods: m.depends.join(', ') }))
     if (m.group) {
       const others = (optional ?? []).filter((o) => o.group === m.group && o.name !== m.name).map((o) => o.name)
-      if (others.length) out.push(`Pick one: replaces ${others.join(', ')}`)
+      if (others.length) out.push(t('Pick one: replaces {mods}', { mods: others.join(', ') }))
     }
     return out
   }
@@ -154,7 +155,7 @@
   let iconTouched = $state(false)
   let submitted = $state(false)
   let busy = $state(false)
-  const nameError = $derived(submitted && !name.trim() ? 'Give the instance a name.' : undefined)
+  const nameError = $derived(submitted && !name.trim() ? t('Give the instance a name.') : undefined)
 
   const warning = $derived(details?.warning ?? null)
   const canInstall = $derived(!warning && !!chosen && !busy)
@@ -168,7 +169,7 @@
       await app.refreshInstances()
       app.selected = inst.id
       app.openInstance(inst.id)
-      app.toast(`${inst.name} is installing. You can follow it in Downloads.`, 'success', { label: 'Downloads', run: () => app.navigate({ name: 'downloads' }) })
+      app.toast(t('{name} is installing. You can follow it in Downloads.', { name: inst.name }), 'success', { label: t('Downloads'), run: () => app.navigate({ name: 'downloads' }) })
     } catch (e) {
       app.error(e)
     } finally {
@@ -186,7 +187,7 @@
   const links = $derived.by(() => {
     const list = details?.links ?? []
     if (list.length || !summary.websiteUrl) return list
-    return [{ label: `Page on ${provider.name}`, url: summary.websiteUrl }]
+    return [{ label: t('Page on {name}', { name: provider.name }), url: summary.websiteUrl }]
   })
 
   let viewing = $state<number | null>(null)
@@ -199,7 +200,7 @@
 
 <div class="page">
   <div class="main">
-    <nav aria-label="Breadcrumb">
+    <nav aria-label={t('Breadcrumb')}>
       <ol class="crumbs">
         <li><button type="button" class="link text-body-strong" onclick={onBack}>{provider.name}</button></li>
         <li aria-hidden="true" class="sep"><Icon name="chevron-right" size={18} /></li>
@@ -212,35 +213,35 @@
       <div class="header-text">
         <div class="title-line">
           <h1 class="text-title">{summary.name}</h1>
-          {#if summary.authors.length}<span class="text-body muted">by {summary.authors.join(', ')}</span>{/if}
+          {#if summary.authors.length}<span class="text-body muted">{t('by {authors}', { authors: summary.authors.join(', ') })}</span>{/if}
         </div>
         {#if summary.summary}<p class="text-body">{summary.summary}</p>{/if}
         <div class="chips">
-          {#if summary.minecraft.length}<MetaChip title="Minecraft versions">{mcSpan(summary.minecraft)}</MetaChip>{/if}
-          {#if summary.loaders.length}<MetaChip title="Loaders">{summary.loaders.map((l) => loaderName(l)).join(', ')}</MetaChip>{/if}
+          {#if summary.minecraft.length}<MetaChip title={t('Minecraft versions')}>{mcSpan(summary.minecraft)}</MetaChip>{/if}
+          {#if summary.loaders.length}<MetaChip title={t('Loaders')}>{summary.loaders.map((l) => loaderName(l)).join(', ')}</MetaChip>{/if}
         </div>
         <ul class="stats text-small">
-          {#if summary.downloads != null}<li><Icon name="download" size={18} />{compactNum(summary.downloads)} downloads</li>{/if}
-          {#if summary.updated}<li><Icon name="clock" size={18} />Updated {lower(relativeTime(summary.updated, 'never'))}</li>{/if}
-          <li><Icon name="globe" size={18} />Source: {provider.name}</li>
+          {#if summary.downloads != null}<li><Icon name="download" size={18} />{t('{n} downloads', { n: compactNum(summary.downloads) })}</li>{/if}
+          {#if summary.updated}<li><Icon name="clock" size={18} />{t('Updated {never}', { never: lower(relativeTime(summary.updated, 'never')) })}</li>{/if}
+          <li><Icon name="globe" size={18} />{t('Source: {name}', { name: provider.name })}</li>
         </ul>
       </div>
     </header>
 
     {#if warning}
-      <Banner tone="warning" title="Cubby can't install this pack">{warning}</Banner>
+      <Banner tone="warning" title={t('Cubby can\'t install this pack')}>{warning}</Banner>
     {/if}
 
     {#if detailsError}
-      {#snippet retry()}<Button size="sm" icon="update" onclick={() => tries++}>Try again</Button>{/snippet}
-      <Banner tone="warning" title="Couldn't load the pack's page" actions={retry}>{detailsError}</Banner>
+      {#snippet retry()}<Button size="sm" icon="update" onclick={() => tries++}>{t('Try again')}</Button>{/snippet}
+      <Banner tone="warning" title={t('Couldn\'t load the pack\'s page')} actions={retry}>{detailsError}</Banner>
     {:else if !details}
       <div class="skeleton" aria-hidden="true"><span class="sk w90"></span><span class="sk w60"></span><span class="sk w90"></span><span class="sk w40"></span></div>
-      <span class="cb-visually-hidden" role="status">Loading the pack</span>
+      <span class="cb-visually-hidden" role="status">{t('Loading the pack')}</span>
     {:else}
-      <section class="description" aria-label="Description">
+      <section class="description" aria-label={t('Description')}>
         {#if !details.description.trim()}
-          <p class="text-body muted">The author hasn't written a description yet.</p>
+          <p class="text-body muted">{t('The author hasn\'t written a description yet.')}</p>
         {:else if details.descriptionFormat === 'markdown'}
           <Markdown source={details.description} />
         {:else}
@@ -252,11 +253,11 @@
 
       {#if gallery.length}
         <section aria-labelledby="pk-gallery">
-          <h2 id="pk-gallery" class="text-heading">Gallery</h2>
+          <h2 id="pk-gallery" class="text-heading">{t('Gallery')}</h2>
           <ul class="gallery">
             {#each gallery as url, i (url + i)}
               <li>
-                <button type="button" class="thumb" aria-label="Open image {i + 1} of {gallery.length}" onclick={() => (viewing = i)}>
+                <button type="button" class="thumb" aria-label={t('Open image {i} of {length}', { i: i + 1, length: gallery.length })} onclick={() => (viewing = i)}>
                   <img src={url} alt="" loading="lazy" />
                 </button>
               </li>
@@ -267,7 +268,7 @@
 
       {#if links.length}
         <section aria-labelledby="pk-links">
-          <h2 id="pk-links" class="text-heading">Links</h2>
+          <h2 id="pk-links" class="text-heading">{t('Links')}</h2>
           <ul class="links">
             {#each links as l (l.url + l.label)}
               <li>
@@ -282,39 +283,39 @@
     {/if}
   </div>
 
-  <aside class="aside" aria-label="Install {summary.name}">
-    <h2 class="text-heading">Install</h2>
-    <p class="text-small muted">It becomes a new instance, with its own Minecraft version, loader and settings. Your other instances stay as they are.</p>
+  <aside class="aside" aria-label={t('Install {name}', { name: summary.name })}>
+    <h2 class="text-heading">{t('Install')}</h2>
+    <p class="text-small muted">{t('It becomes a new instance, with its own Minecraft version, loader and settings. Your other instances stay as they are.')}</p>
 
     <div class="field">
-      <span class="text-body-strong">Version</span>
+      <span class="text-body-strong">{t('Version')}</span>
       {#if versions && versions.length && chosen}
-        <Picker items={versionItems} value={chosen.id} onSelect={(id) => (versionId = id)} label="Version" buttonLabel="Version {chosen.name}. Change version">
+        <Picker items={versionItems} value={chosen.id} onSelect={(id) => (versionId = id)} label={t('Version')} buttonLabel={t('Version {name}. Change version', { name: chosen.name })}>
           {#snippet trigger()}
             <span class="stack">
               <span class="vname"><span class="text-mono">{chosen!.name}</span>{#if chosen!.channel !== 'release'}<span class="text-small chan">{CHANNEL_WORD[chosen!.channel]}</span>{/if}</span>
-              <span class="text-small muted">{versionLine(chosen!) || 'Version details unknown'}</span>
+              <span class="text-small muted">{versionLine(chosen!) || t('Version details unknown')}</span>
             </span>
           {/snippet}
           {#snippet option(item)}
             <span class="stack">
-              <span class="vname"><span class="text-mono">{item.v.name}</span>{#if item.v.channel !== 'release'}<span class="text-small chan">{CHANNEL_WORD[item.v.channel]}</span>{:else if item.v.id === newest?.id}<span class="text-small good">Latest</span>{/if}</span>
+              <span class="vname"><span class="text-mono">{item.v.name}</span>{#if item.v.channel !== 'release'}<span class="text-small chan">{CHANNEL_WORD[item.v.channel]}</span>{:else if item.v.id === newest?.id}<span class="text-small good">{t('Latest')}</span>{/if}</span>
               <span class="text-small muted">{[versionLine(item.v), item.v.released ? relativeTime(item.v.released, '') : ''].filter(Boolean).join(' · ')}</span>
             </span>
           {/snippet}
         </Picker>
-        {#if chosen.released}<span class="text-small muted">Released {relativeTime(chosen.released, '')} · {date(chosen.released)}</span>{/if}
+        {#if chosen.released}<span class="text-small muted">{t('Released {released} · {released2}', { released: relativeTime(chosen.released, ''), released2: date(chosen.released) })}</span>{/if}
         {#if chosen.channel !== 'release'}
-          <span class="text-small warn line"><Icon name="warning" size={18} />{CHANNEL_WORD[chosen.channel]} versions can have bugs.</span>
+          <span class="text-small warn line"><Icon name="warning" size={18} />{t('{channel} versions can have bugs.', { channel: CHANNEL_WORD[chosen.channel] })}</span>
         {/if}
       {:else if versionsError}
-        <p class="text-small bad line"><Icon name="error" size={18} />Couldn't load the versions. {versionsError}</p>
-        <Button size="sm" icon="update" onclick={() => tries++}>Try again</Button>
+        <p class="text-small bad line"><Icon name="error" size={18} />{t('Couldn\'t load the versions. {versionsError}', { versionsError })}</p>
+        <Button size="sm" icon="update" onclick={() => tries++}>{t('Try again')}</Button>
       {:else if versions}
-        <p class="text-small muted">This pack has no version to install yet.</p>
+        <p class="text-small muted">{t('This pack has no version to install yet.')}</p>
       {:else}
         <span class="placeholder" aria-hidden="true"></span>
-        <span class="cb-visually-hidden" role="status">Loading versions</span>
+        <span class="cb-visually-hidden" role="status">{t('Loading versions')}</span>
       {/if}
     </div>
 
@@ -322,32 +323,32 @@
       <dl class="req">
         <dt class="text-small muted">Minecraft</dt>
         <dd class="text-mono">{chosen.minecraft ?? '—'}</dd>
-        <dt class="text-small muted">Loader</dt>
+        <dt class="text-small muted">{t('Loader')}</dt>
         <dd class="text-mono">{chosen.loader ? loaderName(chosen.loader) : 'Vanilla'}</dd>
       </dl>
     {/if}
 
     {#if provider.id === 'atlauncher' && chosen}
       <section class="optional" aria-labelledby="pk-opt">
-        <h3 id="pk-opt" class="text-label muted">Optional mods</h3>
+        <h3 id="pk-opt" class="text-label muted">{t('Optional mods')}</h3>
         {#if optionalError}
-          <p class="text-small bad line"><Icon name="error" size={18} />Couldn't load the optional mods. {optionalError}</p>
-          <Button size="sm" icon="update" onclick={() => optTries++}>Try again</Button>
+          <p class="text-small bad line"><Icon name="error" size={18} />{t('Couldn\'t load the optional mods. {optionalError}', { optionalError })}</p>
+          <Button size="sm" icon="update" onclick={() => optTries++}>{t('Try again')}</Button>
         {:else if optional === null}
           <span class="placeholder tall" aria-hidden="true"></span>
-          <span class="cb-visually-hidden" role="status">Loading optional mods</span>
+          <span class="cb-visually-hidden" role="status">{t('Loading optional mods')}</span>
         {:else if !optional.length}
-          <p class="text-small muted">This version has no optional mods.</p>
+          <p class="text-small muted">{t('This version has no optional mods.')}</p>
         {:else}
-          <p class="text-small muted">{plural(tickedNames.length, 'mod', 'mods')} of {optional.length} will be installed.</p>
+          <p class="text-small muted">{t('{n} of {length} will be installed.', { n: plural(tickedNames.length, 'mod', 'mods'), length: optional.length })}</p>
           <ul class="mods">
             {#each optional as m (m.name)}
               <li>
-                <Switch checked={!!ticked[m.name]} onChange={(on) => toggle(m, on)} label="Install {m.name}" hideLabel disabled={busy} />
+                <Switch checked={!!ticked[m.name]} onChange={(on) => toggle(m, on)} label={t('Install {name}', { name: m.name })} hideLabel disabled={busy} />
                 <div class="mod">
                   <p class="mod__head">
                     <span class="text-body-strong">{m.name}</span>
-                    {#if m.recommended}<span class="text-small good">Recommended</span>{/if}
+                    {#if m.recommended}<span class="text-small good">{t('Recommended')}</span>{/if}
                   </p>
                   {#if m.description}<p class="text-small muted">{m.description}</p>{/if}
                   {#each notes(m) as n (n)}<p class="text-small note">{n}</p>{/each}
@@ -362,11 +363,11 @@
 
     <Identity bind:name bind:group bind:motif bind:ground bind:src bind:iconTouched {nameError} />
 
-    <Button variant="primary" size="lg" icon="download" busy={busy} disabled={!canInstall} onclick={install} class="wide">Install modpack</Button>
+    <Button variant="primary" size="lg" icon="download" busy={busy} disabled={!canInstall} onclick={install} class="wide">{t('Install modpack')}</Button>
     {#if warning}
       <p class="text-small muted line"><Icon name="info" size={18} />{warning}</p>
     {:else}
-      <p class="text-small muted">You can keep using Cubby while it installs.</p>
+      <p class="text-small muted">{t('You can keep using Cubby while it installs.')}</p>
     {/if}
   </aside>
 </div>
@@ -374,12 +375,12 @@
 {#if viewing !== null && gallery[viewing]}
   {#snippet viewerActions()}
     {#if gallery.length > 1}
-      <Button size="sm" onclick={() => move(-1)}>Previous</Button>
-      <Button size="sm" iconEnd="chevron-right" onclick={() => move(1)}>Next</Button>
+      <Button size="sm" onclick={() => move(-1)}>{t('Previous')}</Button>
+      <Button size="sm" iconEnd="chevron-right" onclick={() => move(1)}>{t('Next')}</Button>
     {/if}
   {/snippet}
-  <Dialog wide title="{summary.name}: image {viewing + 1} of {gallery.length}" onClose={() => (viewing = null)} actions={viewerActions}>
-    <img class="big" src={gallery[viewing]} alt="{summary.name}, image {viewing + 1}" />
+  <Dialog wide title={t('{name}: image {viewing} of {length}', { name: summary.name, viewing: viewing + 1, length: gallery.length })} onClose={() => (viewing = null)} actions={viewerActions}>
+    <img class="big" src={gallery[viewing]} alt={t('{name}, image {viewing}', { name: summary.name, viewing: viewing + 1 })} />
   </Dialog>
 {/if}
 

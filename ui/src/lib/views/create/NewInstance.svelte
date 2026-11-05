@@ -1,11 +1,13 @@
-<!-- New instance: a rail of sources (Custom, Import, then the modpack providers) and the chosen source on the right. -->
+<!-- New instance: a rail of sources (Quick start, Custom, Import, then the modpack providers) and the chosen source on the right. -->
 <script lang="ts">
   import { Banner, Button, Icon, type IconName } from '../../cubby'
   import { app } from '../../state.svelte'
+  import { t } from '../../i18n.svelte'
   import CustomForm from './CustomForm.svelte'
   import ImportSource from './ImportSource.svelte'
   import ProviderBrowser from './ProviderBrowser.svelte'
   import ProviderMark from './ProviderMark.svelte'
+  import QuickStart from './QuickStart.svelte'
 
   const source = $derived(app.newSource)
   const providers = $derived(app.providers)
@@ -15,24 +17,25 @@
     if (!app.providers && !app.providersError) void app.loadProviders()
   })
 
-  // a source that doesn't exist (any more) falls back to Custom
+  // a source that doesn't exist (any more) falls back to Quick start
   $effect(() => {
-    if (providers && source !== 'custom' && source !== 'import' && !provider) app.newSource = 'custom'
+    if (providers && source !== 'quick' && source !== 'custom' && source !== 'import' && !provider) app.newSource = 'quick'
   })
 
-  const fixed: { id: 'custom' | 'import'; label: string; icon: IconName }[] = [
+  const fixed: { id: 'quick' | 'custom' | 'import'; label: string; icon: IconName }[] = [
+    { id: 'quick', label: 'Quick start', icon: 'play' },
     { id: 'custom', label: 'Custom', icon: 'cube' },
     { id: 'import', label: 'Import', icon: 'import' },
   ]
 </script>
 
 <div class="screen">
-  <nav class="rail" aria-label="Instance sources">
+  <nav class="rail" aria-label={t('Instance sources')}>
     <div class="rail__head">
       <button type="button" class="back text-body-strong" onclick={() => app.navigate({ name: 'library' })}>
-        Library<span class="sep" aria-hidden="true"><Icon name="chevron-right" size={18} /></span>
+        {t('Library')}<span class="sep" aria-hidden="true"><Icon name="chevron-right" size={18} /></span>
       </button>
-      <h1 class="text-title title">New instance</h1>
+      <h1 class="text-title title">{t('New instance')}</h1>
     </div>
 
     <ul class="items">
@@ -40,13 +43,13 @@
         <li>
           <button type="button" class={['item', source === s.id && 'is-on']} aria-current={source === s.id ? 'page' : undefined} onclick={() => (app.newSource = s.id)}>
             <span class="mark mark--line"><Icon name={s.icon} size={18} /></span>
-            <span class="text-body-strong">{s.label}</span>
+            <span class="text-body-strong">{t(s.label)}</span>
           </button>
         </li>
       {/each}
     </ul>
 
-    <p class="text-label muted group">Modpacks</p>
+    <p class="text-label muted group">{t('Modpacks')}</p>
     {#if providers}
       <ul class="items">
         {#each providers as p (p.id)}
@@ -54,26 +57,28 @@
             <button type="button" class={['item', source === p.id && 'is-on']} aria-current={source === p.id ? 'page' : undefined} onclick={() => (app.newSource = p.id)}>
               <ProviderMark id={p.id} />
               <span class="text-body-strong">{p.name}</span>
-              {#if !p.available}<span class="lock" data-tip="Needs setup"><Icon name="key" size={18} /></span>{/if}
+              {#if !p.available}<span class="lock" data-tip={t('Needs setup')}><Icon name="key" size={18} /></span>{/if}
             </button>
           </li>
         {/each}
       </ul>
     {:else if app.providersError}
       <div class="rail__error">
-        <p class="text-small">Couldn't load the modpack sources.</p>
-        <Button size="sm" icon="update" onclick={() => app.loadProviders()}>Try again</Button>
+        <p class="text-small">{t('Couldn’t load the modpack sources.')}</p>
+        <Button size="sm" icon="update" onclick={() => app.loadProviders()}>{t('Try again')}</Button>
       </div>
     {:else}
       <ul class="items" aria-hidden="true">
         {#each { length: 5 }, i (i)}<li><span class="sk"></span></li>{/each}
       </ul>
-      <span class="cb-visually-hidden" role="status">Loading the modpack sources</span>
+      <span class="cb-visually-hidden" role="status">{t('Loading the modpack sources')}</span>
     {/if}
   </nav>
 
   <div class="pane">
-    {#if source === 'custom'}
+    {#if source === 'quick'}
+      <QuickStart />
+    {:else if source === 'custom'}
       <CustomForm />
     {:else if source === 'import'}
       <ImportSource />
@@ -83,7 +88,7 @@
       {/key}
     {:else if app.providersError}
       <div class="pane__note">
-        <Banner tone="warning" icon="offline" title="Couldn't load the modpack sources">{app.providersError}</Banner>
+        <Banner tone="warning" icon="offline" title={t('Couldn’t load the modpack sources')}>{app.providersError}</Banner>
       </div>
     {/if}
   </div>
@@ -95,8 +100,9 @@
     min-height: 100%;
     height: 100%;
   }
+  /* "Nouvelle instance" is longer than "New instance": let it wrap rather than clip */
   .title {
-    white-space: nowrap;
+    overflow-wrap: anywhere;
   }
   .rail {
     box-sizing: border-box;

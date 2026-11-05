@@ -1,7 +1,8 @@
 <script lang="ts" module>
+  import { t } from '../i18n.svelte'
   import type { LogLevel } from './types';
 
-  const LEVEL: Record<LogLevel, string> = { debug: 'Debug', info: 'Info', warn: 'Warn', error: 'Error' };
+  const LEVEL: Record<LogLevel, string> = { debug: t('Debug'), info: t('Info'), warn: t('Warn'), error: t('Error') };
 </script>
 
 <script lang="ts">
@@ -26,7 +27,7 @@
     class="cb-log__lines text-log"
     role="log"
     aria-live={live ? 'polite' : 'off'}
-    aria-label={label || 'Game log'}
+    aria-label={label || t('Game log')}
     tabindex="0"
     style:max-height={maxHeight}
   >

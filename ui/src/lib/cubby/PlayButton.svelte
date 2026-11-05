@@ -9,6 +9,7 @@
   import Content from './Content.svelte';
   import Icon from './Icon.svelte';
   import { pct } from './data';
+  import { t } from '../i18n.svelte';
   import type { PlayButtonProps } from './types';
 
   let {
@@ -33,7 +34,7 @@
 >
   <span class="cb-play__icon"><Icon name={PLAY_ICON[state] || 'play'} size={size === 'lg' ? 27 : 18} /></span>
   <span class="cb-play__text">
-    <span class="cb-play__label">{label || PLAY_TEXT[state]}</span>
+    <span class="cb-play__label">{label || t(PLAY_TEXT[state])}</span>
     {#if detail}<span class="cb-play__detail text-small"><Content value={detail} /></span>{/if}
   </span>
   {#if value != null}

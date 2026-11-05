@@ -45,7 +45,7 @@ pub enum Event {
     GameState { instance_id: String, running: bool, exit_code: Option<i32> },
 }
 
-#[derive(Debug, Clone, Copy, Serialize)]
+#[derive(Debug, Clone, Copy, Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum LogStream {
     Stdout,

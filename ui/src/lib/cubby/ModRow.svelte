@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../i18n.svelte'
   import Content from './Content.svelte';
   import Icon from './Icon.svelte';
   import IconButton from './IconButton.svelte';
@@ -52,7 +53,7 @@
     {#if actions}
       <Content value={actions} />
     {:else}
-      <IconButton icon="more" size="sm" label={moreLabel || 'Actions for ' + name} onclick={onMore} />
+      <IconButton icon="more" size="sm" label={moreLabel || t('Actions for ') + name} onclick={onMore} />
     {/if}
   </div>
 </div>

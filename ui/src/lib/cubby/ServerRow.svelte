@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../i18n.svelte'
   import Button from './Button.svelte';
   import Icon from './Icon.svelte';
   import StatusTag from './StatusTag.svelte';
@@ -34,7 +35,7 @@
       <span class="cb-server__name text-heading">{name}</span>
       <span class="cb-server__address text-mono">{address}</span>
     </div>
-    <p class="cb-server__motd text-mono">{online ? motd : offlineText || 'Can’t reach server'}</p>
+    <p class="cb-server__motd text-mono">{online ? motd : offlineText || t('Can’t reach server')}</p>
   </div>
   <div class="cb-server__stats">
     <StatusTag state={online ? 'online' : 'offline'} />
@@ -42,7 +43,7 @@
       <span class="cb-server__players" title={playersLabel}>
         <Icon name="accounts" size={18} />
         <span class="text-counter">{players.online + '/' + players.max}</span>
-        <span class="cb-visually-hidden">{playersLabel || 'players online'}</span>
+        <span class="cb-visually-hidden">{playersLabel || t('players online')}</span>
       </span>
     {/if}
     {#if online}
@@ -50,12 +51,12 @@
         <span class="cb-ping__bars" aria-hidden="true">
           {#each { length: 4 }, i (i)}<span class={['cb-ping__bar', i < bars && 'is-on']} style:height="{5 + i * 3}px"></span>{/each}
         </span>
-        <span class="cb-ping__ms text-mono">{ping == null ? '—' : pingText || ping + ' ms'}</span>
+        <span class="cb-ping__ms text-mono">{ping == null ? '—' : pingText || ping + t(' ms')}</span>
       </span>
     {/if}
   </div>
   <div class="cb-server__join">
     {#if instance}<span class="cb-server__instance text-small"><Icon name="cube" size={18} />{instance}</span>{/if}
-    <Button variant={online ? 'primary' : 'secondary'} icon="play" disabled={!online} onclick={onJoin} aria-label={joinLabel}>{joinText || 'Join'}</Button>
+    <Button variant={online ? 'primary' : 'secondary'} icon="play" disabled={!online} onclick={onJoin} aria-label={joinLabel}>{joinText || t('Join')}</Button>
   </div>
 </div>

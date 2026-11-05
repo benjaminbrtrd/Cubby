@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../i18n.svelte'
   import { Banner, Button, Dialog } from '../../cubby'
   import { api } from '../../api'
   import { app } from '../../state.svelte'
@@ -69,8 +70,8 @@
     if (!app.selected) app.selected = app.recent[0]?.id ?? null
     busy = false
     if (names.length) {
-      app.toast(names.length === 1 ? `${names[0]} moved to the trash.` : `${plural(names.length, 'instance', 'instances')} moved to the trash.`, 'success', {
-        label: 'Open trash',
+      app.toast(names.length === 1 ? t('{names} moved to the trash.', { names: names[0] }) : t('{n} moved to the trash.', { n: plural(names.length, 'instance', 'instances') }), 'success', {
+        label: t('Open trash'),
         run: () => api.openDataFolder('trash').catch((e) => app.error(e)),
       })
     }
@@ -79,43 +80,42 @@
 </script>
 
 {#snippet actions()}
-  <Button variant="ghost" onclick={() => close(false)}>Cancel</Button>
+  <Button variant="ghost" onclick={() => close(false)}>{t('Cancel')}</Button>
   <Button variant="danger" icon="trash" busy={busy} disabled={busy || running.length > 0} onclick={remove}>
-    {busy ? 'Moving to trash…' : 'Move to trash'}
+    {busy ? t('Moving to trash…') : t('Move to trash')}
   </Button>
 {/snippet}
 
 {#snippet stopAction()}
-  <Button size="sm" variant="danger" icon="stop" onclick={() => running.forEach((i) => app.kill(i.id))}>Stop the game</Button>
+  <Button size="sm" variant="danger" icon="stop" onclick={() => running.forEach((i) => app.kill(i.id))}>{t('Stop the game')}</Button>
 {/snippet}
 
 {#if targets.length}
   <Dialog
     tone="danger"
     icon="trash"
-    title={single ? `Move “${single.name}” to the trash?` : `Move ${plural(targets.length, 'instance', 'instances')} to the trash?`}
+    title={single ? t('Move “{name}” to the trash?', { name: single.name }) : t('Move {n} to the trash?', { n: plural(targets.length, 'instance', 'instances') })}
     onClose={() => close(false)}
     {actions}
   >
     {#if single}
       <p>
-        The instance goes to Cubby's trash folder with its mods, {worlds ? plural(worlds, 'world', 'worlds') : 'worlds'}, screenshots and settings. You can restore
-        it from there.
+        {t('The instance goes to Cubby\'s trash folder with its mods, {worlds}, screenshots and settings. You can restore it from there.', { worlds: worlds ? plural(worlds, 'world', 'worlds') : t('worlds') })}
       </p>
     {:else}
-      <p>They go to Cubby's trash folder with their mods, worlds, screenshots and settings. You can restore them from there.</p>
+      <p>{t('They go to Cubby\'s trash folder with their mods, worlds, screenshots and settings. You can restore them from there.')}</p>
       <ul class="names">
         {#each targets.slice(0, 6) as instance (instance.id)}
           <li class="text-body-strong">{instance.name}</li>
         {/each}
         {#if targets.length > 6}
-          <li class="text-small muted">and {plural(targets.length - 6, 'other', 'others')}</li>
+          <li class="text-small muted">{t('and {n}', { n: plural(targets.length - 6, 'other', 'others') })}</li>
         {/if}
       </ul>
     {/if}
     {#if running.length}
-      <Banner tone="warning" title={running.length === 1 ? `${running[0].name} is running` : 'Some of them are running'} actions={stopAction}>
-        Stop the game before you move it to the trash.
+      <Banner tone="warning" title={running.length === 1 ? `${running[0].name} is running` : t('Some of them are running')} actions={stopAction}>
+        {t('Stop the game before you move it to the trash.')}
       </Banner>
     {/if}
   </Dialog>

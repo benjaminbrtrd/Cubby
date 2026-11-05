@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../i18n.svelte'
   import { tick } from 'svelte'
   import { api } from '../../api'
   import { Banner, Button, Icon, IconButton, InstanceIcon, StatusTag } from '../../cubby'
@@ -66,13 +67,13 @@
     void persist([...on.filter((x) => x.fileName !== p.fileName), { ...p, enabled: false }, ...off])
   }
 
-  const describe = (p: Pack) => `${p.isDir ? 'Folder' : 'Zip file'} · ${bytes(p.size)}`
+  const describe = (p: Pack) => `${p.isDir ? t('Folder') : t('Zip file')} · ${bytes(p.size)}`
 </script>
 
 {#snippet updateButton(p: Pack)}
   {@const up = data.update(p.fileName)}
   {#if up}
-    <Button size="sm" icon="update" busy={updating} disabled={updating || locked} onclick={() => data.applyUpdates([up.fileName])}>Update to {up.latestVersion}</Button>
+    <Button size="sm" icon="update" busy={updating} disabled={updating || locked} onclick={() => data.applyUpdates([up.fileName])}>{t('Update to {latestVersion}', { latestVersion: up.latestVersion })}</Button>
   {/if}
 {/snippet}
 
@@ -85,29 +86,29 @@
   {/if}
 {/snippet}
 
-<div class="ip-body" role="tabpanel" id="instance-panel" aria-label="Resource packs" bind:this={list}>
+<div class="ip-body" role="tabpanel" id="instance-panel" aria-label={t('Resource packs')} bind:this={list}>
   <div class="note">
     <span class="info icon"><Icon name="info" size={18} /></span>
     <div class="note__text">
-      <p class="text-body-strong">Packs higher in the list win when two change the same texture.</p>
-      <p class="text-small muted">Resource packs change how blocks, items and menus look. They never change how the game plays.</p>
+      <p class="text-body-strong">{t('Packs higher in the list win when two change the same texture.')}</p>
+      <p class="text-small muted">{t('Resource packs change how blocks, items and menus look. They never change how the game plays.')}</p>
     </div>
   </div>
 
   {#if locked}
-    <Banner tone="info" icon="play" title="The game is running">
-      Close it to change packs here, or change them in game under Options › Resource packs.
+    <Banner tone="info" icon="play" title={t('The game is running')}>
+      {t('Close it to change packs here, or change them in game under Options › Resource packs.')}
     </Banner>
   {/if}
 
   {#if packs === null}
-    <p class="muted text-body">Reading the resource packs folder…</p>
+    <p class="muted text-body">{t('Reading the resource packs folder…')}</p>
   {:else}
     <div class="cols">
       <section class="stack" aria-labelledby="rp-on">
         <div class="head">
-          <h2 id="rp-on" class="text-label">On, in load order</h2>
-          <span class="text-small muted">Number 1 is on top and wins.</span>
+          <h2 id="rp-on" class="text-label">{t('On, in load order')}</h2>
+          <span class="text-small muted">{t('Number 1 is on top and wins.')}</span>
         </div>
         <ol class="list">
           {#each on as p, i (p.fileName)}
@@ -118,9 +119,9 @@
                 <button type="button" class="pack__name text-body-strong" aria-pressed={sel?.fileName === p.fileName} onclick={() => (selected = p.fileName)}>{p.name}</button>
                 <p class="text-small muted">{describe(p)}</p>
                 <div class="pack__tools">
-                  <IconButton icon="update" size="sm" label={`Move ${p.name} up`} data-focus={`${p.fileName}:up`} disabled={i === 0 || locked} onclick={() => move(i, i - 1)} />
-                  <IconButton icon="download" size="sm" label={`Move ${p.name} down`} data-focus={`${p.fileName}:down`} disabled={i === on.length - 1 || locked} onclick={() => move(i, i + 1)} />
-                  <Button size="sm" variant="ghost" icon="minimize" disabled={locked} onclick={() => turnOff(p)}>Turn off</Button>
+                  <IconButton icon="update" size="sm" label={t('Move {name} up', { name: p.name })} data-focus={`${p.fileName}:up`} disabled={i === 0 || locked} onclick={() => move(i, i - 1)} />
+                  <IconButton icon="download" size="sm" label={t('Move {name} down', { name: p.name })} data-focus={`${p.fileName}:down`} disabled={i === on.length - 1 || locked} onclick={() => move(i, i + 1)} />
+                  <Button size="sm" variant="ghost" icon="minimize" disabled={locked} onclick={() => turnOff(p)}>{t('Turn off')}</Button>
                   {@render updateButton(p)}
                 </div>
               </div>
@@ -131,11 +132,11 @@
             <InstanceIcon motif="block" ground="moss" size={32} />
             <div class="pack__body">
               <div class="pack__line">
-                <span class="text-body-strong">Default</span>
-                <span class="text-small muted">Minecraft’s own</span>
+                <span class="text-body-strong">{t('Default')}</span>
+                <span class="text-small muted">{t('Minecraft’s own')}</span>
               </div>
-              <p class="text-small muted">Always last, so anything the packs above leave out still has a texture.</p>
-              <span class="text-small muted locked"><Icon name="key" size={18} />Locked</span>
+              <p class="text-small muted">{t('Always last, so anything the packs above leave out still has a texture.')}</p>
+              <span class="text-small muted locked"><Icon name="key" size={18} />{t('Locked')}</span>
             </div>
           </li>
         </ol>
@@ -143,8 +144,8 @@
 
       <section class="stack" aria-labelledby="rp-off">
         <div class="head">
-          <h2 id="rp-off" class="text-label">Available</h2>
-          <span class="text-small muted">Installed but off. They don’t load.</span>
+          <h2 id="rp-off" class="text-label">{t('Available')}</h2>
+          <span class="text-small muted">{t('Installed but off. They don’t load.')}</span>
         </div>
         {#if off.length}
           <ul class="list">
@@ -155,65 +156,65 @@
                   <button type="button" class="pack__name text-body-strong" aria-pressed={sel?.fileName === p.fileName} onclick={() => (selected = p.fileName)}>{p.name}</button>
                   <p class="text-small muted">{describe(p)}</p>
                   <div class="pack__tools">
-                    <Button size="sm" icon="plus" disabled={locked} onclick={() => turnOn(p)}>Turn on</Button>
+                    <Button size="sm" icon="plus" disabled={locked} onclick={() => turnOn(p)}>{t('Turn on')}</Button>
                     {@render updateButton(p)}
                   </div>
                 </div>
               </li>
             {/each}
           </ul>
-          <p class="text-small muted">New packs land here, turned off, until you turn them on.</p>
+          <p class="text-small muted">{t('New packs land here, turned off, until you turn them on.')}</p>
         {:else}
-          <p class="empty text-body">{packs.length ? 'Every installed pack is on.' : 'No resource packs yet. Find some on Modrinth, or drop .zip files in the folder.'}</p>
+          <p class="empty text-body">{packs.length ? t('Every installed pack is on.') : t('No resource packs yet. Find some on Modrinth, or drop .zip files in the folder.')}</p>
         {/if}
         <div class="actions">
-          <Button variant="primary" icon="search" onclick={() => data.discover('resourcepack')}>Find resource packs</Button>
-          <Button icon="folder" onclick={() => data.openFolder('resourcepacks')}>Open folder</Button>
+          <Button variant="primary" icon="search" onclick={() => data.discover('resourcepack')}>{t('Find resource packs')}</Button>
+          <Button icon="folder" onclick={() => data.openFolder('resourcepacks')}>{t('Open folder')}</Button>
         </div>
       </section>
     </div>
   {/if}
 </div>
 
-<aside class="ip-aside" aria-label="Pack details">
+<aside class="ip-aside" aria-label={t('Pack details')}>
   <div class="ip-aside__inner">
     {#if sel}
       <div class="who">
         {@render art(sel, true)}
         <div class="who__text">
           <h2 class="text-heading">{sel.name}</h2>
-          <p class="text-small muted">{sel.enabled ? `On · number ${num(rank)} in load order` : 'Off'}</p>
+          <p class="text-small muted">{sel.enabled ? t('On · number {n} in load order', { n: num(rank) }) : t('Off')}</p>
         </div>
       </div>
       <div>
-        {#if sel.enabled}<StatusTag state="ready">On</StatusTag>{:else}<StatusTag state="disabled">Off</StatusTag>{/if}
+        {#if sel.enabled}<StatusTag state="ready">{t('On')}</StatusTag>{:else}<StatusTag state="disabled">{t('Off')}</StatusTag>{/if}
       </div>
       <dl class="facts">
-        <dt class="text-small muted">Size</dt>
+        <dt class="text-small muted">{t('Size')}</dt>
         <dd class="text-body">{bytes(sel.size)}</dd>
-        <dt class="text-small muted">Kind</dt>
-        <dd class="text-body">{sel.isDir ? 'Folder' : 'Zip file'}</dd>
+        <dt class="text-small muted">{t('Kind')}</dt>
+        <dd class="text-body">{sel.isDir ? t('Folder') : t('Zip file')}</dd>
         {#if sel.modified}
-          <dt class="text-small muted">Changed</dt>
+          <dt class="text-small muted">{t('Changed')}</dt>
           <dd class="text-body">{relativeTime(sel.modified)}</dd>
         {/if}
-        <dt class="text-small muted">Source</dt>
-        <dd class="text-body">{selSource ? 'Modrinth' : 'Not found on Modrinth'}</dd>
-        <dt class="text-small muted full">File</dt>
+        <dt class="text-small muted">{t('Source')}</dt>
+        <dd class="text-body">{selSource ? 'Modrinth' : t('Not found on Modrinth')}</dd>
+        <dt class="text-small muted full">{t('File')}</dt>
         <dd class="text-mono full wrap">{sel.fileName}</dd>
       </dl>
       <div class="actions">
-        {#if selSource}<Button size="sm" icon="globe" onclick={() => selSource && data.project(selSource.slug, 'resourcepack')}>Open page</Button>{/if}
+        {#if selSource}<Button size="sm" icon="globe" onclick={() => selSource && data.project(selSource.slug, 'resourcepack')}>{t('Open page')}</Button>{/if}
         {#if sel.enabled}
-          <Button size="sm" icon="minimize" disabled={locked} onclick={() => sel && turnOff(sel)}>Turn off</Button>
+          <Button size="sm" icon="minimize" disabled={locked} onclick={() => sel && turnOff(sel)}>{t('Turn off')}</Button>
         {:else}
-          <Button size="sm" icon="plus" disabled={locked} onclick={() => sel && turnOn(sel)}>Turn on</Button>
+          <Button size="sm" icon="plus" disabled={locked} onclick={() => sel && turnOn(sel)}>{t('Turn on')}</Button>
         {/if}
       </div>
-      <p class="text-small muted">Changes apply the next time you start the game.</p>
+      <p class="text-small muted">{t('Changes apply the next time you start the game.')}</p>
     {:else}
-      <p class="text-label muted">Pack details</p>
-      <p class="text-body muted">Add a resource pack to see it here.</p>
+      <p class="text-label muted">{t('Pack details')}</p>
+      <p class="text-body muted">{t('Add a resource pack to see it here.')}</p>
     {/if}
   </div>
 </aside>

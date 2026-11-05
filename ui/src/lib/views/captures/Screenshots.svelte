@@ -1,8 +1,9 @@
 <script lang="ts">
+  import { t } from '../../i18n.svelte'
   import { tick, untrack } from 'svelte'
   import { api } from '../../api'
   import { Button, Dialog, Icon, InstanceIcon, Tabs, type TabItem } from '../../cubby'
-  import { LOCALE, date, num, plural, timeOfDay } from '../../format'
+  import { locale, date, num, plural, timeOfDay } from '../../format'
   import { iconOf } from '../../icon'
   import { app } from '../../state.svelte'
   import type { Instance } from '../../types'
@@ -63,7 +64,7 @@
     return map
   })
   const tabs = $derived<TabItem[]>([
-    { id: 'all', label: 'All', count: num(shots?.length ?? 0) },
+    { id: 'all', label: t('All'), count: num(shots?.length ?? 0) },
     ...[...counts.entries()]
       .sort((a, b) => b[1] - a[1] || nameOf(a[0]).localeCompare(nameOf(b[0])))
       .map(([id, n]) => ({ id, label: nameOf(id), count: num(n) })),
@@ -80,21 +81,22 @@
     return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
   }
 
-  function dayLabel(t: number): string {
-    const diff = Math.round((dayStart(Date.now()) - dayStart(t)) / 86_400_000)
-    if (diff === 0) return 'Today'
-    if (diff === 1) return 'Yesterday'
-    return date(new Date(t).toISOString())
+  function dayLabel(time: number): string {
+    const diff = Math.round((dayStart(Date.now()) - dayStart(time)) / 86_400_000)
+    if (diff === 0) return t('Today')
+    if (diff === 1) return t('Yesterday')
+    return date(new Date(time).toISOString())
   }
 
   function weekday(t: number): string {
-    return new Date(t).toLocaleDateString(LOCALE, { weekday: 'long', month: 'short', day: 'numeric' })
+    return new Date(t).toLocaleDateString(locale(), { weekday: 'long', month: 'short', day: 'numeric' })
   }
 
-  function takenLabel(t: number): string {
-    const label = dayLabel(t)
-    const time = timeOfDay(new Date(t).toISOString())
-    return label === 'Today' || label === 'Yesterday' ? `${label} at ${time}` : `${weekday(t)} at ${time}`
+  function takenLabel(taken: number): string {
+    const label = dayLabel(taken)
+    const time = timeOfDay(new Date(taken).toISOString())
+    const recent = Math.round((dayStart(Date.now()) - dayStart(taken)) / 86_400_000) <= 1
+    return t('{day} at {time}', { day: recent ? label : weekday(taken), time })
   }
 
   const groups = $derived.by(() => {
@@ -208,17 +210,17 @@
           canvas.width = img.naturalWidth
           canvas.height = img.naturalHeight
           const ctx = canvas.getContext('2d')
-          if (!ctx) return reject(new Error('No canvas'))
+          if (!ctx) return reject(new Error(t('No canvas')))
           ctx.drawImage(img, 0, 0)
-          canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('No image'))), 'image/png')
+          canvas.toBlob((b) => (b ? resolve(b) : reject(new Error(t('No image')))), 'image/png')
         }
-        img.onerror = () => reject(new Error('Not loaded'))
+        img.onerror = () => reject(new Error(t('Not loaded')))
         img.src = s.url
       })
       await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })])
-      app.toast('Image copied to the clipboard.', 'success')
+      app.toast(t('Image copied to the clipboard.'), 'success')
     } catch {
-      app.toast('Couldn’t copy the image. Open the folder and copy the file from there.', 'error')
+      app.toast(t('Couldn’t copy the image. Open the folder and copy the file from there.'), 'error')
     }
   }
 
@@ -236,8 +238,8 @@
     const saved = await app.updateInstance({ ...current, icon: s.url })
     settingIcon = false
     if (!saved) return
-    if (saved.icon === s.url) app.toast(`This screenshot is now the icon of ${inst.name}.`, 'success')
-    else app.toast(`Cubby couldn’t use this screenshot as the icon of ${inst.name}. Its icon didn’t change.`, 'error')
+    if (saved.icon === s.url) app.toast(t('This screenshot is now the icon of {name}.', { name: inst.name }), 'success')
+    else app.toast(t('Cubby couldn’t use this screenshot as the icon of {name}. Its icon didn’t change.', { name: inst.name }), 'error')
   }
 
   let confirmDelete = $state<Shot | null>(null)
@@ -250,7 +252,7 @@
       const at = list.findIndex((x) => x.key === s.key)
       shots = (shots ?? []).filter((x) => x.key !== s.key)
       confirmDelete = null
-      app.toast('Screenshot deleted.', 'success')
+      app.toast(t('Screenshot deleted.'), 'success')
       const next = list[Math.min(at, list.length - 1)]
       selectedKey = next?.key ?? null
       if (next) void select(Math.min(at, list.length - 1))
@@ -263,8 +265,8 @@
 </script>
 
 {#snippet deleteActions()}
-  <Button variant="ghost" onclick={() => (confirmDelete = null)}>Cancel</Button>
-  <Button variant="danger" icon="trash" busy={deleting} disabled={deleting} onclick={() => confirmDelete && remove(confirmDelete)}>Delete</Button>
+  <Button variant="ghost" onclick={() => (confirmDelete = null)}>{t('Cancel')}</Button>
+  <Button variant="danger" icon="trash" busy={deleting} disabled={deleting} onclick={() => confirmDelete && remove(confirmDelete)}>{t('Delete')}</Button>
 {/snippet}
 
 {#snippet viewTitle()}<span class="text-mono">{cur?.fileName}</span>{/snippet}
@@ -274,30 +276,30 @@
     <div class="content">
       <div class="head">
         <div class="titles">
-          <h1 class="text-title">Screenshots</h1>
-          <p class="text-small muted">Press F2 in game to take one.</p>
+          <h1 class="text-title">{t('Screenshots')}</h1>
+          <p class="text-small muted">{t('Press F2 in game to take one.')}</p>
         </div>
         <span class="grow"></span>
         {#if activeTab !== 'all'}
-          <Button icon="folder" onclick={() => openFolder(activeTab)}>Open folder</Button>
+          <Button icon="folder" onclick={() => openFolder(activeTab)}>{t('Open folder')}</Button>
         {/if}
       </div>
 
       {#if shots == null}
-        <p class="text-small muted">Looking for screenshots…</p>
+        <p class="text-small muted">{t('Looking for screenshots…')}</p>
       {:else if !shots.length}
         <div class="card empty">
           <Icon name="captures" size={27} />
           <div class="grow">
-            <p class="text-body-strong">No screenshots yet</p>
-            <p class="text-small muted">Press F2 while you play. Your screenshots from every instance show up here.</p>
+            <p class="text-body-strong">{t('No screenshots yet')}</p>
+            <p class="text-small muted">{t('Press F2 while you play. Your screenshots from every instance show up here.')}</p>
           </div>
-          <Button icon="library" onclick={() => app.navigate({ name: 'library' })}>Go to the library</Button>
+          <Button icon="library" onclick={() => app.navigate({ name: 'library' })}>{t('Go to the library')}</Button>
         </div>
       {:else}
-        <Tabs label="Instances" items={tabs} value={activeTab} onChange={(v) => (tab = v)} />
+        <Tabs label={t('Instances')} items={tabs} value={activeTab} onChange={(v) => (tab = v)} />
         <p class="text-small muted">
-          Showing {plural(list.length, 'screenshot', 'screenshots')}{activeTab === 'all' && counts.size > 1 ? ` from ${plural(counts.size, 'instance', 'instances')}` : ''}
+          {t('Showing {n}', { n: plural(list.length, 'screenshot', 'screenshots') })}{activeTab === 'all' && counts.size > 1 ? t(' from {n}', { n: plural(counts.size, 'instance', 'instances') }) : ''}
         </p>
 
         <div class="groups" bind:this={gridsEl}>
@@ -336,16 +338,16 @@
       {/if}
     </div>
 
-    <aside class="aside" aria-label="Screenshot details">
+    <aside class="aside" aria-label={t('Screenshot details')}>
       <div class="aside-inner">
         {#if cur}
           <div class="big">
-            <img src={cur.url} alt={`Screenshot from ${nameOf(cur.instanceId)}, ${takenLabel(cur.time)}`} onload={onLoad} />
+            <img src={cur.url} alt={t('Screenshot from {instanceId}, {time}', { instanceId: nameOf(cur.instanceId), time: takenLabel(cur.time) })} onload={onLoad} />
           </div>
           <div class="nav">
-            <Button size="sm" variant="ghost" disabled={index === 0} onclick={() => select(index - 1, false)}>Newer</Button>
-            <span class="text-counter muted pos">{num(index + 1)} of {num(list.length)}</span>
-            <Button size="sm" variant="ghost" disabled={index >= list.length - 1} onclick={() => select(index + 1, false)}>Older</Button>
+            <Button size="sm" variant="ghost" disabled={index === 0} onclick={() => select(index - 1, false)}>{t('Newer')}</Button>
+            <span class="text-counter muted pos">{t('{n} of {n2}', { n: num(index + 1), n2: num(list.length) })}</span>
+            <Button size="sm" variant="ghost" disabled={index >= list.length - 1} onclick={() => select(index + 1, false)}>{t('Older')}</Button>
           </div>
 
           <div class="file">
@@ -354,35 +356,35 @@
           </div>
 
           <dl class="facts">
-            <dt class="text-small muted">Instance</dt>
+            <dt class="text-small muted">{t('Instance')}</dt>
             <dd class="dd-row">
               {#if curInstance}<InstanceIcon {...iconOf(curInstance)} seed={curInstance.name} size={32} />{/if}
               <span class="text-body">{nameOf(cur.instanceId)}</span>
             </dd>
             {#if resolution}
-              <dt class="text-small muted">Resolution</dt>
+              <dt class="text-small muted">{t('Resolution')}</dt>
               <dd class="text-body">{resolution}</dd>
             {/if}
           </dl>
 
-          <Button variant="primary" icon="copy" onclick={() => cur && copyImage(cur)}>Copy image</Button>
+          <Button variant="primary" icon="copy" onclick={() => cur && copyImage(cur)}>{t('Copy image')}</Button>
           <div class="row">
-            <Button size="sm" icon="folder" onclick={() => cur && openFolder(cur.instanceId)}>Open folder</Button>
+            <Button size="sm" icon="folder" onclick={() => cur && openFolder(cur.instanceId)}>{t('Open folder')}</Button>
           </div>
           {#if curInstance}
             <div>
-              <Button size="sm" icon="cube" busy={settingIcon} disabled={settingIcon} onclick={() => cur && setIcon(cur)}>Set as instance icon</Button>
-              <p class="text-small muted hint">Shown as a square next to {curInstance.name}.</p>
+              <Button size="sm" icon="cube" busy={settingIcon} disabled={settingIcon} onclick={() => cur && setIcon(cur)}>{t('Set as instance icon')}</Button>
+              <p class="text-small muted hint">{t('Shown as a square next to {name}.', { name: curInstance.name })}</p>
             </div>
           {/if}
 
           <div class="danger-zone">
-            <Button size="sm" variant="danger" icon="trash" onclick={() => (confirmDelete = cur)}>Delete</Button>
-            <span class="text-small muted">Deletes the file for good.</span>
+            <Button size="sm" variant="danger" icon="trash" onclick={() => (confirmDelete = cur)}>{t('Delete')}</Button>
+            <span class="text-small muted">{t('Deletes the file for good.')}</span>
           </div>
         {:else}
-          <h2 class="text-heading">Screenshot details</h2>
-          <p class="text-small muted">{shots?.length ? 'Select a screenshot to see it larger.' : 'Your screenshots show up here.'}</p>
+          <h2 class="text-heading">{t('Screenshot details')}</h2>
+          <p class="text-small muted">{shots?.length ? t('Select a screenshot to see it larger.') : t('Your screenshots show up here.')}</p>
         {/if}
       </div>
     </aside>
@@ -391,14 +393,14 @@
 
 {#if viewing && cur}
   <Dialog wide title={viewTitle} onClose={() => (viewing = false)} closeLabel="Close">
-    <img class="full" src={cur.url} alt={`Screenshot from ${nameOf(cur.instanceId)}, ${takenLabel(cur.time)}`} />
+    <img class="full" src={cur.url} alt={t('Screenshot from {instanceId}, {time}', { instanceId: nameOf(cur.instanceId), time: takenLabel(cur.time) })} />
   </Dialog>
 {/if}
 
 {#if confirmDelete}
-  <Dialog title="Delete this screenshot?" icon="trash" tone="danger" onClose={() => (confirmDelete = null)} actions={deleteActions}>
-    <p><span class="text-mono">{confirmDelete.fileName}</span> is deleted from {nameOf(confirmDelete.instanceId)}.</p>
-    <p>It doesn’t go to the Recycle Bin, so this can’t be undone.</p>
+  <Dialog title={t('Delete this screenshot?')} icon="trash" tone="danger" onClose={() => (confirmDelete = null)} actions={deleteActions}>
+    <p><span class="text-mono">{confirmDelete.fileName}</span> {t('is deleted from {instanceId}.', { instanceId: nameOf(confirmDelete.instanceId) })}</p>
+    <p>{t('It doesn’t go to the Recycle Bin, so this can’t be undone.')}</p>
   </Dialog>
 {/if}
 

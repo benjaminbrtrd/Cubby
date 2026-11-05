@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../i18n.svelte'
   import { untrack } from 'svelte'
   import { api } from '../../api'
   import { Button, Dialog, Icon, IconButton, InstanceIcon, ProgressBar, Slider, StatusTag } from '../../cubby'
@@ -10,28 +11,28 @@
   /** Task kinds that are bookkeeping, not downloads ("session" = play time saved). */
   const HIDDEN = new Set(['session'])
   const RUNNING: Record<string, string> = {
-    launch: 'Getting ready',
-    install: 'Installing',
-    modpack: 'Installing modpack',
-    update: 'Updating',
-    repair: 'Repairing',
-    backup: 'Backing up',
+    launch: t('Getting ready'),
+    install: t('Installing'),
+    modpack: t('Installing modpack'),
+    update: t('Updating'),
+    repair: t('Repairing'),
+    backup: t('Backing up'),
   }
   const DONE: Record<string, string> = {
-    launch: 'Ready to play',
-    install: 'Content installed',
-    modpack: 'Modpack installed',
-    update: 'Content updated',
-    repair: 'Game files checked',
-    backup: 'World backed up',
+    launch: t('Ready to play'),
+    install: t('Content installed'),
+    modpack: t('Modpack installed'),
+    update: t('Content updated'),
+    repair: t('Game files checked'),
+    backup: t('World backed up'),
   }
   const FAILED: Record<string, string> = {
-    launch: 'Getting ready failed',
-    install: 'Install failed',
-    modpack: 'Modpack install failed',
-    update: 'Update failed',
-    repair: 'Repair failed',
-    backup: 'Backup failed',
+    launch: t('Getting ready failed'),
+    install: t('Install failed'),
+    modpack: t('Modpack install failed'),
+    update: t('Update failed'),
+    repair: t('Repair failed'),
+    backup: t('Backup failed'),
   }
 
   function instanceIdOf(taskId: string): string {
@@ -100,13 +101,13 @@
 
   // Storage
   const LABELS: Record<DataFolder['key'], string> = {
-    instances: 'Instances',
-    libraries: 'Libraries',
-    assets: 'Game assets',
+    instances: t('Instances'),
+    libraries: t('Libraries'),
+    assets: t('Game assets'),
     java: 'Java',
-    meta: 'Cache',
-    logs: 'Launcher logs',
-    trash: 'Trash',
+    meta: t('Cache'),
+    logs: t('Launcher logs'),
+    trash: t('Trash'),
   }
 
   let folders = $state<DataFolder[] | null>(null)
@@ -142,7 +143,7 @@
     try {
       await api.clearCache()
       confirmClean = false
-      app.toast('Cache cleaned up.', 'success')
+      app.toast(t('Cache cleaned up.'), 'success')
       await loadFolders()
     } catch (e) {
       app.error(e)
@@ -169,22 +170,22 @@
 </script>
 
 {#snippet cleanActions()}
-  <Button variant="ghost" onclick={() => (confirmClean = false)}>Cancel</Button>
-  <Button variant="danger" icon="trash" busy={cleaning} disabled={cleaning} onclick={clean}>Clean up cache</Button>
+  <Button variant="ghost" onclick={() => (confirmClean = false)}>{t('Cancel')}</Button>
+  <Button variant="danger" icon="trash" busy={cleaning} disabled={cleaning} onclick={clean}>{t('Clean up cache')}</Button>
 {/snippet}
 
 <div class="screen">
   <div class="layout">
     <div class="content">
-      <h1 class="text-title">Downloads</h1>
+      <h1 class="text-title">{t('Downloads')}</h1>
 
       <section class="section" aria-labelledby="active-title">
-        <h2 id="active-title" class="text-label muted">Downloading now</h2>
+        <h2 id="active-title" class="text-label muted">{t('Downloading now')}</h2>
         {#if active.length}
           <ul class="tasks">
-            {#each active as t (t.key)}
-              {@const inst = app.instance(t.instanceId)}
-              {@const pct = pctOf(t)}
+            {#each active as task (task.key)}
+              {@const inst = app.instance(task.instanceId)}
+              {@const pct = pctOf(task)}
               <li class="card task">
                 <div class="task-head">
                   {#if inst}
@@ -193,20 +194,20 @@
                     <span class="icon-box" aria-hidden="true"><Icon name="download" size={18} /></span>
                   {/if}
                   <div class="task-name">
-                    <span class="text-body-strong">{inst?.name ?? t.instanceId}</span>
-                    <StatusTag state="installing">{RUNNING[t.kind] ?? 'Working'}</StatusTag>
+                    <span class="text-body-strong">{inst?.name ?? task.instanceId}</span>
+                    <StatusTag state="installing">{RUNNING[task.kind] ?? t('Working')}</StatusTag>
                   </div>
                   <span class="elapsed text-small muted">
-                    <Icon name="clock" size={18} /><span class="cb-visually-hidden">Running for</span><span class="text-counter">{elapsed(now - t.started)}</span>
+                    <Icon name="clock" size={18} /><span class="cb-visually-hidden">{t('Running for')}</span><span class="text-counter">{elapsed(now - task.started)}</span>
                   </span>
                 </div>
                 <ProgressBar
                   tone="diamond"
                   value={pct}
-                  label={t.label}
+                  label={task.label}
                   valueText={pct != null ? `${Math.round(pct)}%` : undefined}
-                  ariaValueText={pct != null ? `${Math.round(pct)}%, ${num(t.done)} of ${num(t.total)}` : `${t.label}, no estimate yet`}
-                  detail={t.total ? `${num(t.done)} of ${num(t.total)}` : undefined}
+                  ariaValueText={pct != null ? t('{pct}%, {n} of {n2}', { pct: Math.round(pct), n: num(task.done), n2: num(task.total) }) : t('{label}, no estimate yet', { label: task.label })}
+                  detail={task.total ? `${num(task.done)} of ${num(task.total)}` : undefined}
                 />
               </li>
             {/each}
@@ -215,10 +216,10 @@
           <div class="card empty">
             <Icon name="download" size={27} />
             <div class="empty-text">
-              <p class="text-body-strong">Nothing is downloading right now</p>
-              <p class="text-small muted">Installs, updates and game files show their progress here.</p>
+              <p class="text-body-strong">{t('Nothing is downloading right now')}</p>
+              <p class="text-small muted">{t('Installs, updates and game files show their progress here.')}</p>
             </div>
-            <Button icon="discover" onclick={() => app.navigate({ name: 'discover' })}>Discover mods</Button>
+            <Button icon="discover" onclick={() => app.navigate({ name: 'discover' })}>{t('Discover mods')}</Button>
           </div>
         {/if}
       </section>
@@ -226,7 +227,7 @@
       <div class="columns">
         {#if failed.length}
           <section class="section col" aria-labelledby="failed-title">
-            <h2 id="failed-title" class="text-label muted">Failed</h2>
+            <h2 id="failed-title" class="text-label muted">{t('Failed')}</h2>
             <ul class="card list">
               {#each failed as f (f.id + f.at)}
                 {@const kind = taskKind(f.id)}
@@ -235,18 +236,18 @@
                   <span class="item-icon is-bad"><Icon name="error" size={18} /></span>
                   <div class="item-body">
                     <div class="item-head">
-                      <span class="text-body-strong grow">{FAILED[kind] ?? 'Failed'}</span>
+                      <span class="text-body-strong grow">{FAILED[kind] ?? t('Failed')}</span>
                       <span class="text-small muted">{at(f.at)}</span>
                     </div>
                     <span class="text-small is-bad">{f.error}</span>
-                    <span class="text-small muted">For {nameOf(instanceId)}{f.label !== f.id ? ` · last step: ${f.label}` : ''}</span>
+                    <span class="text-small muted">{t('For {id}', { id: nameOf(instanceId) })}{f.label !== f.id ? t(' · last step: {label}', { label: f.label }) : ''}</span>
                     <div class="item-actions">
                       {#if (kind === 'launch' || kind === 'repair') && app.instance(instanceId)}
-                        <Button size="sm" icon="update" onclick={() => retry(f)}>Retry</Button>
+                        <Button size="sm" icon="update" onclick={() => retry(f)}>{t('Retry')}</Button>
                       {:else if app.instance(instanceId)}
-                        <Button size="sm" icon="cube" onclick={() => openFor(f)}>Open {nameOf(instanceId)}</Button>
+                        <Button size="sm" icon="cube" onclick={() => openFor(f)}>{t('Open {instanceId}', { instanceId: nameOf(instanceId) })}</Button>
                       {/if}
-                      <Button size="sm" variant="ghost" onclick={() => dismiss(f)}>Dismiss</Button>
+                      <Button size="sm" variant="ghost" onclick={() => dismiss(f)}>{t('Dismiss')}</Button>
                     </div>
                   </div>
                 </li>
@@ -257,8 +258,8 @@
 
         <section class="section col" aria-labelledby="done-title">
           <div class="sec-head">
-            <h2 id="done-title" class="text-label muted grow">Done this session</h2>
-            {#if done.length}<Button size="sm" variant="ghost" icon="close" onclick={clearDone}>Clear</Button>{/if}
+            <h2 id="done-title" class="text-label muted grow">{t('Done this session')}</h2>
+            {#if done.length}<Button size="sm" variant="ghost" icon="close" onclick={clearDone}>{t('Clear')}</Button>{/if}
           </div>
           {#if done.length}
             <ul class="card list">
@@ -268,31 +269,31 @@
                   <span class="item-icon is-ok"><Icon name="check" size={18} /></span>
                   <div class="item-body">
                     <div class="item-head">
-                      <span class="text-body-strong grow">{DONE[kind] ?? 'Done'}</span>
+                      <span class="text-body-strong grow">{DONE[kind] ?? t('Done')}</span>
                       <span class="text-small muted">{at(f.at)}</span>
                     </div>
-                    <span class="text-small muted">For {nameOf(instanceIdOf(f.id))}</span>
+                    <span class="text-small muted">{t('For {id}', { id: nameOf(instanceIdOf(f.id)) })}</span>
                   </div>
                 </li>
               {/each}
             </ul>
           {:else}
-            <p class="text-small muted">What finishes while Cubby is open shows up here.</p>
+            <p class="text-small muted">{t('What finishes while Cubby is open shows up here.')}</p>
           {/if}
         </section>
       </div>
     </div>
 
-    <aside class="aside" aria-label="Storage">
-      <h2 class="text-heading">Storage</h2>
+    <aside class="aside" aria-label={t('Storage')}>
+      <h2 class="text-heading">{t('Storage')}</h2>
       {#if folders == null}
-        <p class="text-small muted">Measuring Cubby’s folders…</p>
+        <p class="text-small muted">{t('Measuring Cubby’s folders…')}</p>
       {:else if foldersFailed && !folders.length}
-        <p class="text-small muted">Cubby couldn’t measure its folders.</p>
-        <div><Button size="sm" icon="update" onclick={loadFolders}>Try again</Button></div>
+        <p class="text-small muted">{t('Cubby couldn’t measure its folders.')}</p>
+        <div><Button size="sm" icon="update" onclick={loadFolders}>{t('Try again')}</Button></div>
       {:else}
         <div class="total">
-          <span class="text-small muted">Cubby uses</span>
+          <span class="text-small muted">{t('Cubby uses')}</span>
           <span class="text-stat">{bytes(total)}</span>
           {#if app.info?.dataDir}<span class="text-mono muted path">{app.info.dataDir}</span>{/if}
         </div>
@@ -309,30 +310,30 @@
               <span class={['swatch', `seg--${f.key}`]} aria-hidden="true"></span>
               <span class="text-body grow">{LABELS[f.key] ?? f.label}</span>
               <span class="text-body-strong">{bytes(f.sizeBytes)}</span>
-              <IconButton icon="folder" size="sm" label={`Open the ${(LABELS[f.key] ?? f.label).toLowerCase()} folder`} onclick={() => openData(f.key)} />
+              <IconButton icon="folder" size="sm" label={t('Open the {toLowerCase} folder', { toLowerCase: (LABELS[f.key] ?? f.label).toLowerCase() })} onclick={() => openData(f.key)} />
             </li>
           {/each}
         </ul>
         <div class="clean">
-          <Button size="sm" icon="trash" onclick={() => (confirmClean = true)}>Clean up cache</Button>
-          <span class="text-small muted">{cache ? `Frees ${bytes(cache.sizeBytes)}. ` : ''}Your instances stay as they are.</span>
+          <Button size="sm" icon="trash" onclick={() => (confirmClean = true)}>{t('Clean up cache')}</Button>
+          <span class="text-small muted">{cache ? t('Frees {n}. ', { n: bytes(cache.sizeBytes) }) : ''}{t('Your instances stay as they are.')}</span>
         </div>
       {/if}
 
       <div class="settings">
         <Slider
-          label="Parallel downloads"
+          label={t('Parallel downloads')}
           min={1}
           max={16}
           step={1}
           value={Math.min(16, concurrency)}
-          valueText={`${concurrency} at a time`}
+          valueText={t('{n} at a time', { n: concurrency })}
           marks={['1', '16']}
-          hint="For mods and modpacks. Applies to the next download."
+          hint={t('For mods and modpacks. Applies to the next download.')}
           onChange={setConcurrency}
         />
         <div>
-          <Button size="sm" variant="ghost" iconEnd="chevron-right" onclick={() => app.navigate({ name: 'settings', section: 'downloads' })}>All download settings</Button>
+          <Button size="sm" variant="ghost" iconEnd="chevron-right" onclick={() => app.navigate({ name: 'settings', section: 'downloads' })}>{t('All download settings')}</Button>
         </div>
       </div>
     </aside>
@@ -340,11 +341,11 @@
 </div>
 
 {#if confirmClean}
-  <Dialog title="Clean up the cache?" icon="trash" tone="warning" onClose={() => (confirmClean = false)} actions={cleanActions}>
+  <Dialog title={t('Clean up the cache?')} icon="trash" tone="warning" onClose={() => (confirmClean = false)} actions={cleanActions}>
     <p>
-      Deletes the version lists and loader files Cubby keeps{cache ? ` (${bytes(cache.sizeBytes)})` : ''}. They download again when needed.
+      {cache ? t('Deletes the version lists and loader files Cubby keeps ({size}). They download again when needed.', { size: bytes(cache.sizeBytes) }) : t('Deletes the version lists and loader files Cubby keeps. They download again when needed.')}
     </p>
-    <p>Your instances, worlds and mods stay as they are.</p>
+    <p>{t('Your instances, worlds and mods stay as they are.')}</p>
   </Dialog>
 {/if}
 

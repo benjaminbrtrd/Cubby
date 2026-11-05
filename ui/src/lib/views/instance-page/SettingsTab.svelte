@@ -18,6 +18,7 @@
 </script>
 
 <script lang="ts">
+  import { t } from '../../i18n.svelte'
   import { onDestroy, untrack } from 'svelte'
   import { api } from '../../api'
   import {
@@ -64,7 +65,7 @@
   function commitName() {
     const next = name.trim()
     if (!next) {
-      nameError = 'Give the instance a name.'
+      nameError = t('Give the instance a name.')
       return
     }
     nameError = ''
@@ -109,13 +110,13 @@
       canvas.width = 256
       canvas.height = 256
       const ctx = canvas.getContext('2d')
-      if (!ctx || !side) throw new Error('This image can’t be read.')
+      if (!ctx || !side) throw new Error(t('This image can’t be read.'))
       ctx.imageSmoothingEnabled = true
       ctx.imageSmoothingQuality = 'high'
       ctx.drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, 256, 256)
       src = canvas.toDataURL('image/png')
     } catch {
-      app.toast('Cubby can’t read this image. Try a PNG or JPG file.', 'error')
+      app.toast(t('Cubby can’t read this image. Try a PNG or JPG file.'), 'error')
     } finally {
       URL.revokeObjectURL(url)
     }
@@ -276,7 +277,7 @@
     applying = false
     if (saved) {
       versionOpen = false
-      app.toast(`${saved.name} now uses Minecraft ${saved.minecraft} with ${loaderFull(saved.loader)}. Cubby downloads the files the next time you play.`, 'success')
+      app.toast(t('{name} now uses Minecraft {minecraft} with {loader}. Cubby downloads the files the next time you play.', { name: saved.name, minecraft: saved.minecraft, loader: loaderFull(saved.loader) }), 'success')
     }
   }
 
@@ -288,156 +289,156 @@
   const game = $derived(app.settings?.game)
 </script>
 
-<div class="ip-body" role="tabpanel" id="instance-panel" aria-label="Settings">
+<div class="ip-body" role="tabpanel" id="instance-panel" aria-label={t('Settings')}>
   <div class="cols">
     <div class="col">
       <section class="block" aria-labelledby="is-general">
-        <div class="block__head"><h2 id="is-general" class="text-heading">General</h2></div>
+        <div class="block__head"><h2 id="is-general" class="text-heading">{t('General')}</h2></div>
         <div class="setting">
           <div>
-            <div class="text-body-strong">Name</div>
-            <div class="text-small muted">Shown in your library.</div>
+            <div class="text-body-strong">{t('Name')}</div>
+            <div class="text-small muted">{t('Shown in your library.')}</div>
           </div>
-          <TextField label="Name" hideLabel bind:value={name} error={nameError || undefined} onchange={commitName} autocomplete="off" />
+          <TextField label={t('Name')} hideLabel bind:value={name} error={nameError || undefined} onchange={commitName} autocomplete="off" />
         </div>
         <div class="setting">
           <div>
-            <div class="text-body-strong">Group</div>
-            <div class="text-small muted">The library tab it appears in. Leave empty for none.</div>
+            <div class="text-body-strong">{t('Group')}</div>
+            <div class="text-small muted">{t('The library tab it appears in. Leave empty for none.')}</div>
           </div>
-          <TextField label="Group" hideLabel icon="folder" bind:value={group} onchange={commitGroup} list="instance-groups" autocomplete="off" placeholder="No group" />
+          <TextField label={t('Group')} hideLabel icon="folder" bind:value={group} onchange={commitGroup} list="instance-groups" autocomplete="off" placeholder={t('No group')} />
           <datalist id="instance-groups">
             {#each app.groups as gr (gr.name)}<option value={gr.name}></option>{/each}
           </datalist>
         </div>
         <div class="setting">
           <div>
-            <div class="text-body-strong">Icon</div>
-            <div class="text-small muted">Pick a picture or import one.</div>
+            <div class="text-body-strong">{t('Icon')}</div>
+            <div class="text-small muted">{t('Pick a picture or import one.')}</div>
           </div>
           <div class="inline">
             <InstanceIcon {...iconOf(instance)} size={32} raised />
-            <Button size="sm" icon="captures" onclick={openIcon}>Change icon</Button>
+            <Button size="sm" icon="captures" onclick={openIcon}>{t('Change icon')}</Button>
           </div>
         </div>
       </section>
 
       <section class="block" aria-labelledby="is-java">
         <div class="block__head">
-          <h2 id="is-java" class="text-heading grow">Java and memory</h2>
-          <Switch checked={usesGlobal} onChange={setGlobal} label="Use global settings" />
+          <h2 id="is-java" class="text-heading grow">{t('Java and memory')}</h2>
+          <Switch checked={usesGlobal} onChange={setGlobal} label={t('Use global settings')} />
         </div>
         {#if usesGlobal}
           <div class="setting setting--wide">
             <div>
-              <div class="text-body">Memory {megabytes(g.maxMemoryMb)} · Java picked automatically{g.jvmArgs.trim() ? ' · global JVM arguments' : ''}</div>
-              <div class="text-small muted">The same as every instance that uses the global settings.</div>
+              <div class="text-body">{t(g.jvmArgs.trim() ? 'Memory {memory} · Java picked automatically · global JVM arguments' : 'Memory {memory} · Java picked automatically', { memory: megabytes(g.maxMemoryMb) })}</div>
+              <div class="text-small muted">{t('The same as every instance that uses the global settings.')}</div>
             </div>
-            <Button size="sm" variant="ghost" icon="settings" onclick={() => app.navigate({ name: 'settings', section: 'java' })}>Global settings</Button>
+            <Button size="sm" variant="ghost" icon="settings" onclick={() => app.navigate({ name: 'settings', section: 'java' })}>{t('Global settings')}</Button>
           </div>
         {:else}
           <div class="ruled">
             <Slider
-              label="Memory"
+              label={t('Memory')}
               min={1024}
               max={memMax}
               step={512}
               value={Math.min(mem, memMax)}
               valueText={megabytes(mem)}
               marks={memMarks}
-              hint={`Your PC has ${gigabytes(total)}. Leave at least a quarter of it for Windows and other apps.`}
+              hint={t('Your PC has {n}. Leave at least a quarter of it for Windows and other apps.', { n: gigabytes(total) })}
               onChange={setMemory}
             />
             {#if mem > total * 0.75}
-              <p class="text-small warn flag"><Icon name="warning" size={18} label="Warning" /><span>That leaves little memory for Windows. The game may stutter or close.</span></p>
+              <p class="text-small warn flag"><Icon name="warning" size={18} label={t('Warning')} /><span>{t('That leaves little memory for Windows. The game may stutter or close.')}</span></p>
             {/if}
           </div>
           <div class="setting setting--wide">
             <div class="min0">
               <div class="text-body-strong">Java</div>
               {#if o.executable}
-                <div class="text-body">{chosenJava ? `Java ${chosenJava.version}${chosenJava.vendor ? ` · ${chosenJava.vendor}` : ''}` : 'Your own Java'}</div>
+                <div class="text-body">{chosenJava ? `Java ${chosenJava.version}${chosenJava.vendor ? ` · ${chosenJava.vendor}` : ''}` : t('Your own Java')}</div>
                 <div class="text-mono muted wrap">{o.executable}</div>
               {:else}
-                <div class="text-body">Picked automatically{needed ? ` (Java ${needed})` : ''}</div>
-                <div class="text-small muted">Cubby uses the Java this version needs and downloads it when it’s missing.</div>
+                <div class="text-body">{t('Picked automatically')}{needed ? t(' (Java {needed})', { needed }) : ''}</div>
+                <div class="text-small muted">{t('Cubby uses the Java this version needs and downloads it when it’s missing.')}</div>
               {/if}
             </div>
-            <Button size="sm" icon="folder" onclick={openJava}>Choose Java</Button>
+            <Button size="sm" icon="folder" onclick={openJava}>{t('Choose Java')}</Button>
           </div>
           <div class="setting">
             <div>
-              <div class="text-body-strong">JVM arguments</div>
-              <div class="text-small muted">Replace the global ones. For experts: leave empty if unsure.</div>
+              <div class="text-body-strong">{t('JVM arguments')}</div>
+              <div class="text-small muted">{t('Replace the global ones. For experts: leave empty if unsure.')}</div>
             </div>
-            <TextField label="JVM arguments" hideLabel mono bind:value={jvm} onchange={commitJvm} placeholder={g.jvmArgs.trim() || '-XX:+UseG1GC'} autocomplete="off" spellcheck={false} />
+            <TextField label={t('JVM arguments')} hideLabel mono bind:value={jvm} onchange={commitJvm} placeholder={g.jvmArgs.trim() || '-XX:+UseG1GC'} autocomplete="off" spellcheck={false} />
           </div>
         {/if}
       </section>
 
       <section class="block" aria-labelledby="is-version">
-        <div class="block__head"><h2 id="is-version" class="text-heading">Version and loader</h2></div>
+        <div class="block__head"><h2 id="is-version" class="text-heading">{t('Version and loader')}</h2></div>
         <div class="setting setting--wide">
           <div>
             <div class="inline">
               <MetaChip>{instance.minecraft}</MetaChip>
               <MetaChip>{loaderFull(instance.loader)}</MetaChip>
             </div>
-            <div class="text-small muted gap">The game version and the loader that runs your mods.</div>
+            <div class="text-small muted gap">{t('The game version and the loader that runs your mods.')}</div>
           </div>
-          <Button size="sm" icon="cube" disabled={running} onclick={openVersion}>Change version</Button>
+          <Button size="sm" icon="cube" disabled={running} onclick={openVersion}>{t('Change version')}</Button>
         </div>
-        <p class="text-small warn flag"><Icon name="warning" size={18} label="Warning" /><span>Changing version can break mods and worlds. Back up first.</span></p>
-        {#if running}<p class="text-small muted">Close the game to change the version.</p>{/if}
+        <p class="text-small warn flag"><Icon name="warning" size={18} label={t('Warning')} /><span>{t('Changing version can break mods and worlds. Back up first.')}</span></p>
+        {#if running}<p class="text-small muted">{t('Close the game to change the version.')}</p>{/if}
       </section>
     </div>
 
     <div class="col">
       <section class="block" aria-labelledby="is-window">
-        <div class="block__head"><h2 id="is-window" class="text-heading">Game window</h2></div>
+        <div class="block__head"><h2 id="is-window" class="text-heading">{t('Game window')}</h2></div>
         <div class="setting setting--wide">
           <div>
-            <div class="text-body">{game ? `${num(game.width)} × ${num(game.height)} · ${game.fullscreen ? 'fullscreen' : 'windowed'}` : 'Global window size'}</div>
-            <div class="text-small muted">Window size and fullscreen are the same for every instance.</div>
+            <div class="text-body">{game ? `${num(game.width)} × ${num(game.height)} · ${game.fullscreen ? 'fullscreen' : 'windowed'}` : t('Global window size')}</div>
+            <div class="text-small muted">{t('Window size and fullscreen are the same for every instance.')}</div>
           </div>
-          <Button size="sm" variant="ghost" icon="settings" onclick={() => app.navigate({ name: 'settings', section: 'game' })}>Game settings</Button>
+          <Button size="sm" variant="ghost" icon="settings" onclick={() => app.navigate({ name: 'settings', section: 'game' })}>{t('Game settings')}</Button>
         </div>
       </section>
 
       <section class="block" aria-labelledby="is-maint">
-        <div class="block__head"><h2 id="is-maint" class="text-heading">Maintenance</h2></div>
+        <div class="block__head"><h2 id="is-maint" class="text-heading">{t('Maintenance')}</h2></div>
         <div class="setting setting--wide">
           <div>
-            <div class="text-body-strong">Repair</div>
-            <div class="text-small muted">Downloads missing or broken game files again. Keeps worlds, mods and settings.</div>
+            <div class="text-body-strong">{t('Repair')}</div>
+            <div class="text-small muted">{t('Downloads missing or broken game files again. Keeps worlds, mods and settings.')}</div>
           </div>
-          <Button size="sm" icon="wrench" busy={!!repairTask} disabled={running || !!task} onclick={() => data.repair()}>Repair</Button>
+          <Button size="sm" icon="wrench" busy={!!repairTask} disabled={running || !!task} onclick={() => data.repair()}>{t('Repair')}</Button>
         </div>
         {#if repairTask}
           <ProgressBar tone="diamond" label={repairTask.label} value={repairTask.total ? (repairTask.done / repairTask.total) * 100 : undefined} />
         {/if}
         <div class="setting setting--wide">
           <div>
-            <div class="text-body-strong">Duplicate</div>
-            <div class="text-small muted">Copies the whole instance, worlds included, as “{instance.name} copy”.</div>
+            <div class="text-body-strong">{t('Duplicate')}</div>
+            <div class="text-small muted">{t('Copies the whole instance, worlds included, as “{name} copy”.', { name: instance.name })}</div>
           </div>
-          <Button size="sm" icon="copy" busy={data.duplicating} disabled={data.duplicating} onclick={() => data.duplicate(instance)}>Duplicate</Button>
+          <Button size="sm" icon="copy" busy={data.duplicating} disabled={data.duplicating} onclick={() => data.duplicate(instance)}>{t('Duplicate')}</Button>
         </div>
         <div class="setting setting--wide">
           <div>
-            <div class="text-body-strong">Folder</div>
-            <div class="text-small muted">Where the game keeps this instance’s files.</div>
+            <div class="text-body-strong">{t('Folder')}</div>
+            <div class="text-small muted">{t('Where the game keeps this instance’s files.')}</div>
           </div>
-          <Button size="sm" icon="folder" onclick={() => data.openFolder()}>Open folder</Button>
+          <Button size="sm" icon="folder" onclick={() => data.openFolder()}>{t('Open folder')}</Button>
         </div>
         <div class="setting setting--wide danger">
           <div>
-            <div class="text-body-strong danger__title">Delete instance</div>
-            <div class="text-small muted">Moves it to the trash, with its worlds, mods and settings.</div>
+            <div class="text-body-strong danger__title">{t('Delete instance')}</div>
+            <div class="text-small muted">{t('Moves it to the trash, with its worlds, mods and settings.')}</div>
           </div>
-          <Button size="sm" variant="danger" icon="trash" disabled={running} onclick={() => (app.deletingId = id)}>Delete instance</Button>
+          <Button size="sm" variant="danger" icon="trash" disabled={running} onclick={() => (app.deletingId = id)}>{t('Delete instance')}</Button>
         </div>
-        {#if running}<p class="text-small muted">Close the game to delete this instance.</p>{/if}
+        {#if running}<p class="text-small muted">{t('Close the game to delete this instance.')}</p>{/if}
       </section>
     </div>
   </div>
@@ -447,23 +448,23 @@
 
 {#if iconOpen}
   {#snippet iconActions()}
-    <Button variant="ghost" onclick={() => (iconOpen = false)}>Cancel</Button>
-    <Button variant="primary" icon="check" onclick={saveIcon}>Use this icon</Button>
+    <Button variant="ghost" onclick={() => (iconOpen = false)}>{t('Cancel')}</Button>
+    <Button variant="primary" icon="check" onclick={saveIcon}>{t('Use this icon')}</Button>
   {/snippet}
-  <Dialog wide title="Change icon" onClose={() => (iconOpen = false)} actions={iconActions}>
+  <Dialog wide title={t('Change icon')} onClose={() => (iconOpen = false)} actions={iconActions}>
     <IconPicker bind:motif bind:ground bind:src name={instance.name} onImport={() => fileInput?.click()} />
   </Dialog>
 {/if}
 
 {#if javaOpen}
   {#snippet javaActions()}
-    <Button variant="ghost" onclick={() => (javaOpen = false)}>Cancel</Button>
-    <Button variant="primary" icon="check" onclick={saveJava}>Use this Java</Button>
+    <Button variant="ghost" onclick={() => (javaOpen = false)}>{t('Cancel')}</Button>
+    <Button variant="primary" icon="check" onclick={saveJava}>{t('Use this Java')}</Button>
   {/snippet}
-  <Dialog wide title="Choose Java" onClose={() => (javaOpen = false)} actions={javaActions}>
-    {#if needed}<p>Minecraft {instance.minecraft} needs Java {needed} or newer.</p>{/if}
+  <Dialog wide title={t('Choose Java')} onClose={() => (javaOpen = false)} actions={javaActions}>
+    {#if needed}<p>{t('Minecraft {minecraft} needs Java {needed} or newer.', { minecraft: instance.minecraft, needed })}</p>{/if}
     {#if javas === null}
-      <p class="muted">Looking for Java on this PC…</p>
+      <p class="muted">{t('Looking for Java on this PC…')}</p>
     {:else}
       <!-- svelte-ignore a11y_interactive_supports_focus -->
       <div
@@ -479,12 +480,12 @@
             <span class="choice__mark" aria-hidden="true">{#if on}<Icon name="check" size={18} />{/if}</span>
             <span class="choice__text">
               {#if j}
-                <span class="text-body-strong">Java {j.version}{j.vendor ? ` · ${j.vendor}` : ''}{j.managed ? ' · downloaded by Cubby' : ''}</span>
+                <span class="text-body-strong">Java {j.version}{j.vendor ? ` · ${j.vendor}` : ''}{j.managed ? t(' · downloaded by Cubby') : ''}</span>
                 <span class="text-mono muted wrap">{j.executable}</span>
-                {#if old}<span class="text-small warn flag"><Icon name="warning" size={18} />Too old for {instance.minecraft}</span>{/if}
+                {#if old}<span class="text-small warn flag"><Icon name="warning" size={18} />{t('Too old for {minecraft}', { minecraft: instance.minecraft })}</span>{/if}
               {:else}
-                <span class="text-body-strong">Automatic (recommended)</span>
-                <span class="text-small muted">Cubby picks the right Java for each version and downloads it when it’s missing.</span>
+                <span class="text-body-strong">{t('Automatic (recommended)')}</span>
+                <span class="text-small muted">{t('Cubby picks the right Java for each version and downloads it when it’s missing.')}</span>
               {/if}
             </span>
           </button>
@@ -496,41 +497,41 @@
 
 {#if versionOpen}
   {#snippet versionActions()}
-    <Button variant="ghost" onclick={() => (versionOpen = false)}>Cancel</Button>
-    <Button variant="primary" icon="check" busy={applying} disabled={!canApply} onclick={applyVersion}>Apply</Button>
+    <Button variant="ghost" onclick={() => (versionOpen = false)}>{t('Cancel')}</Button>
+    <Button variant="primary" icon="check" busy={applying} disabled={!canApply} onclick={applyVersion}>{t('Apply')}</Button>
   {/snippet}
-  <Dialog wide title="Change version" onClose={() => (versionOpen = false)} actions={versionActions}>
+  <Dialog wide title={t('Change version')} onClose={() => (versionOpen = false)} actions={versionActions}>
     <div class="warnbox">
-      <span class="warn icon"><Icon name="warning" size={18} label="Warning" /></span>
+      <span class="warn icon"><Icon name="warning" size={18} label={t('Warning')} /></span>
       <div class="min0">
-        <p class="text-body-strong">Changing version can break mods and worlds.</p>
-        <p class="text-small muted">A world opened in a newer version can’t go back. Mods made for another version may not load.</p>
+        <p class="text-body-strong">{t('Changing version can break mods and worlds.')}</p>
+        <p class="text-small muted">{t('A world opened in a newer version can’t go back. Mods made for another version may not load.')}</p>
       </div>
-      <Button size="sm" icon="copy" onclick={backUpFirst}>Back up worlds</Button>
+      <Button size="sm" icon="copy" onclick={backUpFirst}>{t('Back up worlds')}</Button>
     </div>
     <div class="vgrid">
       <div class="vcol">
-        <p class="text-body-strong">Minecraft version</p>
+        <p class="text-body-strong">{t('Minecraft version')}</p>
         <SegmentedControl
-          label="Kind of version"
+          label={t('Kind of version')}
           options={[
-            { value: 'release', label: 'Releases' },
-            { value: 'snapshot', label: 'Snapshots' },
-            { value: 'old', label: 'Old' },
+            { value: 'release', label: t('Releases') },
+            { value: 'snapshot', label: t('Snapshots') },
+            { value: 'old', label: t('Old') },
           ]}
           value={channel}
           onChange={(v) => (channel = v as Channel)}
         />
         {#if versions === null}
-          <p class="muted text-small">Loading versions…</p>
+          <p class="muted text-small">{t('Loading versions…')}</p>
         {:else if !shownVersions.length}
-          <p class="muted text-small">No versions of this kind.</p>
+          <p class="muted text-small">{t('No versions of this kind.')}</p>
         {:else}
           <!-- svelte-ignore a11y_interactive_supports_focus -->
           <div
             class="choices choices--scroll"
             role="radiogroup"
-            aria-label="Minecraft version"
+            aria-label={t('Minecraft version')}
             onkeydown={(e) => rovingKeys(e, shownVersions.length, versionIndex, (i) => (target = shownVersions[i].id))}
           >
             {#each shownVersions as v, i (v.id)}
@@ -538,28 +539,28 @@
               <button type="button" role="radio" aria-checked={on} tabindex={i === versionIndex ? 0 : -1} class={['choice choice--row', on && 'is-on']} onclick={() => (target = v.id)}>
                 <span class="choice__mark" aria-hidden="true">{#if on}<Icon name="check" size={18} />{/if}</span>
                 <span class="text-mono grow">{v.id}</span>
-                {#if v.id === instance.minecraft}<span class="text-small muted">Now</span>{/if}
+                {#if v.id === instance.minecraft}<span class="text-small muted">{t('Now')}</span>{/if}
               </button>
             {/each}
           </div>
         {/if}
       </div>
       <div class="vcol">
-        <p class="text-body-strong">Loader</p>
-        <SegmentedControl label="Loader" options={LOADERS.map((k) => ({ value: k, label: loaderName(k) }))} value={kind} onChange={(v) => (kind = v as LoaderKind)} />
+        <p class="text-body-strong">{t('Loader')}</p>
+        <SegmentedControl label={t('Loader')} options={LOADERS.map((k) => ({ value: k, label: loaderName(k) }))} value={kind} onChange={(v) => (kind = v as LoaderKind)} />
         {#if unsupported}
-          <p class="text-small warn flag"><Icon name="warning" size={18} label="Warning" /><span>Cubby can’t install {loaderName(kind)} yet, so it can’t change its version. Pick Vanilla, Fabric or Quilt to change the version.</span></p>
+          <p class="text-small warn flag"><Icon name="warning" size={18} label={t('Warning')} /><span>{t('Cubby can’t install {kind} yet, so it can’t change its version. Pick Vanilla, Fabric or Quilt to change the version.', { kind: loaderName(kind) })}</span></p>
         {:else}
-          <p class="text-small muted">Cubby can’t install NeoForge or Forge yet.</p>
+          <p class="text-small muted">{t('Cubby can’t install NeoForge or Forge yet.')}</p>
         {/if}
         {#if unsupported}
           <!-- nothing to pick -->
         {:else if kind === 'vanilla'}
-          <p class="text-body">Vanilla doesn’t load mods. Your mod files stay in the folder.</p>
+          <p class="text-body">{t('Vanilla doesn’t load mods. Your mod files stay in the folder.')}</p>
         {:else if loaderVersions === null}
-          <p class="muted text-small">Loading {loaderName(kind)} versions…</p>
+          <p class="muted text-small">{t('Loading {kind} versions…', { kind: loaderName(kind) })}</p>
         {:else if loaderMissing}
-          <p class="text-small warn flag"><Icon name="warning" size={18} label="Warning" /><span>{loaderName(kind)} isn’t out for Minecraft {target} yet.</span></p>
+          <p class="text-small warn flag"><Icon name="warning" size={18} label={t('Warning')} /><span>{t('{kind} isn’t out for Minecraft {target} yet.', { kind: loaderName(kind), target })}</span></p>
         {:else}
           <!-- svelte-ignore a11y_interactive_supports_focus -->
           <div
@@ -573,7 +574,7 @@
               <button type="button" role="radio" aria-checked={on} tabindex={i === loaderIndex ? 0 : -1} class={['choice choice--row', on && 'is-on']} onclick={() => (loaderVersion = v.version)}>
                 <span class="choice__mark" aria-hidden="true">{#if on}<Icon name="check" size={18} />{/if}</span>
                 <span class="text-mono grow">{v.version}</span>
-                {#if !v.stable}<span class="text-small muted">Beta</span>{/if}
+                {#if !v.stable}<span class="text-small muted">{t('Beta')}</span>{/if}
               </button>
             {/each}
           </div>
@@ -582,7 +583,7 @@
     </div>
     {#if changed && target}
       <p class="summary text-body">
-        {instance.name} will use Minecraft <span class="text-mono">{target}</span>{kind === 'vanilla' ? ' without a loader' : loaderVersion ? ` with ${loaderName(kind)} ` : ''}{#if kind !== 'vanilla' && loaderVersion}<span class="text-mono">{loaderVersion}</span>{/if}. Cubby downloads the files the next time you play.
+        {t('{name} will use Minecraft', { name: instance.name })} <span class="text-mono">{target}</span>{kind === 'vanilla' ? t(' without a loader') : loaderVersion ? t(' with {kind} ', { kind: loaderName(kind) }) : ''}{#if kind !== 'vanilla' && loaderVersion}<span class="text-mono">{loaderVersion}</span>{/if}{t('. Cubby downloads the files the next time you play.')}
       </p>
     {/if}
   </Dialog>

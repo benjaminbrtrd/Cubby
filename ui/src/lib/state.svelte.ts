@@ -1,5 +1,6 @@
 import { api, onEvent } from './api'
 import type { Account, AppInfo, AppUpdate, ContentSource, ContentUpdate, Instance, LogLine, ProjectKind, PackProvider, ProjectSort, ProviderId, Settings, CubbyEvent } from './types'
+import { t } from './i18n.svelte'
 
 export type InstanceTab = 'overview' | 'mods' | 'resourcepacks' | 'shaders' | 'worlds' | 'screenshots' | 'servers' | 'settings'
 export type SettingsSection = 'general' | 'appearance' | 'language' | 'java' | 'game' | 'downloads' | 'storage' | 'accounts' | 'keyboard' | 'privacy' | 'updates' | 'about'
@@ -151,7 +152,7 @@ class AppState {
   updatedFrom = $state<string | null>(null)
   prismImportOpen = $state(false)
   /** New instance: the source shown (Custom, Import or a modpack provider). */
-  newSource = $state<'custom' | 'import' | ProviderId>('custom')
+  newSource = $state<'quick' | 'custom' | 'import' | ProviderId>('quick')
   providers = $state<PackProvider[] | null>(null)
   providersError = $state<string | null>(null)
   /** Instance whose delete confirmation is open. */
@@ -327,15 +328,20 @@ class AppState {
     }
   }
 
-  /** `server`: join this address right after the game starts. */
-  async launch(id: string, offline = false, server: string | null = null) {
+  /** True when a launch without an account starts the demo (release builds); development builds play offline. */
+  get demoOnly(): boolean {
+    return !this.defaultAccount && !this.info?.devBuild
+  }
+
+  /** `server`: join this address right after the game starts; `world`: open this world folder. */
+  async launch(id: string, offline = false, server: string | null = null, world: string | null = null) {
     if (this.running[id] || this.tasks[`launch:${id}`]) return
-    // Without a signed-in account that owns the game, only the demo starts.
-    if (!this.defaultAccount) this.toast('No Microsoft account, so this is the Minecraft demo. Sign in to play the full game.', 'info')
+    // Without a signed-in account that owns the game, only the demo starts (development builds play offline).
+    if (this.demoOnly) this.toast(t('No Microsoft account, so this is the Minecraft demo. Sign in to play the full game.'), 'info')
     if (this.crash?.instanceId === id) this.crash = null
-    this.tasks[`launch:${id}`] = { label: 'Getting ready', done: 0, total: 0, started: Date.now() }
+    this.tasks[`launch:${id}`] = { label: t('Getting ready'), done: 0, total: 0, started: Date.now() }
     try {
-      await api.launchInstance(id, offline, server)
+      await api.launchInstance(id, offline, server, world)
     } catch (e) {
       delete this.tasks[`launch:${id}`]
       this.error(e)
@@ -370,6 +376,15 @@ class AppState {
       this.updates[id] = []
     }
     return this.updates[id]
+  }
+
+  /** A content file left the instance: drop it from the cached sources and updates, then read them again. */
+  forgetFile(id: string, fileName: string) {
+    const base = fileName.replace(/\.disabled$/, '')
+    const other = (f: string) => f.replace(/\.disabled$/, '') !== base
+    if (this.sources[id]) this.sources[id] = this.sources[id].filter((s) => other(s.fileName))
+    if (this.updates[id]) this.updates[id] = this.updates[id].filter((u) => other(u.fileName))
+    void this.loadSources(id, true)
   }
 
   installedIn(id: string | undefined, projectId: string): ContentSource | undefined {
@@ -437,7 +452,7 @@ class AppState {
       console.warn(e)
       this.update.phase = 'idle'
       this.update.checkedAt = Date.now()
-      if (manual) this.update.error = typeof e === 'string' ? e : 'Couldn’t reach GitHub.'
+      if (manual) this.update.error = typeof e === 'string' ? e : t('Couldn’t reach GitHub.')
     }
   }
 
@@ -451,7 +466,7 @@ class AppState {
       this.update.info = { ...this.update.info, downloaded: true }
       this.update.phase = 'ready'
     } catch (e) {
-      this.update.error = typeof e === 'string' ? e : 'The download didn’t finish.'
+      this.update.error = typeof e === 'string' ? e : t('The download didn’t finish.')
       this.update.phase = 'failed'
     }
   }

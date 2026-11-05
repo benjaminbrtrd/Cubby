@@ -21,7 +21,7 @@ const MASK: &str = "<MASKED>";
 const DRAIN_TIMEOUT: Duration = Duration::from_secs(2);
 
 /// One line printed by the game.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LogLine {
     pub line: String,

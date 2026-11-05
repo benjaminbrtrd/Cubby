@@ -67,8 +67,10 @@ export const api = {
   updateInstance: (instance: Instance) => call<Instance>('update_instance', { instance }),
   duplicateInstance: (id: string, name: string) => call<Instance>('duplicate_instance', { id, name }),
   deleteInstance: (id: string) => call<void>('delete_instance', { id }),
-  /** `server`: address to join right away (Quick Play), e.g. "play.example.org:25565". */
-  launchInstance: (id: string, offline = false, server: string | null = null) => call<void>('launch_instance', { id, offline, server }),
+  /** Quick Play: `server` is an address to join right away ("play.example.org:25565"), `world` a
+   *  world folder to open (Minecraft 1.20 and newer). */
+  launchInstance: (id: string, offline = false, server: string | null = null, world: string | null = null) =>
+    call<void>('launch_instance', { id, offline, server, world }),
   /** Re-downloads and checks every file of the instance's version (task `repair:<id>`). */
   repairInstance: (id: string) => call<void>('repair_instance', { id }),
   killInstance: (id: string) => call<void>('kill_instance', { id }),
@@ -114,8 +116,6 @@ export const api = {
   listJava: () => call<JavaInstall[]>('list_java'),
 
   // Discover (Modrinth)
-  searchProjects: (query: ProjectQuery) => call<SearchResults>('search_projects', { query }),
-  getProject: (idOrSlug: string) => call<Project>('get_project', { idOrSlug }),
   /** Mods, shader packs and resource packs from CurseForge, in the shape of searchProjects. */
   curseforgeSearch: (query: ProjectQuery) => call<SearchResults>('curseforge_search', { query }),
   /** The categories CurseForge sorts mods, shader packs or resource packs into (ids are strings). */

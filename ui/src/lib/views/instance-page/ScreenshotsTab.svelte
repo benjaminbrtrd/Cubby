@@ -1,8 +1,9 @@
 <script lang="ts">
+  import { t } from '../../i18n.svelte'
   import { tick } from 'svelte'
   import { api } from '../../api'
   import { Button, Dialog } from '../../cubby'
-  import { LOCALE, num, plural, timeOfDay } from '../../format'
+  import { locale, num, plural, timeOfDay } from '../../format'
   import { app } from '../../state.svelte'
   import type { Instance, Screenshot } from '../../types'
   import { when, type InstanceData } from './InstancePage.svelte'
@@ -28,10 +29,10 @@
     const d = new Date(iso)
     const start = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime()
     const days = Math.round((start(new Date()) - start(d)) / 86_400_000)
-    if (days === 0) return 'Today'
-    if (days === 1) return 'Yesterday'
+    if (days === 0) return t('Today')
+    if (days === 1) return t('Yesterday')
     const sameYear = d.getFullYear() === new Date().getFullYear()
-    return d.toLocaleDateString(LOCALE, { weekday: 'long', month: 'short', day: 'numeric', year: sameYear ? undefined : 'numeric' })
+    return d.toLocaleDateString(locale(), { weekday: 'long', month: 'short', day: 'numeric', year: sameYear ? undefined : 'numeric' })
   }
 
   const groups = $derived.by(() => {
@@ -95,7 +96,7 @@
       if (!ctx) throw new Error('No canvas')
       ctx.imageSmoothingEnabled = false
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-      return await new Promise<Blob>((ok, ko) => canvas.toBlob((b) => (b ? ok(b) : ko(new Error('No image'))), 'image/png'))
+      return await new Promise<Blob>((ok, ko) => canvas.toBlob((b) => (b ? ok(b) : ko(new Error(t('No image')))), 'image/png'))
     } finally {
       URL.revokeObjectURL(url)
     }
@@ -106,9 +107,9 @@
       const blob = await (await fetch(s.url)).blob()
       const png = blob.type === 'image/png' ? blob : await toPng(blob)
       await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })])
-      app.toast('Image copied.', 'success')
+      app.toast(t('Image copied.'), 'success')
     } catch {
-      app.toast('Couldn’t copy this image. Open the folder to copy the file instead.', 'error', { label: 'Open folder', run: () => data.openFolder('screenshots') })
+      app.toast(t('Couldn’t copy this image. Open the folder to copy the file instead.'), 'error', { label: t('Open folder'), run: () => data.openFolder('screenshots') })
     }
   }
 
@@ -124,7 +125,7 @@
       const next = data.screenshots[Math.min(at, data.screenshots.length - 1)]
       selected = next?.fileName ?? null
       if (viewing?.fileName === s.fileName) viewing = null
-      app.toast('Screenshot deleted.', 'success')
+      app.toast(t('Screenshot deleted.'), 'success')
       if (next) void focusAt(Math.min(at, shots.length - 1))
     } catch (e) {
       app.error(e)
@@ -140,25 +141,25 @@
 
 </script>
 
-<div class="ip-body" role="tabpanel" id="instance-panel" aria-label="Screenshots">
+<div class="ip-body" role="tabpanel" id="instance-panel" aria-label={t('Screenshots')}>
   <div class="toolbar">
     <div class="toolbar__title">
-      <h2 class="text-heading">{data.screenshots ? plural(shots.length, 'screenshot', 'screenshots') : 'Screenshots'}</h2>
-      <p class="text-small muted">Press F2 in game to take one.</p>
+      <h2 class="text-heading">{data.screenshots ? plural(shots.length, 'screenshot', 'screenshots') : t('Screenshots')}</h2>
+      <p class="text-small muted">{t('Press F2 in game to take one.')}</p>
     </div>
-    <Button icon="folder" onclick={() => data.openFolder('screenshots')}>Open folder</Button>
+    <Button icon="folder" onclick={() => data.openFolder('screenshots')}>{t('Open folder')}</Button>
   </div>
 
   {#if data.screenshots === null}
-    <p class="muted text-body">Looking for screenshots…</p>
+    <p class="muted text-body">{t('Looking for screenshots…')}</p>
   {:else if !shots.length}
     <div class="empty">
-      <p class="text-heading">No screenshots yet</p>
-      <p class="muted text-body">Press F2 while you play. Your screenshots show up here.</p>
+      <p class="text-heading">{t('No screenshots yet')}</p>
+      <p class="muted text-body">{t('Press F2 while you play. Your screenshots show up here.')}</p>
     </div>
   {:else}
     <!-- One tab stop on the selected picture, then the arrow keys. -->
-    <div class="shots" role="listbox" aria-label="Screenshots" tabindex="-1" bind:this={list} {onkeydown}>
+    <div class="shots" role="listbox" aria-label={t('Screenshots')} tabindex="-1" bind:this={list} {onkeydown}>
       {#each groups as g (g.key)}
         <div class="day" role="group" aria-labelledby={`day-${g.key}`}>
           <div class="day__head">
@@ -172,7 +173,7 @@
                   type="button"
                   role="option"
                   aria-selected={i === index}
-                  aria-label={`${g.label} at ${timeOfDay(shot.taken)}`}
+                  aria-label={t('{day} at {time}', { day: g.label, time: timeOfDay(shot.taken) })}
                   tabindex={i === index ? 0 : -1}
                   data-i={i}
                   class={['shot', i === index && 'is-selected']}
@@ -191,16 +192,16 @@
   {/if}
 </div>
 
-<aside class="ip-aside" aria-label="Screenshot details">
+<aside class="ip-aside" aria-label={t('Screenshot details')}>
   <div class="ip-aside__inner">
     {#if cur}
-      <button type="button" class="preview" aria-label="View full size" onclick={() => (viewing = cur)}>
-        <img src={cur.url} alt={`Screenshot from ${when(cur.taken, true)}`} onload={(e) => measured(e, cur.fileName)} />
+      <button type="button" class="preview" aria-label={t('View full size')} onclick={() => (viewing = cur)}>
+        <img src={cur.url} alt={t('Screenshot from {true}', { true: when(cur.taken, true) })} onload={(e) => measured(e, cur.fileName)} />
       </button>
       <div class="pager">
-        <Button size="sm" variant="ghost" disabled={index === 0} onclick={() => focusAt(index - 1)}>Newer</Button>
-        <span class="text-counter muted pager__pos">{num(index + 1)} of {num(shots.length)}</span>
-        <Button size="sm" variant="ghost" disabled={index === shots.length - 1} onclick={() => focusAt(index + 1)}>Older</Button>
+        <Button size="sm" variant="ghost" disabled={index === 0} onclick={() => focusAt(index - 1)}>{t('Newer')}</Button>
+        <span class="text-counter muted pager__pos">{t('{n} of {n2}', { n: num(index + 1), n2: num(shots.length) })}</span>
+        <Button size="sm" variant="ghost" disabled={index === shots.length - 1} onclick={() => focusAt(index + 1)}>{t('Older')}</Button>
       </div>
       <div class="title">
         <h2 class="text-mono wrap">{cur.fileName}</h2>
@@ -208,21 +209,21 @@
       </div>
       {#if dims && dims.file === cur.fileName}
         <dl class="facts">
-          <dt class="text-small muted">Resolution</dt>
+          <dt class="text-small muted">{t('Resolution')}</dt>
           <dd class="text-body">{num(dims.w)} × {num(dims.h)}</dd>
         </dl>
       {/if}
-      <Button variant="primary" icon="copy" class="wide" onclick={() => cur && copyImage(cur)}>Copy image</Button>
+      <Button variant="primary" icon="copy" class="wide" onclick={() => cur && copyImage(cur)}>{t('Copy image')}</Button>
       <div class="row">
-        <Button size="sm" icon="folder" onclick={() => data.openFolder('screenshots')}>Open folder</Button>
+        <Button size="sm" icon="folder" onclick={() => data.openFolder('screenshots')}>{t('Open folder')}</Button>
       </div>
       <div class="danger">
-        <Button size="sm" variant="danger" icon="trash" onclick={() => (deleting = cur)}>Delete</Button>
-        <span class="text-small muted">Deletes the file for good.</span>
+        <Button size="sm" variant="danger" icon="trash" onclick={() => (deleting = cur)}>{t('Delete')}</Button>
+        <span class="text-small muted">{t('Deletes the file for good.')}</span>
       </div>
     {:else}
-      <p class="text-label muted">Screenshot details</p>
-      <p class="text-body muted">Pick a screenshot to see it larger, copy it or delete it.</p>
+      <p class="text-label muted">{t('Screenshot details')}</p>
+      <p class="text-body muted">{t('Pick a screenshot to see it larger, copy it or delete it.')}</p>
     {/if}
   </div>
 </aside>
@@ -230,23 +231,23 @@
 {#if viewing}
   {@const v = viewing}
   {#snippet viewActions()}
-    <Button icon="copy" onclick={() => copyImage(v)}>Copy image</Button>
-    <Button variant="primary" onclick={() => (viewing = null)}>Close</Button>
+    <Button icon="copy" onclick={() => copyImage(v)}>{t('Copy image')}</Button>
+    <Button variant="primary" onclick={() => (viewing = null)}>{t('Close')}</Button>
   {/snippet}
   <Dialog wide title={when(v.taken)} onClose={() => (viewing = null)} actions={viewActions}>
-    <img class="full" src={v.url} alt={`Screenshot from ${when(v.taken, true)}`} />
+    <img class="full" src={v.url} alt={t('Screenshot from {true}', { true: when(v.taken, true) })} />
   </Dialog>
 {/if}
 
 {#if deleting}
   {@const s = deleting}
   {#snippet deleteActions()}
-    <Button variant="ghost" onclick={() => (deleting = null)}>Cancel</Button>
-    <Button variant="danger" icon="trash" busy={busy} disabled={busy} onclick={remove}>Delete</Button>
+    <Button variant="ghost" onclick={() => (deleting = null)}>{t('Cancel')}</Button>
+    <Button variant="danger" icon="trash" busy={busy} disabled={busy} onclick={remove}>{t('Delete')}</Button>
   {/snippet}
-  <Dialog tone="danger" icon="trash" title="Delete this screenshot?" onClose={() => (deleting = null)} actions={deleteActions}>
-    <p>Deletes <span class="text-mono">{s.fileName}</span> from the screenshots folder.</p>
-    <p>It doesn’t go to the trash, so you can’t get it back.</p>
+  <Dialog tone="danger" icon="trash" title={t('Delete this screenshot?')} onClose={() => (deleting = null)} actions={deleteActions}>
+    <p>{t('Deletes')} <span class="text-mono">{s.fileName}</span> {t('from the screenshots folder.')}</p>
+    <p>{t('It doesn’t go to the trash, so you can’t get it back.')}</p>
   </Dialog>
 {/if}
 

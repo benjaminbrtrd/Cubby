@@ -1,7 +1,10 @@
+import { intlLocale, t, tn } from './i18n.svelte'
 import type { Instance, Loader, LoaderKind } from './types'
 
-// English first (v1). Every number and date goes through Intl so other locales only need a catalog.
-export const LOCALE = 'en-US'
+/** The locale of numbers and dates: follows the language picked in Settings. */
+export function locale(): string {
+  return intlLocale()
+}
 
 const LOADER_NAMES: Record<LoaderKind, string> = {
   vanilla: 'Vanilla',
@@ -25,32 +28,41 @@ export function instanceMeta(instance: Instance): string {
   return instance.loader.kind === 'vanilla' ? instance.minecraft : `${instance.minecraft} · ${loaderName(instance.loader)}`
 }
 
-const nf = new Intl.NumberFormat(LOCALE)
-const compact = new Intl.NumberFormat(LOCALE, { notation: 'compact', maximumFractionDigits: 1 })
+// Intl formatters are costly to build: one per locale, built on first use.
+const formatters = new Map<string, { nf: Intl.NumberFormat; compact: Intl.NumberFormat }>()
+function fmt() {
+  const loc = locale()
+  let f = formatters.get(loc)
+  if (!f) {
+    f = { nf: new Intl.NumberFormat(loc), compact: new Intl.NumberFormat(loc, { notation: 'compact', maximumFractionDigits: 1 }) }
+    formatters.set(loc, f)
+  }
+  return f
+}
 
 /** "4,096" */
 export function num(n: number): string {
-  return nf.format(n)
+  return fmt().nf.format(n)
 }
 
 /** "2.3M", "18.4K" */
 export function compactNum(n: number): string {
-  return compact.format(n)
+  return fmt().compact.format(n)
 }
 
 /** "Never played", "Just now", "12 min ago", "2h ago", "Yesterday", "4 days ago", "3 weeks ago", "2 months ago" */
 export function relativeTime(iso: string | null, never = 'Never played'): string {
-  if (!iso) return never
+  if (!iso) return t(never)
   const diff = (Date.now() - new Date(iso).getTime()) / 1000
-  if (diff < 60) return 'Just now'
-  if (diff < 3600) return `${Math.floor(diff / 60)} min ago`
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
+  if (diff < 60) return t('Just now')
+  if (diff < 3600) return t('{n} min ago', { n: Math.floor(diff / 60) })
+  if (diff < 86400) return t('{n}h ago', { n: Math.floor(diff / 3600) })
   const days = Math.floor(diff / 86400)
-  if (days === 1) return 'Yesterday'
-  if (days < 7) return `${days} days ago`
-  if (days < 30) return `${Math.floor(days / 7)} week${days >= 14 ? 's' : ''} ago`
-  if (days < 365) return `${Math.floor(days / 30)} month${days >= 60 ? 's' : ''} ago`
-  return `${Math.floor(days / 365)} year${days >= 730 ? 's' : ''} ago`
+  if (days === 1) return t('Yesterday')
+  if (days < 7) return t('{n} days ago', { n: days })
+  if (days < 30) return days >= 14 ? t('{n} weeks ago', { n: Math.floor(days / 7) }) : t('1 week ago')
+  if (days < 365) return days >= 60 ? t('{n} months ago', { n: Math.floor(days / 30) }) : t('1 month ago')
+  return days >= 730 ? t('{n} years ago', { n: Math.floor(days / 365) }) : t('1 year ago')
 }
 
 /** "41h", "45 min", "3h 12m" */
@@ -77,40 +89,39 @@ export function clock(ms: number): string {
 
 /** "18:42" */
 export function timeOfDay(iso: string): string {
-  return new Date(iso).toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit', hour12: false })
+  return new Date(iso).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit', hour12: false })
 }
 
 /** "Nov 2, 2026" */
 export function date(iso: string): string {
-  return new Date(iso).toLocaleDateString(LOCALE, { year: 'numeric', month: 'short', day: 'numeric' })
+  return new Date(iso).toLocaleDateString(locale(), { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
 /** "412 MB", "2.4 GB" (decimal units, like Windows Explorer shows sizes to most people) */
 export function bytes(n: number): string {
-  if (n < 1000) return `${n} B`
-  const units = ['KB', 'MB', 'GB', 'TB']
+  const fr = locale().startsWith('fr')
+  if (n < 1000) return `${n} ${fr ? 'o' : 'B'}`
+  const units = fr ? ['Ko', 'Mo', 'Go', 'To'] : ['KB', 'MB', 'GB', 'TB']
   let v = n / 1000
   let i = 0
   while (v >= 1000 && i < units.length - 1) {
     v /= 1000
     i++
   }
-  return `${v.toLocaleString(LOCALE, { maximumFractionDigits: v < 10 ? 1 : 0 })} ${units[i]}`
+  return `${v.toLocaleString(locale(), { maximumFractionDigits: v < 10 ? 1 : 0 })} ${units[i]}`
 }
 
 /** "6,144 MB" */
 export function megabytes(mb: number): string {
-  return `${nf.format(mb)} MB`
+  return `${num(mb)} ${locale().startsWith('fr') ? 'Mo' : 'MB'}`
 }
 
-const pr = new Intl.PluralRules(LOCALE)
-/** plural(38, 'mod', 'mods') → "38 mods" */
+/** plural(38, 'mod', 'mods') → "38 mods", translated when the catalog has the word. */
 export function plural(n: number, one: string, other: string): string {
-  return `${nf.format(n)} ${pr.select(n) === 'one' ? one : other}`
+  return tn(n, one, other)
 }
 
 /** Case and accent insensitive comparison key. */
 export function fold(text: string): string {
   return text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 }
-

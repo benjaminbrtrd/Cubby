@@ -10,6 +10,7 @@
 </script>
 
 <script lang="ts">
+  import { t } from '../../i18n.svelte'
   import { Button, IconPicker, InstanceIcon, TextField, pickIcon } from '../../cubby'
   import { app } from '../../state.svelte'
 
@@ -60,8 +61,8 @@
     const file = e.currentTarget.files?.[0]
     e.currentTarget.value = ''
     if (!file) return
-    if (!/^image\/(png|jpeg)$/.test(file.type)) return app.toast('Pick a PNG or JPG image.', 'error')
-    if (file.size > 512_000) return app.toast('Pick an image under 512 KB.', 'error')
+    if (!/^image\/(png|jpeg)$/.test(file.type)) return app.toast(t('Pick a PNG or JPG image.'), 'error')
+    if (file.size > 512_000) return app.toast(t('Pick an image under 512 KB.'), 'error')
     const reader = new FileReader()
     reader.onload = () => {
       if (typeof reader.result === 'string') {
@@ -69,25 +70,25 @@
         iconTouched = true
       }
     }
-    reader.onerror = () => app.toast("Couldn't read this image.", 'error')
+    reader.onerror = () => app.toast(t('Couldn\'t read this image.'), 'error')
     reader.readAsDataURL(file)
   }
 </script>
 
-<section class="identity" aria-label="Name, group and icon">
+<section class="identity" aria-label={t('Name, group and icon')}>
   <div class="named">
-    {#if withIcon}<InstanceIcon {motif} {ground} {src} size={44} raised label="Icon" />{/if}
-    <TextField label="Name" bind:value={name} error={nameError} maxlength={64} oninput={() => onName?.()} />
+    {#if withIcon}<InstanceIcon {motif} {ground} {src} size={44} raised label={t('Icon')} />{/if}
+    <TextField label={t('Name')} bind:value={name} error={nameError} maxlength={64} oninput={() => onName?.()} />
   </div>
   <div>
-    <TextField label="Group" icon="folder" placeholder="No group" list={listId} bind:value={group} maxlength={40} hint="Leave empty for no group" />
+    <TextField label={t('Group')} icon="folder" placeholder={t('No group')} list={listId} bind:value={group} maxlength={40} hint={t('Leave empty for no group')} />
     <datalist id={listId}>
       {#each app.groups as g (g.name)}<option value={g.name}></option>{/each}
     </datalist>
   </div>
   {#if withIcon}
   <div class="icon">
-    <Button size="sm" variant="ghost" icon={pick ? 'close' : 'import'} aria-expanded={pick} onclick={() => (pick = !pick)}>{pick ? 'Done' : 'Change icon'}</Button>
+    <Button size="sm" variant="ghost" icon={pick ? 'close' : 'import'} aria-expanded={pick} onclick={() => (pick = !pick)}>{pick ? t('Done') : t('Change icon')}</Button>
     {#if pick}
       <IconPicker
         bind:motif

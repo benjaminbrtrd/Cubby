@@ -9,6 +9,7 @@
   import MetaChip from './MetaChip.svelte';
   import StatusTag from './StatusTag.svelte';
   import type { InstanceRowProps } from './types';
+  import { t } from '../i18n.svelte';
 
   let {
     head,
@@ -33,10 +34,10 @@
     class: className,
   }: InstanceRowProps = $props();
 
-  const L = $derived({ ...ROW_HEAD, ...labels });
+  const L = $derived({ ...Object.fromEntries(Object.entries(ROW_HEAD).map(([k, v]) => [k, t(v)])), ...labels } as typeof ROW_HEAD);
   const status = $derived(statusProp || 'ready');
   const running = $derived(status === 'running');
-  const playName = $derived(playLabel || (running ? 'Stop ' : 'Play ') + name);
+  const playName = $derived(playLabel || t(running ? 'Stop {name}' : 'Play {name}', { name: name ?? '' }));
 </script>
 
 {#if head}

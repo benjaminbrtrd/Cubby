@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../i18n.svelte'
   import { tick, untrack } from 'svelte'
   import { api } from '../../api'
   import { Button, Dialog, Icon, IconButton, PlayButton } from '../../cubby'
@@ -6,6 +7,7 @@
   import { app } from '../../state.svelte'
   import type { Instance, World, WorldBackup } from '../../types'
   import { when, type InstanceData } from './InstancePage.svelte'
+  import { opensWorlds } from '../library/Stage.svelte'
 
   let { instance, data }: { instance: Instance; data: InstanceData } = $props()
 
@@ -42,9 +44,12 @@
     asideTitle?.focus()
   }
 
-  function play() {
+  /** Minecraft 1.20 and newer open a world straight from the launcher; older versions start on the title screen. */
+  const direct = $derived(opensWorlds(instance.minecraft))
+
+  function play(world: string | null = null) {
     if (running) void app.kill(id)
-    else if (!preparing) void app.launch(id)
+    else if (!preparing) void app.launch(id, false, null, direct ? world : null)
   }
 
   async function backUp(w: World) {
@@ -53,7 +58,7 @@
     try {
       await api.backupWorld(id, w.folder)
       await data.loadBackups()
-      app.toast(`${w.name} is backed up.`, 'success')
+      app.toast(t('{name} is backed up.', { name: w.name }), 'success')
     } catch (e) {
       app.error(e)
     } finally {
@@ -68,7 +73,7 @@
     try {
       await api.restoreBackup(id, b.fileName)
       restoring = null
-      app.toast(`Restored the backup from ${when(b.created, true)}.`, 'success')
+      app.toast(t('Restored the backup from {true}.', { true: when(b.created, true) }), 'success')
       await Promise.all([data.loadWorlds(), data.loadBackups()])
     } catch (e) {
       app.error(e)
@@ -86,7 +91,7 @@
       deleting = null
       data.worlds = (data.worlds ?? []).filter((x) => x.folder !== w.folder)
       if (selected === w.folder) selected = null
-      app.toast(`${w.name} moved to the trash.`, 'success')
+      app.toast(t('{name} moved to the trash.', { name: w.name }), 'success')
       void data.loadWorlds()
     } catch (e) {
       app.error(e)
@@ -106,21 +111,21 @@
   {/if}
 {/snippet}
 
-<div class="ip-body" role="tabpanel" id="instance-panel" aria-label="Worlds">
+<div class="ip-body" role="tabpanel" id="instance-panel" aria-label={t('Worlds')}>
   <div class="toolbar">
-    <h2 class="text-heading">{data.worlds ? plural(worlds.length, 'world', 'worlds') : 'Worlds'}</h2>
-    {#if worlds.length}<span class="text-small muted">{bytes(total)} in all</span>{/if}
+    <h2 class="text-heading">{data.worlds ? plural(worlds.length, 'world', 'worlds') : t('Worlds')}</h2>
+    {#if worlds.length}<span class="text-small muted">{t('{n} in all', { n: bytes(total) })}</span>{/if}
     <span class="grow"></span>
-    <Button icon="folder" onclick={() => data.openFolder('saves')}>Open saves folder</Button>
+    <Button icon="folder" onclick={() => data.openFolder('saves')}>{t('Open saves folder')}</Button>
   </div>
 
   {#if data.worlds === null}
-    <p class="muted text-body">Looking for worlds…</p>
+    <p class="muted text-body">{t('Looking for worlds…')}</p>
   {:else if !worlds.length}
     <div class="empty">
-      <p class="text-heading">No worlds yet</p>
-      <p class="muted text-body">Play, then create a world in Singleplayer. It shows up here.</p>
-      <PlayButton size="sm" state={playState} onclick={play} />
+      <p class="text-heading">{t('No worlds yet')}</p>
+      <p class="muted text-body">{t('Play, then create a world in Singleplayer. It shows up here.')}</p>
+      <PlayButton size="sm" state={playState} onclick={() => play()} />
     </div>
   {:else}
     <div class="grid">
@@ -133,43 +138,43 @@
             {@render thumb(w)}
             <div class="world__text">
               <h3 class="text-heading clip" title={w.name}>{w.name}</h3>
-              <p class="text-small muted">{w.lastPlayed ? relativeTime(w.lastPlayed) : 'Not played yet'} · {bytes(w.sizeBytes)}</p>
-              <p class="text-small muted">{n ? plural(n, 'backup', 'backups') : 'No backups'}</p>
+              <p class="text-small muted">{w.lastPlayed ? relativeTime(w.lastPlayed) : t('Not played yet')} · {bytes(w.sizeBytes)}</p>
+              <p class="text-small muted">{n ? plural(n, 'backup', 'backups') : t('No backups')}</p>
             </div>
           </div>
           <div class="world__actions">
-            <PlayButton size="sm" state={playState} onclick={play} />
-            <Button icon="copy" busy={backingUp === w.folder} disabled={!!backingUp} onclick={() => backUp(w)}>Back up</Button>
+            <PlayButton size="sm" state={playState} onclick={() => play(w.folder)} />
+            <Button icon="copy" busy={backingUp === w.folder} disabled={!!backingUp} onclick={() => backUp(w)}>{t('Back up')}</Button>
             <span class="grow"></span>
-            <IconButton icon="more" label={`Details for ${w.name}`} onclick={() => details(w)} />
+            <IconButton icon="more" label={t('Details for {name}', { name: w.name })} onclick={() => details(w)} />
           </div>
         </article>
       {/each}
     </div>
-    <p class="text-small muted">Play opens the game on its title screen. Then pick the world in Singleplayer.</p>
+    {#if !direct}<p class="text-small muted">{t('Minecraft {minecraft} can’t open a world from a launcher: Play starts on the title screen, then pick the world in Singleplayer.', { minecraft: instance.minecraft })}</p>{/if}
   {/if}
 </div>
 
-<aside class="ip-aside" aria-label="World details">
+<aside class="ip-aside" aria-label={t('World details')}>
   <div class="ip-aside__inner">
     {#if sel}
       {@render thumb(sel, true)}
       <h2 class="text-heading wrap" tabindex="-1" bind:this={asideTitle}>{sel.name}</h2>
       <dl class="facts">
-        <dt class="text-small muted">Last played</dt>
-        <dd class="text-body">{sel.lastPlayed ? when(sel.lastPlayed) : 'Not yet'}</dd>
-        <dt class="text-small muted">Size</dt>
+        <dt class="text-small muted">{t('Last played')}</dt>
+        <dd class="text-body">{sel.lastPlayed ? when(sel.lastPlayed) : t('Not yet')}</dd>
+        <dt class="text-small muted">{t('Size')}</dt>
         <dd class="text-body">{bytes(sel.sizeBytes)}</dd>
-        <dt class="text-small muted full">Folder</dt>
+        <dt class="text-small muted full">{t('Folder')}</dt>
         <dd class="text-mono full wrap">saves/{sel.folder}</dd>
       </dl>
 
       <section class="part" aria-labelledby="w-backups">
-        <h3 id="w-backups" class="text-label muted">Backups · {selBackups.length}</h3>
+        <h3 id="w-backups" class="text-label muted">{t('Backups · {length}', { length: selBackups.length })}</h3>
         {#if data.backups === null}
-          <p class="text-small muted">Loading backups…</p>
+          <p class="text-small muted">{t('Loading backups…')}</p>
         {:else if !selBackups.length}
-          <p class="text-small muted">No backups of this world yet.</p>
+          <p class="text-small muted">{t('No backups of this world yet.')}</p>
         {:else}
           {#each selBackups as b (b.fileName)}
             <div class="backup">
@@ -177,23 +182,23 @@
                 <span class="text-body">{when(b.created)}</span>
                 <span class="text-small muted">{bytes(b.sizeBytes)}</span>
               </div>
-              <Button size="sm" disabled={running} onclick={() => (restoring = b)}>Restore</Button>
+              <Button size="sm" disabled={running} onclick={() => (restoring = b)}>{t('Restore')}</Button>
             </div>
           {/each}
         {/if}
         <div>
-          <Button icon="copy" busy={backingUp === sel.folder} disabled={!!backingUp} onclick={() => sel && backUp(sel)}>Back up now</Button>
+          <Button icon="copy" busy={backingUp === sel.folder} disabled={!!backingUp} onclick={() => sel && backUp(sel)}>{t('Back up now')}</Button>
         </div>
-        {#if running}<p class="text-small muted">Close the game to restore or delete a world.</p>{/if}
+        {#if running}<p class="text-small muted">{t('Close the game to restore or delete a world.')}</p>{/if}
       </section>
 
       <div class="danger">
-        <Button variant="danger" icon="trash" disabled={running} onclick={() => (deleting = sel)}>Delete world</Button>
-        <p class="text-small muted">Moves to the trash. Its backups stay.</p>
+        <Button variant="danger" icon="trash" disabled={running} onclick={() => (deleting = sel)}>{t('Delete world')}</Button>
+        <p class="text-small muted">{t('Moves to the trash. Its backups stay.')}</p>
       </div>
     {:else}
-      <p class="text-label muted">World details</p>
-      <p class="text-body muted">Your worlds show up here once you’ve created one.</p>
+      <p class="text-label muted">{t('World details')}</p>
+      <p class="text-body muted">{t('Your worlds show up here once you’ve created one.')}</p>
     {/if}
   </div>
 </aside>
@@ -201,22 +206,22 @@
 {#if restoring}
   {@const b = restoring}
   {#snippet restoreActions()}
-    <Button variant="ghost" onclick={() => (restoring = null)}>Cancel</Button>
-    <Button variant="primary" icon="update" busy={busy} disabled={busy} onclick={restore}>Restore</Button>
+    <Button variant="ghost" onclick={() => (restoring = null)}>{t('Cancel')}</Button>
+    <Button variant="primary" icon="update" busy={busy} disabled={busy} onclick={restore}>{t('Restore')}</Button>
   {/snippet}
-  <Dialog tone="warning" icon="warning" title={`Restore ${b.world} from ${when(b.created, true)}?`} onClose={() => (restoring = null)} actions={restoreActions}>
-    <p>The world goes back to how it was then. Cubby backs up the world as it is now first, so you can undo this.</p>
+  <Dialog tone="warning" icon="warning" title={t('Restore {world} from {true}?', { world: b.world, true: when(b.created, true) })} onClose={() => (restoring = null)} actions={restoreActions}>
+    <p>{t('The world goes back to how it was then. Cubby backs up the world as it is now first, so you can undo this.')}</p>
   </Dialog>
 {/if}
 
 {#if deleting}
   {@const w = deleting}
   {#snippet deleteActions()}
-    <Button variant="ghost" onclick={() => (deleting = null)}>Cancel</Button>
-    <Button variant="danger" icon="trash" busy={busy} disabled={busy} onclick={remove}>Move to trash</Button>
+    <Button variant="ghost" onclick={() => (deleting = null)}>{t('Cancel')}</Button>
+    <Button variant="danger" icon="trash" busy={busy} disabled={busy} onclick={remove}>{t('Move to trash')}</Button>
   {/snippet}
-  <Dialog tone="danger" icon="trash" title={`Move ${w.name} to the trash?`} onClose={() => (deleting = null)} actions={deleteActions}>
-    <p>Moves the world folder <span class="text-mono">{w.folder}</span> to Cubby’s trash. Its backups stay in this instance.</p>
+  <Dialog tone="danger" icon="trash" title={t('Move {name} to the trash?', { name: w.name })} onClose={() => (deleting = null)} actions={deleteActions}>
+    <p>{t('Moves the world folder')} <span class="text-mono">{w.folder}</span> {t('to Cubby’s trash. Its backups stay in this instance.')}</p>
   </Dialog>
 {/if}
 

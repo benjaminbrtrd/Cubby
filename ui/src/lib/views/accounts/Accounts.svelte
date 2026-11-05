@@ -4,6 +4,7 @@
   device-code sign-in and the skin head.
 -->
 <script lang="ts" module>
+  import { t } from '../../i18n.svelte'
   import { api } from '../../api'
   import { app } from '../../state.svelte'
   import type { Account, DeviceCode } from '../../types'
@@ -32,9 +33,9 @@
   async function copyCode(code: string) {
     try {
       await navigator.clipboard.writeText(code)
-      app.toast('Code copied.', 'success')
+      app.toast(t('Code copied.'), 'success')
     } catch {
-      app.toast('Can’t copy the code. Select it and press Ctrl C.', 'error')
+      app.toast(t('Can’t copy the code. Select it and press Ctrl C.'), 'error')
     }
   }
 
@@ -136,7 +137,7 @@
     if (account) {
       microsoftOpen = false
       selectedId = account.id
-      app.toast(`Signed in as ${account.username}.`, 'success')
+      app.toast(t('Signed in as {username}.', { username: account.username }), 'success')
     }
   }
 
@@ -155,7 +156,7 @@
     try {
       await api.setDefaultAccount(account.id)
       await app.refreshAccounts()
-      app.toast(`Cubby now plays as ${account.username}.`, 'success')
+      app.toast(t('Cubby now plays as {username}.', { username: account.username }), 'success')
     } catch (e) {
       app.error(e)
     }
@@ -175,7 +176,7 @@
       await app.refreshAccounts()
       if (selectedId === account.id) selectedId = null
       removing = null
-      app.toast(`Signed out of ${account.username}.`)
+      app.toast(t('Signed out of {username}.', { username: account.username }))
     } catch (e) {
       app.error(e)
     } finally {
@@ -186,9 +187,9 @@
   async function copyUuid(id: string) {
     try {
       await navigator.clipboard.writeText(dashedUuid(id))
-      app.toast('UUID copied.', 'success')
+      app.toast(t('UUID copied.'), 'success')
     } catch {
-      app.toast('Can’t copy the UUID. Select it and press Ctrl C.', 'error')
+      app.toast(t('Can’t copy the UUID. Select it and press Ctrl C.'), 'error')
     }
   }
 
@@ -224,35 +225,35 @@
 {#snippet deviceCode(login: MicrosoftLogin, retry: () => void)}
   <div class="dc">
     {#if login.phase === 'starting'}
-      <ProgressBar label="Asking Microsoft for a code" />
+      <ProgressBar label={t('Asking Microsoft for a code')} />
     {:else if login.phase === 'waiting' && login.code}
       {@const code = login.code}
       <ol class="dc__steps">
         <li class="dc__step">
           <span class="dc__n text-body-strong" aria-hidden="true">1</span>
           <div class="dc__main">
-            <p class="text-body-strong">Open Microsoft’s sign-in page in your browser</p>
-            <Button icon="globe" onclick={() => openUrl(code.verificationUri)}>Open <span class="text-mono">{shortUri(code.verificationUri)}</span></Button>
+            <p class="text-body-strong">{t('Open Microsoft’s sign-in page in your browser')}</p>
+            <Button icon="globe" onclick={() => openUrl(code.verificationUri)}>{t('Open')} <span class="text-mono">{shortUri(code.verificationUri)}</span></Button>
           </div>
         </li>
         <li class="dc__step">
           <span class="dc__n text-body-strong" aria-hidden="true">2</span>
           <div class="dc__main">
-            <p class="text-body-strong">Enter this code, on this PC or any other device</p>
+            <p class="text-body-strong">{t('Enter this code, on this PC or any other device')}</p>
             <div class="dc__code">
               <code class="dc__value text-heading">{code.userCode}</code>
-              <IconButton icon="copy" label="Copy code" variant="secondary" onclick={() => copyCode(code.userCode)} />
+              <IconButton icon="copy" label={t('Copy code')} variant="secondary" onclick={() => copyCode(code.userCode)} />
             </div>
           </div>
         </li>
       </ol>
       <ProgressBar
-        label="Waiting for you to confirm"
-        detail="The code works for {Math.max(1, Math.round(code.expiresIn / 60))} min. This page moves on by itself."
+        label={t('Waiting for you to confirm')}
+        detail={t('The code works for {expiresIn} min. This page moves on by itself.', { expiresIn: Math.max(1, Math.round(code.expiresIn / 60)) })}
       />
     {:else if login.phase === 'failed'}
-      {#snippet retryAction()}<Button size="sm" icon="update" onclick={retry}>Try again</Button>{/snippet}
-      <Banner tone="danger" title="Sign-in didn’t finish" actions={retryAction}>{login.error}</Banner>
+      {#snippet retryAction()}<Button size="sm" icon="update" onclick={retry}>{t('Try again')}</Button>{/snippet}
+      <Banner tone="danger" title={t('Sign-in didn’t finish')} actions={retryAction}>{login.error}</Banner>
     {/if}
   </div>
 {/snippet}
@@ -266,20 +267,20 @@
         <span class="acc__text">
           <span class="acc__name">
             <span class="text-heading">{a.username}</span>
-            {#if a.isDefault}<StatusTag state="ready">In use</StatusTag>{/if}
+            {#if a.isDefault}<StatusTag state="ready">{t('In use')}</StatusTag>{/if}
           </span>
           <span class="acc__kind text-body">
             <Icon name="globe" size={18} />
-            Microsoft account
+            {t('Microsoft account')}
           </span>
           <span class="text-small muted">
-            Owns Minecraft: Java Edition · stays signed in
+            {t('Owns Minecraft: Java Edition · stays signed in')}
           </span>
         </span>
       </button>
       <div class="acc__actions">
-        {#if !a.isDefault}<Button size="sm" onclick={() => use(a)}>Use this account</Button>{/if}
-        <Button size="sm" variant="ghost" onclick={() => (removing = a)}>Sign out</Button>
+        {#if !a.isDefault}<Button size="sm" onclick={() => use(a)}>{t('Use this account')}</Button>{/if}
+        <Button size="sm" variant="ghost" onclick={() => (removing = a)}>{t('Sign out')}</Button>
       </div>
     </article>
   </li>
@@ -289,31 +290,31 @@
   <div class="cols">
     <div class="content">
       <header class="head">
-        <h1 class="text-title">Accounts</h1>
+        <h1 class="text-title">{t('Accounts')}</h1>
         <span class="grow"></span>
         {#if app.accounts.length}
-          <Button variant="primary" icon="plus" onclick={addMicrosoft}>Add Microsoft account</Button>
+          <Button variant="primary" icon="plus" onclick={addMicrosoft}>{t('Add Microsoft account')}</Button>
         {/if}
       </header>
 
       {#if app.accounts.length === 0}
         <div class="empty">
           <Icon name="accounts" size={36} />
-          <h2 class="text-heading">No account yet</h2>
-          <p class="text-body muted">Add a Microsoft account that owns Minecraft: Java Edition to play.</p>
+          <h2 class="text-heading">{t('No account yet')}</h2>
+          <p class="text-body muted">{t('Add a Microsoft account that owns Minecraft: Java Edition to play.')}</p>
           <div class="empty__actions">
-            <Button variant="primary" icon="plus" onclick={addMicrosoft}>Add Microsoft account</Button>
+            <Button variant="primary" icon="plus" onclick={addMicrosoft}>{t('Add Microsoft account')}</Button>
           </div>
         </div>
       {:else}
-        <p class="text-body muted lead">Cubby plays every instance with the account in use. Pick one to see its details.</p>
+        <p class="text-body muted lead">{t('Cubby plays every instance with the account in use. Pick one to see its details.')}</p>
 
         {#if !app.defaultAccount}
-          <Banner tone="info" title="Pick the account to play with">Choose Use this account on one of your accounts.</Banner>
+          <Banner tone="info" title={t('Pick the account to play with')}>{t('Choose Use this account on one of your accounts.')}</Banner>
         {/if}
 
         <section class="group" aria-labelledby="{uid}-ms">
-          <h2 id="{uid}-ms" class="text-label muted">Microsoft accounts · {num(app.accounts.length)}</h2>
+          <h2 id="{uid}-ms" class="text-label muted">{t('Microsoft accounts · {n}', { n: num(app.accounts.length) })}</h2>
           <ul class="list">
             {#each app.accounts as a (a.id)}{@render accountRow(a)}{/each}
           </ul>
@@ -322,35 +323,35 @@
     </div>
 
     {#if selected}
-      <aside class="aside" aria-label="Account details">
-        {@render skinHead(selected.skinUrl, selected.username, 128, `Skin of ${selected.username}`)}
+      <aside class="aside" aria-label={t('Account details')}>
+        {@render skinHead(selected.skinUrl, selected.username, 128, t('Skin of {username}', { username: selected.username }))}
 
         <div>
           <h2 class="text-title name">{selected.username}</h2>
           <p class="aside__kind text-body">
             <Icon name="globe" size={18} />
-            Microsoft account
+            {t('Microsoft account')}
           </p>
-          <p class="text-small muted">Owns Minecraft: Java Edition</p>
+          <p class="text-small muted">{t('Owns Minecraft: Java Edition')}</p>
         </div>
 
         {#if selected.isDefault}
           <div class="aside__use">
-            <StatusTag state="ready">In use</StatusTag>
-            <p class="text-small muted">Cubby plays every instance with this account.</p>
+            <StatusTag state="ready">{t('In use')}</StatusTag>
+            <p class="text-small muted">{t('Cubby plays every instance with this account.')}</p>
           </div>
         {:else}
-          <div><Button onclick={() => selected && use(selected)}>Use this account</Button></div>
+          <div><Button onclick={() => selected && use(selected)}>{t('Use this account')}</Button></div>
         {/if}
 
         <div>
           <p class="text-label muted label">UUID</p>
           <div class="uuid">
             <code class="text-mono uuid__value">{dashedUuid(selected.id)}</code>
-            <IconButton icon="copy" label="Copy UUID" size="sm" onclick={() => selected && copyUuid(selected.id)} />
+            <IconButton icon="copy" label={t('Copy UUID')} size="sm" onclick={() => selected && copyUuid(selected.id)} />
           </div>
           <p class="text-small muted note">
-            Your player ID on every server.
+            {t('Your player ID on every server.')}
           </p>
         </div>
 
@@ -360,13 +361,12 @@
           onclick={(e) => {
             e.preventDefault()
             openUrl(SKIN_PAGE)
-          }}>Change skin and cape on <span class="text-mono">minecraft.net</span></a
+          }}>{t('Change skin and cape on')} <span class="text-mono">minecraft.net</span></a
         >
         <p class="secure text-small muted">
           <Icon name="key" size={18} />
           <span>
-            Sign-in tokens are stored in plain text in <span class="text-mono">accounts.json</span>, in Cubby’s data folder on this
-            PC. Signing out deletes them. Cubby never sees your password.
+            {t('Sign-in tokens are stored in plain text in')} <span class="text-mono">accounts.json</span>{t(', in Cubby’s data folder on this PC. Signing out deletes them. Cubby never sees your password.')}
           </span>
         </p>
       </aside>
@@ -377,19 +377,19 @@
 {#if microsoftOpen}
   {#snippet microsoftActions()}
     {#if msaReady}
-      <Button variant="ghost" onclick={closeMicrosoft}>Cancel</Button>
+      <Button variant="ghost" onclick={closeMicrosoft}>{t('Cancel')}</Button>
     {:else}
-      <Button variant="ghost" onclick={closeMicrosoft}>Close</Button>
-      <Button variant="primary" icon="settings" onclick={openAccountSettings}>Open Settings</Button>
+      <Button variant="ghost" onclick={closeMicrosoft}>{t('Close')}</Button>
+      <Button variant="primary" icon="settings" onclick={openAccountSettings}>{t('Open Settings')}</Button>
     {/if}
   {/snippet}
-  <Dialog title="Add a Microsoft account" icon="accounts" onClose={closeMicrosoft} actions={microsoftActions}>
+  <Dialog title={t('Add a Microsoft account')} icon="accounts" onClose={closeMicrosoft} actions={microsoftActions}>
     {#if msaReady}
-      <p>Sign-in happens on Microsoft’s page. Cubby never sees your password.</p>
+      <p>{t('Sign-in happens on Microsoft’s page. Cubby never sees your password.')}</p>
       {@render deviceCode(login, addMicrosoft)}
     {:else}
-      <p>Microsoft sign-in needs an application id, and this copy of Cubby doesn’t have one.</p>
-      <p>Add it in Settings › Accounts. Until then, Cubby only starts the Minecraft demo.</p>
+      <p>{t('Microsoft sign-in needs an application id, and this copy of Cubby doesn’t have one.')}</p>
+      <p>{t('Add it in Settings › Accounts. Until then, Cubby only starts the Minecraft demo.')}</p>
     {/if}
   </Dialog>
 {/if}
@@ -397,20 +397,20 @@
 {#if removing}
   {@const r = removing}
   {#snippet removeActions()}
-    <Button variant="ghost" onclick={() => (removing = null)}>Cancel</Button>
-    <Button variant="danger" busy={removeBusy} onclick={confirmRemove}>Sign out</Button>
+    <Button variant="ghost" onclick={() => (removing = null)}>{t('Cancel')}</Button>
+    <Button variant="danger" busy={removeBusy} onclick={confirmRemove}>{t('Sign out')}</Button>
   {/snippet}
   <Dialog
     tone="danger"
     icon="accounts"
-    title={`Sign out of ${r.username}?`}
+    title={t('Sign out of {username}?', { username: r.username })}
     onClose={() => (removing = null)}
     actions={removeActions}
   >
-    <p>Cubby deletes this account’s sign-in from this PC. Your Microsoft account, skin and worlds stay as they are, and you can sign in again any time.</p>
+    <p>{t('Cubby deletes this account’s sign-in from this PC. Your Microsoft account, skin and worlds stay as they are, and you can sign in again any time.')}</p>
     {#if r.isDefault}
       <p class="muted">
-        {nextInUse ? `Cubby then plays as ${nextInUse.username}.` : 'You’ll need to sign in again to play.'}
+        {nextInUse ? t('Cubby then plays as {username}.', { username: nextInUse.username }) : t('You’ll need to sign in again to play.')}
       </p>
     {/if}
   </Dialog>

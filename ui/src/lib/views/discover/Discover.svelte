@@ -8,6 +8,7 @@
 </script>
 
 <script lang="ts">
+  import { t } from '../../i18n.svelte'
   import { api } from '../../api'
   import { Banner, Button, Dialog, Icon, InstanceIcon, MetaChip, Switch, Tabs, TextField } from '../../cubby'
   import { compactNum, instanceMeta, num, plural, relativeTime } from '../../format'
@@ -45,15 +46,15 @@
 
   const tabs = KIND_ORDER.map((k) => ({ id: k, label: KINDS[k].label, panel: 'discover-results' }))
   const ENVIRONMENTS: ['client' | 'server', string][] = [
-    ['client', 'Client'],
-    ['server', 'Server'],
+    ['client', t('Client')],
+    ['server', t('Server')],
   ]
   const sorts: { id: ProjectSort; label: string }[] = [
-    { id: 'relevance', label: 'Relevance' },
-    { id: 'downloads', label: 'Most downloaded' },
-    { id: 'follows', label: 'Most followed' },
-    { id: 'updated', label: 'Recently updated' },
-    { id: 'newest', label: 'Newest' },
+    { id: 'relevance', label: t('Relevance') },
+    { id: 'downloads', label: t('Most downloaded') },
+    { id: 'follows', label: t('Most followed') },
+    { id: 'updated', label: t('Recently updated') },
+    { id: 'newest', label: t('Newest') },
   ]
   const sortChoices = $derived(packProvider ? sorts.filter((x) => packProvider.sorts.includes(PACK_SORT[x.id]) && x.id !== 'follows') : sorts)
   const sortLabel = $derived(sorts.find((s) => s.id === app.discover.sort)?.label ?? 'Relevance')
@@ -134,7 +135,7 @@
   function search(q: ProjectQuery): Promise<SearchResults> {
     const provider = packProvider
     if (provider) {
-      if (!provider.available) return Promise.reject(provider.reason ?? `${provider.name} isn't available right now.`)
+      if (!provider.available) return Promise.reject(provider.reason ?? t('{name} isn\'t available right now.', { name: provider.name }))
       const wanted = PACK_SORT[d.sort]
       const sort = provider.sorts.includes(wanted) ? wanted : (provider.sorts[0] ?? 'relevance')
       const offset = provider.paged ? d.page * PAGE_SIZE : 0
@@ -305,11 +306,11 @@
     if (fromCf) return { fit: hitFit(h, target), action: 'curseforge', version: null }
     if (h.kind === 'modpack' || !target) return { fit: hitFit(h, target), action: 'install', version: null }
     const busy = pending[h.id] === target.id && !!app.taskFor(`install:${target.id}`)
-    if (busy) return { fit: { tone: 'busy', icon: 'download', word: 'Installing' }, action: 'busy', version: null }
+    if (busy) return { fit: { tone: 'busy', icon: 'download', word: t('Installing') }, action: 'busy', version: null }
     const have = app.installedIn(target.id, h.id)
     if (have) {
       const update = app.updates[target.id]?.some((u) => u.projectId === h.id)
-      if (update) return { fit: { tone: 'busy', icon: 'update', word: 'Update available' }, action: 'update', version: have.versionNumber }
+      if (update) return { fit: { tone: 'busy', icon: 'update', word: t('Update available') }, action: 'update', version: have.versionNumber }
       return { fit: { tone: 'have', icon: 'check', word: `In ${target.name}` }, action: 'installed', version: have.versionNumber }
     }
     const fit = hitFit(h, target)
@@ -362,7 +363,7 @@
     <InstanceIcon {...art(h)} size={32} />
     <span class="pick-text">
       <span class="text-body-strong">{h.title}</span>
-      <span class="text-small muted">{sentence(KINDS[h.kind].one)} · {compactNum(h.downloads)} downloads</span>
+      <span class="text-small muted">{t('{one} · {n} downloads', { one: sentence(KINDS[h.kind].one), n: compactNum(h.downloads) })}</span>
     </span>
     <Icon name="chevron-right" size={18} />
   </button>
@@ -373,13 +374,13 @@
 {:else}
 <div class="screen">
   <div class="top">
-    <h1 class="text-title">Discover</h1>
+    <h1 class="text-title">{t('Discover')}</h1>
     <div class="search">
       <TextField
-        label="Search {words.many}"
+        label={t('Search {many}', { many: words.many })}
         hideLabel
         icon="search"
-        placeholder="Search {words.many}"
+        placeholder={t('Search {many}', { many: words.many })}
         bind:value={text}
         onkeydown={(e) => {
           if (e.key === 'Enter') setQuery(text)
@@ -388,32 +389,32 @@
     </div>
     <span class="grow"></span>
     {#if kind === 'modpack'}
-      <span class="text-small muted line"><Icon name="library" size={18} />Each modpack installs as a new instance</span>
+      <span class="text-small muted line"><Icon name="library" size={18} />{t('Each modpack installs as a new instance')}</span>
     {:else if target}
       <div class="target">
-        <span class="text-small muted">Install to</span>
+        <span class="text-small muted">{t('Install to')}</span>
         <TargetPicker variant="block" />
       </div>
     {:else}
-      <Button icon="plus" onclick={() => app.navigate({ name: 'create' })}>New instance</Button>
+      <Button icon="plus" onclick={() => app.navigate({ name: 'create' })}>{t('New instance')}</Button>
     {/if}
   </div>
 
   <div class="bar">
     <div class="tabs">
-      <Tabs label="What to discover" items={tabs} value={kind} onChange={setKind} />
+      <Tabs label={t('What to discover')} items={tabs} value={kind} onChange={setKind} />
     </div>
     <div class="sort">
-      <Picker items={sortChoices} value={d.sort} onSelect={setSort} label="Sort by" buttonLabel="Sort by {sortLabel}. Change" variant="ghost" listWidth={200}>
-        {#snippet trigger()}<span class="text-body">Sort: <span class="text-body-strong ink">{sortLabel}</span></span>{/snippet}
+      <Picker items={sortChoices} value={d.sort} onSelect={setSort} label={t('Sort by')} buttonLabel={t('Sort by {sort}. Change', { sort: sortLabel })} variant="ghost" listWidth={200}>
+        {#snippet trigger()}<span class="text-body">{t('Sort:')} <span class="text-body-strong ink">{sortLabel}</span></span>{/snippet}
         {#snippet option(item, on)}<span class={['text-body', on && 'text-body-strong']}>{item.label}</span>{/snippet}
       </Picker>
     </div>
   </div>
 
   {#if sources.length > 1}
-    <div class="sources" role="group" aria-label="Source">
-      <span class="text-label muted">Source</span>
+    <div class="sources" role="group" aria-label={t('Source')}>
+      <span class="text-label muted">{t('Source')}</span>
       {#each sources as p (p.id)}
         <button type="button" class={['source', source === p.id && 'is-on']} aria-pressed={source === p.id} onclick={() => (app.discover.provider = p.id)}>
           <ProviderMark id={p.id} size={22} />
@@ -424,11 +425,11 @@
   {/if}
 
   <div class="layout">
-    <nav class="filters" aria-label="Filters">
+    <nav class="filters" aria-label={t('Filters')}>
       {#if packProvider}
         {#if packLoaderChoices.length}
           <section>
-            <h2 class="text-label muted">Loader</h2>
+            <h2 class="text-label muted">{t('Loader')}</h2>
             <ul>
               {#each packLoaderChoices as l (l)}
                 {@const on = packLoaders.includes(l)}
@@ -444,7 +445,7 @@
         {/if}
         {#if packVersionChoices.length}
           <section>
-            <h2 class="text-label muted">Minecraft version</h2>
+            <h2 class="text-label muted">{t('Minecraft version')}</h2>
             <ul>
               {#each packVersionChoices as v (v)}
                 {@const on = packVersions.includes(v)}
@@ -459,13 +460,13 @@
           </section>
         {/if}
         {#if !clientPaged && (packLoaderChoices.length || packVersionChoices.length)}
-          <p class="text-small muted hint">Filters apply to the packs on this page.</p>
+          <p class="text-small muted hint">{t('Filters apply to the packs on this page.')}</p>
         {/if}
       {/if}
 
       {#if fromCf && cfCategories[kind]?.length}
         <section>
-          <h2 class="text-label muted">Categories</h2>
+          <h2 class="text-label muted">{t('Categories')}</h2>
           <ul>
             {#each cfCategories[kind] as c (c.id)}
               {@const on = d.categories.includes(c.id)}
@@ -477,7 +478,7 @@
               </li>
             {/each}
           </ul>
-          <p class="text-small muted hint">CurseForge filters by one category at a time.</p>
+          <p class="text-small muted hint">{t('CurseForge filters by one category at a time.')}</p>
         </section>
       {/if}
 
@@ -500,7 +501,7 @@
 
       {#if kind === 'mod' && !fromCf}
         <section>
-          <h2 class="text-label muted">Environment</h2>
+          <h2 class="text-label muted">{t('Environment')}</h2>
           <ul>
             {#each ENVIRONMENTS as [env, label] (env)}
               {@const on = d.environment === env}
@@ -512,7 +513,7 @@
               </li>
             {/each}
           </ul>
-          <p class="text-small muted hint">Client: runs in your game. Server: can run on a server you host.</p>
+          <p class="text-small muted hint">{t('Client: runs in your game. Server: can run on a server you host.')}</p>
         </section>
       {/if}
 
@@ -520,63 +521,63 @@
         <Switch
           checked={d.hideInstalled}
           onChange={(v) => (app.discover.hideInstalled = v)}
-          label="Hide installed"
-          hint="Skip {words.many} already in {target.name}"
+          label={t('Hide installed')}
+          hint={t('Skip {many} already in {name}', { many: words.many, name: target.name })}
         />
       {/if}
 
       {#if filtered}
-        <Button variant="ghost" size="sm" icon="close" onclick={clearFilters}>Clear filters</Button>
+        <Button variant="ghost" size="sm" icon="close" onclick={clearFilters}>{t('Clear filters')}</Button>
       {/if}
     </nav>
 
     <div class="results">
       {#if target && target.loader.kind === 'vanilla' && (kind === 'mod' || kind === 'shader')}
         {#snippet vanillaActions()}
-          <Button size="sm" icon="plus" onclick={() => app.navigate({ name: 'create' })}>New instance</Button>
+          <Button size="sm" icon="plus" onclick={() => app.navigate({ name: 'create' })}>{t('New instance')}</Button>
         {/snippet}
-        <Banner tone="warning" title="{target.name} is Vanilla" actions={vanillaActions}>
+        <Banner tone="warning" title={t('{name} is Vanilla', { name: target.name })} actions={vanillaActions}>
           {kind === 'mod'
-            ? 'Mods need a loader like Fabric, Quilt or NeoForge. Pick another instance in Install to, or create one with a loader.'
-            : 'Shader packs run through Iris, a mod, so they need a loader like Fabric or NeoForge. Pick another instance, or create one.'}
+            ? t('Mods need a loader like Fabric, Quilt or NeoForge. Pick another instance in Install to, or create one with a loader.')
+            : t('Shader packs run through Iris, a mod, so they need a loader like Fabric or NeoForge. Pick another instance, or create one.')}
         </Banner>
       {/if}
 
-      <section class="about" aria-label="About these results">
+      <section class="about" aria-label={t('About these results')}>
         <p class="text-body-strong summary" aria-live="polite">
           <span class="info-ic"><Icon name="info" size={18} /></span>
           {#if loading && !results}
-            <span>Searching Modrinth…</span>
+            <span>{t('Searching Modrinth…')}</span>
           {:else if results}
             <span>
               {plural(clientPaged ? packFiltered.length : results.total, 'result', 'results')}.
               {#if kind === 'modpack'}
-                Each one installs as a new instance.
+                {t('Each one installs as a new instance.')}
               {:else if scoped && target}
-                Showing {words.many} that work with {target.name} (<span class="text-mono">{instanceMeta(target)}</span>).
+                {t('Showing {many} that work with {name}', { many: words.many, name: target.name })} (<span class="text-mono">{instanceMeta(target)}</span>).
               {:else if target}
-                Showing {words.many} for every Minecraft version.
+                {t('Showing {many} for every Minecraft version.', { many: words.many })}
               {/if}
             </span>
             {#if kind !== 'modpack' && target}
               <button type="button" class="link" onclick={() => setScoped(!d.compatibleOnly)}>
-                {d.compatibleOnly ? 'Show everything' : `Only what works with ${target.name}`}
+                {d.compatibleOnly ? t('Show everything') : t('Only what works with {name}', { name: target.name })}
               </button>
             {/if}
           {:else}
-            <span>Modrinth search</span>
+            <span>{t('Modrinth search')}</span>
           {/if}
         </p>
-        <p class="text-small muted new"><span class="ink">New to {words.many}?</span> {words.help}</p>
+        <p class="text-small muted new"><span class="ink">{t('New to {many}?', { many: words.many })}</span> {words.help}</p>
       </section>
 
       <div id="discover-results" role="tabpanel" aria-label={words.label} aria-busy={loading}>
         {#if error}
           {#snippet retryAction()}
-            <Button size="sm" icon="update" onclick={() => retries++}>Retry</Button>
+            <Button size="sm" icon="update" onclick={() => retries++}>{t('Retry')}</Button>
           {/snippet}
-          <Banner tone="warning" icon={offline ? 'offline' : 'warning'} title={offline ? "Can't reach Modrinth" : "Search didn't work"} actions={retryAction}>
-            {offline ? 'Check your internet connection, then try again.' : error}
+          <Banner tone="warning" icon={offline ? 'offline' : 'warning'} title={offline ? t('Can\'t reach Modrinth') : t('Search didn\'t work')} actions={retryAction}>
+            {offline ? t('Check your internet connection, then try again.') : error}
           </Banner>
         {:else if loading}
           <div class="grid" aria-hidden="true">
@@ -588,34 +589,34 @@
               </div>
             {/each}
           </div>
-          <span class="cb-visually-hidden">Loading results</span>
+          <span class="cb-visually-hidden">{t('Loading results')}</span>
         {:else if !shown.length}
           <div class="empty">
             <span class="empty-ic" aria-hidden="true"><Icon name="search" size={27} /></span>
             <h2 class="text-heading">
-              {hits.length ? `Everything here is already in ${target?.name ?? 'your instance'}` : `No ${words.many} found`}
+              {hits.length ? t('Everything here is already in {name}', { name: target?.name ?? t('your instance') }) : t('No {many} found', { many: words.many })}
             </h2>
             <p class="text-body muted">
               {#if hits.length}
-                Turn off Hide installed, or go to the next page.
+                {t('Turn off Hide installed, or go to the next page.')}
               {:else if d.query}
-                Nothing matches “{d.query}”{scoped && target ? ` for ${instanceMeta(target)}` : ''}. Check the spelling or try fewer words.
+                {scoped && target ? t('Nothing matches “{query}” for {target}. Check the spelling or try fewer words.', { query: d.query, target: instanceMeta(target) }) : t('Nothing matches “{query}”. Check the spelling or try fewer words.', { query: d.query })}
               {:else if scoped && target}
-                Nothing here works with {target.name} yet. Show everything to see other versions.
+                {t('Nothing here works with {name} yet. Show everything to see other versions.', { name: target.name })}
               {:else}
-                Try fewer filters.
+                {t('Try fewer filters.')}
               {/if}
             </p>
             <div class="empty-actions">
-              {#if hits.length && d.page + 1 < pages}<Button iconEnd="chevron-right" onclick={() => goPage(d.page + 1)}>Next page</Button>{/if}
-              {#if scoped}<Button onclick={() => setScoped(false)}>Show everything</Button>{/if}
-              {#if filtered}<Button onclick={clearFilters}>Clear filters</Button>{/if}
-              {#if d.query}<Button onclick={clearSearch}>Clear search</Button>{/if}
+              {#if hits.length && d.page + 1 < pages}<Button iconEnd="chevron-right" onclick={() => goPage(d.page + 1)}>{t('Next page')}</Button>{/if}
+              {#if scoped}<Button onclick={() => setScoped(false)}>{t('Show everything')}</Button>{/if}
+              {#if filtered}<Button onclick={clearFilters}>{t('Clear filters')}</Button>{/if}
+              {#if d.query}<Button onclick={clearSearch}>{t('Clear search')}</Button>{/if}
             </div>
           </div>
         {:else}
           {#if hiddenCount}
-            <p class="text-small muted">{plural(hiddenCount, `${words.one} is`, `${words.many} are`)} hidden on this page: already in {target?.name}.</p>
+            <p class="text-small muted">{t('{n} hidden on this page: already in {name}.', { n: plural(hiddenCount, words.one, words.many), name: target?.name ?? "" })}</p>
           {/if}
           <ul class="grid">
             {#each shown as h (h.id)}
@@ -626,7 +627,7 @@
                   <div class="head">
                     <div class="name-line">
                       <button type="button" class="title text-body-strong" onclick={() => open(h)}>{h.title}</button>
-                      <span class="text-small muted author" title="by {h.author}">by {h.author}</span>
+                      <span class="text-small muted author" title={t('by {author}', { author: h.author })}>{t('by {author}', { author: h.author })}</span>
                     </div>
                     <p class="text-small muted summary-text" title={h.summary}>{h.summary}</p>
                   </div>
@@ -636,11 +637,11 @@
                     {#each h.categories.slice(0, 2) as c (c)}<MetaChip>{categoryLabel(c)}</MetaChip>{/each}
                   </span>
                   {#if s.version}
-                    <span class="text-small muted">Version <span class="text-mono">{s.version}</span></span>
+                    <span class="text-small muted">{t('Version')} <span class="text-mono">{s.version}</span></span>
                   {:else}
                     <span class="text-small muted stats">
-                      <span class="stat"><Icon name="download" size={18} />{compactNum(h.downloads)}<span class="cb-visually-hidden"> downloads</span></span>
-                      <span class="stat"><Icon name="clock" size={18} /><span class="cb-visually-hidden">Updated </span>{relativeTime(h.updated, '')}</span>
+                      <span class="stat"><Icon name="download" size={18} />{compactNum(h.downloads)}<span class="cb-visually-hidden"> {t('downloads')}</span></span>
+                      <span class="stat"><Icon name="clock" size={18} /><span class="cb-visually-hidden">{t('Updated')} </span>{relativeTime(h.updated, '')}</span>
                     </span>
                   {/if}
                 </div>
@@ -648,19 +649,19 @@
                   {@render fitLine(s.fit)}
                   <span class="act">
                     {#if s.action === 'installed'}
-                      <Button size="sm" icon="check" disabled>Installed</Button>
+                      <Button size="sm" icon="check" disabled>{t('Installed')}</Button>
                     {:else if s.action === 'busy'}
-                      <Button size="sm" icon="download" disabled>Installing</Button>
+                      <Button size="sm" icon="download" disabled>{t('Installing')}</Button>
                     {:else if s.action === 'update'}
-                      <Button size="sm" icon="update" onclick={() => (installing = h)} aria-label="Update {h.title}">Update</Button>
+                      <Button size="sm" icon="update" onclick={() => (installing = h)} aria-label={t('Update {title}', { title: h.title })}>{t('Update')}</Button>
                     {:else if s.action === 'pack'}
-                      <Button size="sm" icon="download" onclick={() => open(h)} aria-label="Install {h.title}">Install</Button>
+                      <Button size="sm" icon="download" onclick={() => open(h)} aria-label={t('Install {title}', { title: h.title })}>{t('Install')}</Button>
                     {:else if s.action === 'curseforge'}
-                      <Button size="sm" iconEnd="chevron-right" onclick={() => open(h)} aria-label="See {h.title} on CurseForge">On CurseForge</Button>
+                      <Button size="sm" iconEnd="chevron-right" onclick={() => open(h)} aria-label={t('See {title} on CurseForge', { title: h.title })}>{t('On CurseForge')}</Button>
                     {:else if s.action === 'other'}
-                      <Button size="sm" onclick={() => (installing = h)} aria-label="Install {h.title} to another instance or version">Install to…</Button>
+                      <Button size="sm" onclick={() => (installing = h)} aria-label={t('Install {title} to another instance or version', { title: h.title })}>{t('Install to…')}</Button>
                     {:else}
-                      <Button size="sm" icon="download" onclick={() => (installing = h)} aria-label="Install {h.title}">Install</Button>
+                      <Button size="sm" icon="download" onclick={() => (installing = h)} aria-label={t('Install {title}', { title: h.title })}>{t('Install')}</Button>
                     {/if}
                   </span>
                 </div>
@@ -670,10 +671,10 @@
         {/if}
 
         {#if results && !error && pages > 1}
-          <nav class="pages" aria-label="Result pages">
-            <span class="text-small muted">Page {num(d.page + 1)} of {num(pages)}</span>
+          <nav class="pages" aria-label={t('Result pages')}>
+            <span class="text-small muted">{t('Page {n} of {n2}', { n: num(d.page + 1), n2: num(pages) })}</span>
             <span class="grow"></span>
-            <Button size="sm" disabled={d.page === 0 || loading} onclick={() => goPage(d.page - 1)}>Previous</Button>
+            <Button size="sm" disabled={d.page === 0 || loading} onclick={() => goPage(d.page - 1)}>{t('Previous')}</Button>
             {#each pageList as p, i (i)}
               {#if p === null}
                 <span class="text-body muted" aria-hidden="true">…</span>
@@ -682,13 +683,13 @@
                   type="button"
                   class={['page', 'text-body-strong', p === d.page + 1 && 'on']}
                   aria-current={p === d.page + 1 ? 'page' : undefined}
-                  aria-label="Page {p}"
+                  aria-label={t('Page {p}', { p })}
                   disabled={loading}
                   onclick={() => goPage(p - 1)}>{num(p)}</button
                 >
               {/if}
             {/each}
-            <Button size="sm" iconEnd="chevron-right" disabled={d.page + 1 >= pages || loading} onclick={() => goPage(d.page + 1)}>Next</Button>
+            <Button size="sm" iconEnd="chevron-right" disabled={d.page + 1 >= pages || loading} onclick={() => goPage(d.page + 1)}>{t('Next')}</Button>
           </nav>
         {/if}
       </div>
@@ -698,8 +699,8 @@
           {#if pickList.pack}
             <section aria-labelledby="dc-packs">
               <div class="picks-head">
-                <h2 id="dc-packs" class="text-label muted">Popular modpacks</h2>
-                <button type="button" class="link text-small" onclick={() => setKind('modpack')}>See all</button>
+                <h2 id="dc-packs" class="text-label muted">{t('Popular modpacks')}</h2>
+                <button type="button" class="link text-small" onclick={() => setKind('modpack')}>{t('See all')}</button>
               </div>
               {@render pickCard(pickList.pack)}
             </section>
@@ -707,8 +708,8 @@
           {#if pickList.shader || pickList.resource}
             <section aria-labelledby="dc-looks">
               <div class="picks-head">
-                <h2 id="dc-looks" class="text-label muted">Make it look better</h2>
-                <span class="text-small muted">Changes the look, never the gameplay</span>
+                <h2 id="dc-looks" class="text-label muted">{t('Make it look better')}</h2>
+                <span class="text-small muted">{t('Changes the look, never the gameplay')}</span>
               </div>
               <div class="picks-two">
                 {#if pickList.shader}{@render pickCard(pickList.shader)}{/if}
@@ -726,10 +727,10 @@
 {#if installing}
   {@const h = installing}
   {#snippet dialogActions()}
-    <Button variant="ghost" iconEnd="chevron-right" onclick={() => ((installing = null), app.openProject(h.slug, h.kind))}>See the full page</Button>
-    <Button onclick={() => (installing = null)}>Close</Button>
+    <Button variant="ghost" iconEnd="chevron-right" onclick={() => ((installing = null), app.openProject(h.slug, h.kind))}>{t('See the full page')}</Button>
+    <Button onclick={() => (installing = null)}>{t('Close')}</Button>
   {/snippet}
-  <Dialog wide title="Install {h.title}" onClose={() => (installing = null)} actions={dialogActions}>
+  <Dialog wide title={t('Install {title}', { title: h.title })} onClose={() => (installing = null)} actions={dialogActions}>
     <InstallPanel project={h} compact onLeave={() => (installing = null)} onInstall={(id) => (pending[h.id] = id)} />
   </Dialog>
 {/if}

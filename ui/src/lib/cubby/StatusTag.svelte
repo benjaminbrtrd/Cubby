@@ -18,6 +18,7 @@
   import Content from './Content.svelte';
   import Icon from './Icon.svelte';
   import type { StatusTagProps } from './types';
+  import { t } from '../i18n.svelte';
 
   let { state: stateProp, detail, children, class: className }: StatusTagProps = $props();
 
@@ -27,6 +28,6 @@
 
 <span class={['cb-status', 'cb-status--' + state, className]}>
   <Icon name={s[0]} size={18} />
-  <span class="cb-status__text text-body">{#if children}{@render children()}{:else}{s[1]}{/if}</span>
+  <span class="cb-status__text text-body">{#if children}{@render children()}{:else}{t(s[1])}{/if}</span>
   {#if detail}<span class="cb-status__detail text-counter"><Content value={detail} /></span>{/if}
 </span>

@@ -1,11 +1,12 @@
 <script lang="ts" module>
+  import { t } from '../i18n.svelte'
   const PICK_TEXT = {
-    motifs: 'Emblem',
-    grounds: 'Background',
-    importImage: 'Import image',
-    reset: 'Use an emblem',
-    custom: 'Imported image',
-    importHint: 'Choose an emblem and a colour, or import your own square image. PNG or JPG, ideally 256 px or larger.',
+    motifs: t('Emblem'),
+    grounds: t('Background'),
+    importImage: t('Import image'),
+    reset: t('Use an emblem'),
+    custom: t('Imported image'),
+    importHint: t('Choose an emblem and a colour, or import your own square image. PNG or JPG, ideally 256 px or larger.'),
   };
 </script>
 

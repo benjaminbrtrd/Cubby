@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../i18n.svelte'
   import { CommandPalette, Icon, type CommandGroup, type CommandItem, type IconName } from '../../cubby'
   import { api } from '../../api'
   import { app } from '../../state.svelte'
@@ -20,10 +21,10 @@
   }
 
   const KINDS: { kind: ProjectKind; label: string; plural: string }[] = [
-    { kind: 'mod', label: 'mods', plural: 'Mods' },
-    { kind: 'modpack', label: 'modpacks', plural: 'Modpacks' },
-    { kind: 'shader', label: 'shader packs', plural: 'Shader packs' },
-    { kind: 'resourcepack', label: 'resource packs', plural: 'Resource packs' },
+    { kind: 'mod', label: 'mods', plural: t('Mods') },
+    { kind: 'modpack', label: 'modpacks', plural: t('Modpacks') },
+    { kind: 'shader', label: t('shader packs'), plural: t('Shader packs') },
+    { kind: 'resourcepack', label: t('resource packs'), plural: t('Resource packs') },
   ]
   let query = $state('')
   let activeId = $state<string | undefined>()
@@ -72,36 +73,36 @@
     const known = tasks.filter((t) => t.total > 0)
     const percent = known.length ? Math.round((known.reduce((s, t) => s + t.done / t.total, 0) / known.length) * 100) : null
     return [
-      { id: 'a:new', label: 'New instance', detail: 'Pick a version and a loader', icon: 'plus', words: 'create add', run: () => app.navigate({ name: 'create' }) },
+      { id: 'a:new', label: t('New instance'), detail: t('Pick a version and a loader'), icon: 'plus', words: 'create add', run: () => app.navigate({ name: 'create' }) },
       {
         id: 'a:import',
-        label: 'Import from Prism Launcher',
-        detail: 'Copies instances, Prism stays as it is',
+        label: t('Import from Prism Launcher'),
+        detail: t('Copies instances, Prism stays as it is'),
         icon: 'import',
         words: 'import prism bring',
         run: () => (app.prismImportOpen = true),
       },
       {
         id: 'a:downloads',
-        label: 'Open downloads',
-        detail: tasks.length ? `${plural(tasks.length, 'task', 'tasks')} running${percent != null ? ` · ${percent}%` : ''}` : 'Nothing running',
+        label: t('Open downloads'),
+        detail: tasks.length ? t(percent != null ? '{tasks} running · {percent}%' : '{tasks} running', { tasks: plural(tasks.length, 'task', 'tasks'), percent: percent ?? '' }) : t('Nothing running'),
         icon: 'download',
         words: 'downloads queue progress',
         run: () => app.navigate({ name: 'downloads' }),
       },
       ...KINDS.map((k) => ({
         id: `a:discover:${k.kind}`,
-        label: `Discover ${k.label}`,
-        detail: 'Browse Modrinth',
+        label: t('Discover {label}', { label: k.label }),
+        detail: t('Browse Modrinth'),
         icon: 'discover' as const,
         words: 'discover modrinth browse',
         run: () => discover(k.kind),
       })),
-      { id: 'a:accounts', label: 'Accounts', detail: 'Microsoft accounts', icon: 'accounts', words: 'account sign in skin', run: () => app.navigate({ name: 'accounts' }) },
+      { id: 'a:accounts', label: t('Accounts'), detail: t('Microsoft accounts'), icon: 'accounts', words: 'account sign in skin', run: () => app.navigate({ name: 'accounts' }) },
       {
         id: 'a:settings',
-        label: 'Settings',
-        detail: 'Appearance, Java, game window',
+        label: t('Settings'),
+        detail: t('Appearance, Java, game window'),
         icon: 'settings',
         words: 'settings preferences options',
         run: () => app.navigate({ name: 'settings', section: 'general' }),
@@ -115,7 +116,7 @@
   function instanceItem(i: Instance): CommandItem {
     const live = liveState(i)
     const meta = i.loader.kind === 'vanilla' ? i.minecraft : `${i.minecraft} · ${loaderFull(i.loader)}`
-    const hint = live.running ? 'Show game' : live.task ? 'Show progress' : live.status === 'download' ? 'Download and play' : 'Play'
+    const hint = live.running ? t('Show game') : live.task ? t('Show progress') : live.status === 'download' ? t('Download and play') : 'Play'
     return {
       id: `i:${i.id}`,
       label: i.name,
@@ -129,33 +130,33 @@
   const groups = $derived.by((): CommandGroup[] => {
     const out: CommandGroup[] = []
     const instances = q ? app.recent.filter((i) => has(i.name) || has(i.minecraft) || has(loaderFull(i.loader)) || has(i.group ?? '')) : app.recent.slice(0, 5)
-    if (instances.length) out.push({ label: 'Instances', items: instances.map(instanceItem) })
+    if (instances.length) out.push({ label: t('Instances'), items: instances.map(instanceItem) })
 
     const joinable = (q ? servers.filter((s) => has(s.server.name) || has(s.server.address) || has(s.instance.name)) : servers.slice(0, 3)).map(
       ({ instance, server }, n): CommandItem => ({
         id: `s:${instance.id}:${n}:${server.address}`,
         label: server.name || server.address,
-        detail: `Join with ${instance.name} · ${server.address}`,
+        detail: t('Join with {name} · {address}', { name: instance.name, address: server.address }),
         icon: 'servers',
-        hint: 'Join',
+        hint: t('Join'),
       }),
     )
-    if (joinable.length) out.push({ label: 'Servers', items: joinable })
+    if (joinable.length) out.push({ label: t('Servers'), items: joinable })
 
     const acts = q ? actions.filter((a) => has(a.label) || has(a.words ?? '')) : actions
-    if (acts.length) out.push({ label: 'Actions', items: acts.map(({ id, label, detail, icon, kbd }) => ({ id, label, detail, icon, kbd })) })
+    if (acts.length) out.push({ label: t('Actions'), items: acts.map(({ id, label, detail, icon, kbd }) => ({ id, label, detail, icon, kbd })) })
 
     if (q) {
       const kind = KINDS.find((k) => k.kind === app.discover.kind) ?? KINDS[0]
       out.push({
-        label: 'Discover',
+        label: t('Discover'),
         items: [
           {
             id: 'q:search',
-            label: `Search Modrinth for “${query.trim()}”`,
+            label: t('Search Modrinth for “{query}”', { query: query.trim() }),
             detail: kind.kind !== 'modpack' && app.target ? `${kind.plural} for ${app.target.name}` : kind.plural,
             icon: 'discover',
-            hint: 'Search',
+            hint: t('Search'),
           },
         ],
       })
@@ -180,8 +181,8 @@
     } else if (item.id.startsWith('s:')) {
       const { instanceId, address } = serverOf(item.id)
       if (app.running[instanceId]) {
-        const name = app.instance(instanceId)?.name ?? 'This instance'
-        go(() => app.toast(`${name} is already running. Stop it to join another server.`, 'info'))
+        const name = app.instance(instanceId)?.name ?? t('This instance')
+        go(() => app.toast(t('{name} is already running. Stop it to join another server.', { name }), 'info'))
       } else go(() => void app.launch(instanceId, offline, address))
     } else if (item.id === 'q:search') {
       const text = query.trim()
@@ -223,8 +224,8 @@
 <div class="scrim" bind:this={root} onclick={(e) => e.target === e.currentTarget && onClose()} {onkeydown}>
   <div class="palette">
     <CommandPalette
-      label="Search and launch"
-      placeholder="Search instances, servers, actions…"
+      label={t('Search and launch')}
+      placeholder={t('Search instances, servers, actions…')}
       {groups}
       bind:query
       activeId={active}
@@ -238,7 +239,7 @@
       idBase="palette"
     />
     {#if !flat.length}
-      <p class="none text-small">Nothing matches “{query.trim()}”.</p>
+      <p class="none text-small">{t('Nothing matches “{query}”.', { query: query.trim() })}</p>
     {/if}
   </div>
 </div>

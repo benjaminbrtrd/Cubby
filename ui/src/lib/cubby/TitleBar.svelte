@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../i18n.svelte'
   import Avatar from './Avatar.svelte';
   import Content from './Content.svelte';
   import Icon from './Icon.svelte';
@@ -26,7 +27,7 @@
   <div class="cb-titlebar__brand" data-tauri-drag-region=""><Logo size={32} /></div>
   <button type="button" class="cb-titlebar__search text-body" onclick={onSearch}>
     <Icon name="search" size={18} />
-    <span class="cb-titlebar__search-text">{searchLabel || 'Search or launch…'}</span>
+    <span class="cb-titlebar__search-text">{searchLabel || t('Search or launch…')}</span>
     {#if searchKeys?.length}<Kbd keys={searchKeys} />{/if}
   </button>
   {#if children}<div class="cb-titlebar__extra">{@render children()}</div>{/if}

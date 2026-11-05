@@ -2,6 +2,7 @@
      Mods, shader packs and resource packs go into the target instance after a check (api.planInstall);
      a modpack always becomes a new instance. -->
 <script lang="ts">
+  import { t } from '../../i18n.svelte'
   import { api } from '../../api'
   import { Banner, Button, Icon, InstanceIcon, Kbd, PlayButton, ProgressBar, Switch, TextField } from '../../cubby'
   import type { IconName } from '../../cubby'
@@ -107,8 +108,8 @@
   })
 
   const versionItems = $derived([
-    ...ordered.fit.map((v) => ({ id: v.id, v, group: ordered.other.length && target ? `For ${target.name}` : undefined })),
-    ...ordered.other.map((v) => ({ id: v.id, v, group: 'Other versions' })),
+    ...ordered.fit.map((v) => ({ id: v.id, v, group: ordered.other.length && target ? t('For {name}', { name: target.name }) : undefined })),
+    ...ordered.other.map((v) => ({ id: v.id, v, group: t('Other versions') })),
   ])
 
   // what's in the instance
@@ -168,78 +169,78 @@
     const out: Check[] = []
     const range = mcRange(chosen.gameVersions)
     if (chosen.gameVersions.includes(target.minecraft)) {
-      out.push({ tone: 'ok', icon: 'check', title: 'Minecraft', mono: target.minecraft, word: 'Supported', detail: `This version runs on ${range}.` })
+      out.push({ tone: 'ok', icon: 'check', title: 'Minecraft', mono: target.minecraft, word: t('Supported'), detail: t('This version runs on {range}.', { range }) })
     } else {
       out.push({
         tone: kind === 'mod' ? 'bad' : 'warn',
         icon: kind === 'mod' ? 'error' : 'warning',
         title: 'Minecraft',
         mono: target.minecraft,
-        word: 'Not listed',
+        word: t('Not listed'),
         detail:
           kind === 'resourcepack'
-            ? `This version is made for ${range}. It may still load: the game only warns about it.`
+            ? t('This version is made for {range}. It may still load: the game only warns about it.', { range })
             : kind === 'shader'
-              ? `This version is made for ${range}. It may still work with Iris.`
-              : `This version is made for ${range}. Pick another version or another instance.`,
+              ? t('This version is made for {range}. It may still work with Iris.', { range })
+              : t('This version is made for {range}. Pick another version or another instance.', { range }),
       })
     }
 
     if (kind === 'mod') {
       const names = modLoadersOf(chosen.loaders).map(loaderLabel)
       if (target.loader.kind === 'vanilla') {
-        out.push({ tone: 'bad', icon: 'error', title: 'Mod loader', word: 'Missing', detail: `${target.name} is Vanilla. Mods need Fabric, Quilt, Forge or NeoForge: create an instance with one of them.` })
+        out.push({ tone: 'bad', icon: 'error', title: t('Mod loader'), word: t('Missing'), detail: t('{name} is Vanilla. Mods need Fabric, Quilt, Forge or NeoForge: create an instance with one of them.', { name: target.name }) })
       } else if (chosen.loaders.some((l) => acceptedLoaders(target.loader.kind).includes(l))) {
         const others = names.filter((n) => n !== loaderName(target.loader))
-        out.push({ tone: 'ok', icon: 'check', title: loaderName(target.loader), word: 'Supported', detail: others.length ? `Also made for ${listWords(others)}.` : undefined })
+        out.push({ tone: 'ok', icon: 'check', title: loaderName(target.loader), word: t('Supported'), detail: others.length ? t('Also made for {others}.', { others: listWords(others) }) : undefined })
       } else {
-        out.push({ tone: 'bad', icon: 'error', title: loaderName(target.loader), word: 'Not supported', detail: names.length ? `This version is for ${listWords(names, 'or')}.` : undefined })
+        out.push({ tone: 'bad', icon: 'error', title: loaderName(target.loader), word: t('Not supported'), detail: names.length ? t('This version is for {loaders}.', { loaders: listWords(names, 'or') }) : undefined })
       }
     }
 
     if (kind === 'shader') {
       if (target.loader.kind === 'vanilla') {
-        out.push({ tone: 'warn', icon: 'warning', title: 'Iris Shaders', word: 'Needs a loader', detail: `Shader packs run through Iris, a mod, and ${target.name} is Vanilla. Create an instance with Fabric or NeoForge, then add Iris.` })
+        out.push({ tone: 'warn', icon: 'warning', title: t('Iris Shaders'), word: t('Needs a loader'), detail: t('Shader packs run through Iris, a mod, and {name} is Vanilla. Create an instance with Fabric or NeoForge, then add Iris.', { name: target.name }) })
       } else {
         for (const need of shaderMods(target)) {
           const have = sourceBySlug(sources, need.slug)
-          if (have) out.push({ tone: 'ok', icon: 'check', title: need.title, mono: have.versionNumber, word: 'Installed', detail: need.why })
-          else out.push({ tone: 'warn', icon: 'warning', title: need.title, word: 'Not installed', detail: `${need.why} Install it too, or the pack won't show up.`, action: { label: `Open ${need.title}`, run: () => openMod(need.slug) } })
+          if (have) out.push({ tone: 'ok', icon: 'check', title: need.title, mono: have.versionNumber, word: t('Installed'), detail: need.why })
+          else out.push({ tone: 'warn', icon: 'warning', title: need.title, word: t('Not installed'), detail: t('{why} Install it too, or the pack won\'t show up.', { why: need.why }), action: { label: t('Open {title}', { title: need.title }), run: () => openMod(need.slug) } })
         }
       }
       const runs = chosen.loaders
       if (runs.length && !runs.includes('iris') && runs.includes('optifine'))
-        out.push({ tone: 'warn', icon: 'warning', title: 'Made for OptiFine', word: 'Check', detail: 'Iris runs most OptiFine shader packs, but not every one of them.' })
+        out.push({ tone: 'warn', icon: 'warning', title: t('Made for OptiFine'), word: t('Check'), detail: t('Iris runs most OptiFine shader packs, but not every one of them.') })
     }
 
     for (const d of deps)
       out.push(
         d.installed
-          ? { tone: 'ok', icon: 'check', title: d.title, word: 'Already installed', detail: 'Required' }
-          : { tone: 'busy', icon: 'download', title: d.title, mono: d.versionNumber, word: 'Will be installed', detail: `Required · ${bytes(d.size)}` },
+          ? { tone: 'ok', icon: 'check', title: d.title, word: t('Already installed'), detail: t('Required') }
+          : { tone: 'busy', icon: 'download', title: d.title, mono: d.versionNumber, word: t('Will be installed'), detail: t('Required · {n}', { n: bytes(d.size) }) },
       )
     if (current) {
       for (const m of current.missing)
         out.push({
           tone: 'bad',
           icon: 'error',
-          title: m.title ?? 'A required mod',
-          word: 'Missing',
-          detail: `It's required, and it has no version for Minecraft ${target.minecraft} with ${loaderName(target.loader)}.`,
+          title: m.title ?? t('A required mod'),
+          word: t('Missing'),
+          detail: t('It\'s required, and it has no version for Minecraft {minecraft} with {loader}.', { minecraft: target.minecraft, loader: loaderName(target.loader) }),
         })
       for (const c of current.conflicts)
-        out.push({ tone: 'warn', icon: 'warning', title: c.title ?? c.fileName, word: 'Incompatible', detail: `It's in ${target.name} as ${c.fileName}. Turn it off or remove it in Mods first.` })
-      if (!current.conflicts.length && kind === 'mod') out.push({ tone: 'ok', icon: 'check', title: 'No known conflicts', word: 'OK', detail: `Checked against what's in ${target.name}.` })
+        out.push({ tone: 'warn', icon: 'warning', title: c.title ?? c.fileName, word: t('Incompatible'), detail: t('It\'s in {name} as {fileName}. Turn it off or remove it in Mods first.', { name: target.name, fileName: c.fileName }) })
+      if (!current.conflicts.length && kind === 'mod') out.push({ tone: 'ok', icon: 'check', title: t('No known conflicts'), word: 'OK', detail: t('Checked against what\'s in {name}.', { name: target.name }) })
     }
     return out
   })
 
   const verdict = $derived.by((): Fit | null => {
     if (!target || !chosen) return null
-    if (!current && !planError) return { tone: 'info', icon: 'info', word: `Checking with ${target.name}…` }
-    if (checks.some((c) => c.tone === 'bad')) return { tone: 'bad', icon: 'error', word: `Can't go into ${target.name} as it is` }
-    if (checks.some((c) => c.tone === 'warn')) return { tone: 'warn', icon: 'warning', word: 'Check before installing' }
-    return { tone: 'ok', icon: 'check', word: `Works with ${target.name}` }
+    if (!current && !planError) return { tone: 'info', icon: 'info', word: t('Checking with {name}…', { name: target.name }) }
+    if (checks.some((c) => c.tone === 'bad')) return { tone: 'bad', icon: 'error', word: t('Can\'t go into {name} as it is', { name: target.name }) }
+    if (checks.some((c) => c.tone === 'warn')) return { tone: 'warn', icon: 'warning', word: t('Check before installing') }
+    return { tone: 'ok', icon: 'check', word: t('Works with {name}', { name: target.name }) }
   })
 
   const toDownload = $derived(deps.filter((d) => !d.installed))
@@ -299,10 +300,10 @@
 
   const blocked = $derived.by((): string | null => {
     if (!target || !chosen) return null
-    if (kind === 'mod' && gameRunning) return `Stop ${target.name} first: mods change when the game starts.`
-    if (busyElsewhere) return `Wait for “${busyElsewhere.label}” to finish.`
-    if (current?.missing.length) return 'A required mod is missing for this instance. Try another version.'
-    if (kind === 'mod' && !chosenFits) return `Pick a version made for ${target.minecraft} and ${loaderName(target.loader)}, or another instance.`
+    if (kind === 'mod' && gameRunning) return t('Stop {name} first: mods change when the game starts.', { name: target.name })
+    if (busyElsewhere) return t('Wait for “{label}” to finish.', { label: busyElsewhere.label })
+    if (current?.missing.length) return t('A required mod is missing for this instance. Try another version.')
+    if (kind === 'mod' && !chosenFits) return t('Pick a version made for {minecraft} and {loader}, or another instance.', { minecraft: target.minecraft, loader: loaderName(target.loader) })
     return null
   })
   const canInstall = $derived(!!target && !!chosen && !!current && !blocked && !starting)
@@ -341,9 +342,9 @@
 
   /** "Played 2h ago", "Never played" */
   function played(iso: string | null): string {
-    if (!iso) return 'Never played'
+    if (!iso) return t('Never played')
     const when = relativeTime(iso)
-    return `Played ${when.charAt(0).toLowerCase()}${when.slice(1)}`
+    return t('Played {toLowerCase}{slice}', { toLowerCase: when.charAt(0).toLowerCase(), slice: when.slice(1) })
   }
 
   function pct(t: { done: number; total: number } | undefined): number | undefined {
@@ -358,7 +359,7 @@
   $effect(() => {
     if (!nameTouched) name = project.title
   })
-  const nameError = $derived(isPack && nameTouched && !name.trim() ? 'Give the instance a name.' : undefined)
+  const nameError = $derived(isPack && nameTouched && !name.trim() ? t('Give the instance a name.') : undefined)
   const alreadyHave = $derived(isPack ? app.instances.filter((i) => i.modpack?.projectId === project.id) : [])
   const packMc = $derived(chosen ? newestMc(chosen.gameVersions) : null)
   const packLoaders = $derived(chosen ? modLoadersOf(chosen.loaders).map(loaderLabel) : [])
@@ -407,61 +408,61 @@
       {CHANNEL[item.v.channel].word} · <span class="text-mono">{mcRange(item.v.gameVersions)}</span> · {relativeTime(item.v.published, '')}
     </span>
     {#if best && item.v.id === best.id && target}
-      <span class="text-small good"><Icon name="check" size={18} />Best for {target.name}</span>
+      <span class="text-small good"><Icon name="check" size={18} />{t('Best for {name}', { name: target.name })}</span>
     {/if}
   </span>
 {/snippet}
 
 {#snippet versionPicker()}
   <div class="field">
-    <span class="text-body-strong">Version</span>
+    <span class="text-body-strong">{t('Version')}</span>
     {#if versions && versions.length && chosen}
-      <Picker items={versionItems} value={chosen.id} onSelect={(id) => (versionId = id)} label="Version" buttonLabel="Version {chosen.versionNumber}. Change version" option={versionOption}>
+      <Picker items={versionItems} value={chosen.id} onSelect={(id) => (versionId = id)} label={t('Version')} buttonLabel={t('Version {name}. Change version', { name: chosen.versionNumber })} option={versionOption}>
         {#snippet trigger()}
           <span class="stack">
             <span class="text-mono">{chosen!.versionNumber}</span>
             <span class="text-small muted">
-              {CHANNEL[chosen!.channel].word}{chosen!.id === newestRelease?.id ? ' · latest release' : ''} · {bytes(primarySize(chosen!))}
+              {CHANNEL[chosen!.channel].word}{chosen!.id === newestRelease?.id ? t(' · latest release') : ''} · {bytes(primarySize(chosen!))}
             </span>
           </span>
         {/snippet}
       </Picker>
-      <span class="text-small muted">Released {relativeTime(chosen.published, '')} · {date(chosen.published)}</span>
+      <span class="text-small muted">{t('Released {published} · {published2}', { published: relativeTime(chosen.published, ''), published2: date(chosen.published) })}</span>
       {#if chosen.channel !== 'release'}
         <span class="text-small warn line"><Icon name="warning" size={18} />{CHANNEL[chosen.channel].hint}.</span>
       {/if}
     {:else if versionsFailed}
-      <p class="text-small bad line"><Icon name="error" size={18} />Couldn't load the versions. {versionsFailed}</p>
-      {#if given === undefined}<Button size="sm" icon="update" onclick={() => reloads++}>Try again</Button>{/if}
+      <p class="text-small bad line"><Icon name="error" size={18} />{t('Couldn\'t load the versions. {versionsFailed}', { versionsFailed })}</p>
+      {#if given === undefined}<Button size="sm" icon="update" onclick={() => reloads++}>{t('Try again')}</Button>{/if}
     {:else if versions}
-      <p class="text-small muted">There's no version to install yet.</p>
+      <p class="text-small muted">{t('There\'s no version to install yet.')}</p>
     {:else}
       <span class="placeholder" aria-hidden="true"></span>
-      <span class="cb-visually-hidden">Loading versions</span>
+      <span class="cb-visually-hidden">{t('Loading versions')}</span>
     {/if}
   </div>
 {/snippet}
 
-<section class={['panel', compact && 'compact']} aria-label="Install {project.title}">
+<section class={['panel', compact && 'compact']} aria-label={t('Install {title}', { title: project.title })}>
   {#if !compact}
     <div class="head">
-      <h2 class="text-heading">Install</h2>
+      <h2 class="text-heading">{t('Install')}</h2>
     </div>
   {/if}
 
   {#if isPack}
     <!-- modpack -->
     <div class="note-block">
-      <p class="text-body-strong line"><Icon name="library" size={18} />Installs as a new instance</p>
-      <p class="text-small muted">Modpacks always get their own instance, with their own Minecraft version, loader and settings. Nothing in your other instances changes.</p>
+      <p class="text-body-strong line"><Icon name="library" size={18} />{t('Installs as a new instance')}</p>
+      <p class="text-small muted">{t('Modpacks always get their own instance, with their own Minecraft version, loader and settings. Nothing in your other instances changes.')}</p>
     </div>
 
     {#if alreadyHave.length && !created}
       <div class="have">
         <p class="text-small">
-          You already have it in {listWords(alreadyHave.map((i) => i.name))}. Installing again makes another instance.
+          {t('You already have it in {name}. Installing again makes another instance.', { name: listWords(alreadyHave.map((i) => i.name)) })}
         </p>
-        <Button size="sm" iconEnd="chevron-right" onclick={() => (app.openInstance(alreadyHave[0].id), onLeave?.())}>Open {alreadyHave[0].name}</Button>
+        <Button size="sm" iconEnd="chevron-right" onclick={() => (app.openInstance(alreadyHave[0].id), onLeave?.())}>{t('Open {name}', { name: alreadyHave[0].name })}</Button>
       </div>
     {/if}
 
@@ -469,55 +470,55 @@
       <div class="named">
         <InstanceIcon {...project.iconUrl ? { src: project.iconUrl } : art} size={44} raised />
         <TextField
-          label="Instance name"
+          label={t('Instance name')}
           bind:value={name}
           oninput={() => (nameTouched = true)}
-          hint={nameError ? undefined : 'Shown in your Library'}
+          hint={nameError ? undefined : t('Shown in your Library')}
           error={nameError}
           maxlength={64}
         />
       </div>
-      <TextField label="Group" bind:value={group} hint="Leave empty for no group" maxlength={40} />
+      <TextField label={t('Group')} bind:value={group} hint={t('Leave empty for no group')} maxlength={40} />
 
       {@render versionPicker()}
 
       {#if chosen}
         <section class="block" aria-labelledby="{project.id}-req">
-          <h3 id="{project.id}-req" class="text-label muted">Comes with the pack</h3>
+          <h3 id="{project.id}-req" class="text-label muted">{t('Comes with the pack')}</h3>
           <dl class="req">
             <dt class="text-small muted">Minecraft</dt>
             <dd class="text-mono">{packMc ?? '—'}</dd>
-            <dt class="text-small muted">Loader</dt>
+            <dt class="text-small muted">{t('Loader')}</dt>
             <dd class="text-mono">{packLoaders.length ? packLoaders.join(', ') : 'Vanilla'}</dd>
-            <dt class="text-small muted">Pack file</dt>
+            <dt class="text-small muted">{t('Pack file')}</dt>
             <dd class="text-mono">{bytes(primarySize(chosen))}</dd>
           </dl>
-          <p class="text-small muted">Cubby installs this Minecraft version and loader with the pack. The mods it lists download during the install.</p>
+          <p class="text-small muted">{t('Cubby installs this Minecraft version and loader with the pack. The mods it lists download during the install.')}</p>
         </section>
       {/if}
 
-      <Button variant="primary" size="lg" icon="download" busy={creating} disabled={!chosen || creating} onclick={installPack} class="wide">Install modpack</Button>
-      <p class="text-small muted">You can keep using Cubby while it installs.</p>
+      <Button variant="primary" size="lg" icon="download" busy={creating} disabled={!chosen || creating} onclick={installPack} class="wide">{t('Install modpack')}</Button>
+      <p class="text-small muted">{t('You can keep using Cubby while it installs.')}</p>
 
       {#if !compact}
         <section class="steps" aria-labelledby="{project.id}-steps">
-          <h3 id="{project.id}-steps" class="text-label muted">When you install</h3>
+          <h3 id="{project.id}-steps" class="text-label muted">{t('When you install')}</h3>
           <ol>
-            <li><span class="num text-counter" aria-hidden="true">1</span><span class="text-body">Cubby adds {name.trim() || project.title} to your Library{group.trim() ? `, in ${group.trim()}` : ''}.</span></li>
+            <li><span class="num text-counter" aria-hidden="true">1</span><span class="text-body">{group.trim() ? t('Cubby adds {name} to your Library, in {group}.', { name: name.trim() || project.title, group: group.trim() }) : t('Cubby adds {name} to your Library.', { name: name.trim() || project.title })}</span></li>
             <li>
               <span class="num text-counter" aria-hidden="true">2</span>
-              <span class="text-body">It downloads Minecraft{packMc ? ` ${packMc}` : ''}{packLoaders[0] ? `, ${packLoaders[0]}` : ''} and every mod of the pack. Follow it in <button type="button" class="link" onclick={goDownloads}>Downloads</button>.</span>
+              <span class="text-body">{t('It downloads Minecraft {what} and every mod of the pack. Follow it in', { what: [packMc, packLoaders[0]].filter(Boolean).join(', ') })} <button type="button" class="link" onclick={goDownloads}>{t('Downloads')}</button>.</span>
             </li>
-            <li><span class="num text-counter" aria-hidden="true">3</span><span class="text-body">Then press Play. Your other instances stay as they are.</span></li>
+            <li><span class="num text-counter" aria-hidden="true">3</span><span class="text-body">{t('Then press Play. Your other instances stay as they are.')}</span></li>
           </ol>
         </section>
       {/if}
     {:else}
       {#if packDone?.error}
-        <Banner tone="danger" title="Couldn't install {created.instance.name}">{packDone.error}</Banner>
-        <Button onclick={openCreated} iconEnd="chevron-right">Open {created.instance.name}</Button>
+        <Banner tone="danger" title={t('Couldn\'t install {name}', { name: created.instance.name })}>{packDone.error}</Banner>
+        <Button onclick={openCreated} iconEnd="chevron-right">{t('Open {name}', { name: created.instance.name })}</Button>
       {:else if packDone}
-        <Banner tone="success" title="{created.instance.name} is ready">It's in your Library{created.instance.group ? `, in ${created.instance.group}` : ''}.</Banner>
+        <Banner tone="success" title={t('{name} is ready', { name: created.instance.name })}>{created.instance.group ? t('It’s in your Library, in {group}.', { group: created.instance.group }) : t('It’s in your Library.')}</Banner>
         <PlayButton
           size="md"
           class="wide"
@@ -525,30 +526,30 @@
           detail={packInstance ? played(packInstance.lastPlayed) : undefined}
           onclick={() => (app.running[created!.instance.id] ? app.kill(created!.instance.id) : app.launch(created!.instance.id))}
         />
-        <Button onclick={openCreated} iconEnd="chevron-right">Open {created.instance.name}</Button>
+        <Button onclick={openCreated} iconEnd="chevron-right">{t('Open {name}', { name: created.instance.name })}</Button>
       {:else}
         <div class="progress" aria-live="polite">
-          <ProgressBar tone="diamond" label={packTask?.label ?? 'Getting ready'} value={pct(packTask)} />
-          <p class="text-small muted">{created.instance.name} is in your Library. You can keep browsing while it installs.</p>
+          <ProgressBar tone="diamond" label={packTask?.label ?? t('Getting ready')} value={pct(packTask)} />
+          <p class="text-small muted">{t('{name} is in your Library. You can keep browsing while it installs.', { name: created.instance.name })}</p>
         </div>
         <div class="row">
-          <Button onclick={openCreated} iconEnd="chevron-right">Open {created.instance.name}</Button>
-          <Button variant="ghost" onclick={goDownloads}>Downloads</Button>
+          <Button onclick={openCreated} iconEnd="chevron-right">{t('Open {name}', { name: created.instance.name })}</Button>
+          <Button variant="ghost" onclick={goDownloads}>{t('Downloads')}</Button>
         </div>
       {/if}
     {/if}
   {:else if !target}
     <!-- no instance -->
     <div class="note-block">
-      <p class="text-body-strong">Create an instance first</p>
-      <p class="text-small muted">An instance is one Minecraft setup with its own version, loader, {words.many} and worlds. {words.label} go into one of them.</p>
+      <p class="text-body-strong">{t('Create an instance first')}</p>
+      <p class="text-small muted">{t('An instance is one Minecraft setup with its own version, loader, {many} and worlds. {label} go into one of them.', { many: words.many, label: words.label })}</p>
     </div>
-    <Button variant="primary" icon="plus" onclick={() => (app.navigate({ name: 'create' }), onLeave?.())}>New instance</Button>
+    <Button variant="primary" icon="plus" onclick={() => (app.navigate({ name: 'create' }), onLeave?.())}>{t('New instance')}</Button>
   {:else}
     <!-- mod, shader pack, resource pack -->
     <div class="field">
-      <span class="text-body-strong">Install to</span>
-      <TargetPicker note={versions ? (i) => (versions!.some((v) => fits(v, kind, i)) ? null : { tone: 'warn', icon: 'warning', word: 'No version for it' }) : undefined} />
+      <span class="text-body-strong">{t('Install to')}</span>
+      <TargetPicker note={versions ? (i) => (versions!.some((v) => fits(v, kind, i)) ? null : { tone: 'warn', icon: 'warning', word: t('No version for it') }) : undefined} />
     </div>
 
     {@render versionPicker()}
@@ -559,7 +560,7 @@
           <h3 id="{project.id}-check" class={['text-body-strong', 'line', verdict.tone]}><Icon name={verdict.icon} size={18} />{verdict.word}</h3>
         {/if}
         {#if planError}
-          <p class="text-small bad line"><Icon name="error" size={18} />Couldn't check it: {planError}</p>
+          <p class="text-small bad line"><Icon name="error" size={18} />{t('Couldn\'t check it: {planError}', { planError })}</p>
         {/if}
         <ul class="checks">
           {#each checks as c, i (i)}
@@ -580,12 +581,12 @@
       {#if current}
         <p class="text-small muted">
           {#if current.downloadBytes > 0}
-            <span class="text-body-strong ink">{bytes(current.downloadBytes)} to download</span>{toDownload.length ? `, with ${plural(toDownload.length, 'required mod', 'required mods')}.` : '.'}
+            <span class="text-body-strong ink">{t('{n} to download', { n: bytes(current.downloadBytes) })}</span>{toDownload.length ? t(', with {n}.', { n: plural(toDownload.length, 'required mod', 'required mods') }) : '.'}
           {:else}
-            <span class="text-body-strong ink">Nothing to download.</span>
+            <span class="text-body-strong ink">{t('Nothing to download.')}</span>
           {/if}
           {#if haveDeps.length && !toDownload.length}
-            {listWords(haveDeps.map((d) => d.title))} {haveDeps.length === 1 ? 'is' : 'are'} already in {target.name}.
+            {t(haveDeps.length === 1 ? '{mods} is already in {name}.' : '{mods} are already in {name}.', { mods: listWords(haveDeps.map((d) => d.title)), name: target.name })}
           {/if}
         </p>
       {/if}
@@ -594,34 +595,34 @@
     <!-- the action -->
     {#if jobRunning}
       <div class="progress" aria-live="polite">
-        <ProgressBar tone="diamond" label={jobTask?.label ?? 'Getting ready'} value={pct(jobTask)} />
-        <p class="text-small muted">Installing to {target.name}. You can keep browsing.</p>
+        <ProgressBar tone="diamond" label={jobTask?.label ?? t('Getting ready')} value={pct(jobTask)} />
+        <p class="text-small muted">{t('Installing to {name}. You can keep browsing.', { name: target.name })}</p>
       </div>
     {:else if isCurrent && chosen}
-      <Banner tone="success" title="Installed in {target.name}">
-        {#if kind === 'mod'}{project.title} {chosen.versionNumber} loads the next time you play.
-        {:else if kind === 'shader'}{turnedOn ? "It's turned on for the next time you play." : 'Pick it in the Shaders tab, or in game.'}
-        {:else}{turnedOn ? "It's on top of your packs the next time you play." : 'Turn it on in the Resource packs tab, or in game.'}{/if}
+      <Banner tone="success" title={t('Installed in {name}', { name: target.name })}>
+        {#if kind === 'mod'}{t('{title} {versionNumber} loads the next time you play.', { title: project.title, versionNumber: chosen.versionNumber })}
+        {:else if kind === 'shader'}{turnedOn ? t('It\'s turned on for the next time you play.') : t('Pick it in the Shaders tab, or in game.')}
+        {:else}{turnedOn ? t('It\'s on top of your packs the next time you play.') : t('Turn it on in the Resource packs tab, or in game.')}{/if}
       </Banner>
-      <PlayButton size="md" class="wide" state={playState} label={playState === 'ready' ? `Play ${target.name}` : undefined} detail={played(target.lastPlayed)} onclick={play} />
-      {#if words.tab}<Button onclick={() => openTab(target)} iconEnd="chevron-right">Manage {words.many} in {target.name}</Button>{/if}
+      <PlayButton size="md" class="wide" state={playState} label={playState === 'ready' ? t('Play {name}', { name: target.name }) : undefined} detail={played(target.lastPlayed)} onclick={play} />
+      {#if words.tab}<Button onclick={() => openTab(target)} iconEnd="chevron-right">{t('Manage {many} in {name}', { many: words.many, name: target.name })}</Button>{/if}
     {:else}
       {#if failed}
-        <Banner tone="danger" title="Couldn't install {project.title}">{failed}</Banner>
+        <Banner tone="danger" title={t('Couldn\'t install {title}', { title: project.title })}>{failed}</Banner>
       {/if}
       {#if otherVersion && installed}
-        <p class="text-small muted line"><Icon name="update" size={18} />{target.name} has <span class="text-mono">{installed.versionNumber}</span>. Cubby replaces it.</p>
+        <p class="text-small muted line"><Icon name="update" size={18} />{t('{name} has', { name: target.name })} <span class="text-mono">{installed.versionNumber}</span>{t('. Cubby replaces it.')}</p>
       {/if}
       {#if kind === 'shader' || kind === 'resourcepack'}
         <Switch
           checked={turnOn}
           onChange={(v) => (turnOn = v)}
-          label="Turn it on after installing"
-          hint={kind === 'shader' ? 'Used the next time you play' : 'On top of your other packs, so its textures win'}
+          label={t('Turn it on after installing')}
+          hint={kind === 'shader' ? t('Used the next time you play') : t('On top of your other packs, so its textures win')}
         />
       {/if}
       <Button variant="primary" size="lg" icon={otherVersion ? 'update' : 'download'} busy={starting} disabled={!canInstall} onclick={install} class="wide">
-        {#if otherVersion && chosen}{isUpdate ? 'Update' : 'Switch'} to {chosen.versionNumber}{:else}Install to {target.name}{/if}
+        {#if otherVersion && chosen}{t(isUpdate ? 'Update to {version}' : 'Switch to {version}', { version: chosen.versionNumber })}{:else}{t('Install to {name}', { name: target.name })}{/if}
       </Button>
       {#if blocked}<p class="text-small muted line"><Icon name="info" size={18} />{blocked}</p>{/if}
     {/if}
@@ -632,37 +633,37 @@
         {#if hint}<li class="text-small"><Icon name="servers" size={18} /><span>{hint}</span></li>{/if}
         <li class="text-small">
           <Icon name="info" size={18} />
-          <span>Changed your mind? Turn it off or remove it in <button type="button" class="link" onclick={() => openTab(target)}>Mods</button>. Your worlds stay, but what it added disappears from them.</span>
+          <span>{t('Changed your mind? Turn it off or remove it in')} <button type="button" class="link" onclick={() => openTab(target)}>{t('Mods')}</button>{t('. Your worlds stay, but what it added disappears from them.')}</span>
         </li>
       </ul>
     {/if}
 
     {#if !compact}
       <section class="steps" aria-labelledby="{project.id}-steps">
-        <h3 id="{project.id}-steps" class="text-label muted">When you install</h3>
+        <h3 id="{project.id}-steps" class="text-label muted">{t('When you install')}</h3>
         <ol>
           {#if kind === 'mod'}
-            <li><span class="num text-counter" aria-hidden="true">1</span><span class="text-body">Cubby saves {project.title} in the <span class="text-mono">mods</span> folder of {target.name}, with the mods it needs.</span></li>
-            <li><span class="num text-counter" aria-hidden="true">2</span><span class="text-body">It loads the next time you start the game.</span></li>
-            <li><span class="num text-counter" aria-hidden="true">3</span><span class="text-body">Most mods have settings: look for them in the game's options, or install Mod Menu on Fabric.</span></li>
+            <li><span class="num text-counter" aria-hidden="true">1</span><span class="text-body">{t('Cubby saves {title} in the', { title: project.title })} <span class="text-mono">mods</span> {t('folder of {name}, with the mods it needs.', { name: target.name })}</span></li>
+            <li><span class="num text-counter" aria-hidden="true">2</span><span class="text-body">{t('It loads the next time you start the game.')}</span></li>
+            <li><span class="num text-counter" aria-hidden="true">3</span><span class="text-body">{t('Most mods have settings: look for them in the game\'s options, or install Mod Menu on Fabric.')}</span></li>
           {:else if kind === 'shader'}
-            <li><span class="num text-counter" aria-hidden="true">1</span><span class="text-body">Cubby adds the pack to the <span class="text-mono">shaderpacks</span> folder of {target.name}.</span></li>
+            <li><span class="num text-counter" aria-hidden="true">1</span><span class="text-body">{t('Cubby adds the pack to the')} <span class="text-mono">shaderpacks</span> {t('folder of {name}.', { name: target.name })}</span></li>
             <li>
               <span class="num text-counter" aria-hidden="true">2</span>
               <span class="text-body">
-                {turnOn ? 'It selects the pack for the next time you play. You can change it in the Shaders tab.' : "The pack stays off until you pick it in the Shaders tab, or in game: Options, Video settings, Shader packs."}
+                {turnOn ? t('It selects the pack for the next time you play. You can change it in the Shaders tab.') : t('The pack stays off until you pick it in the Shaders tab, or in game: Options, Video settings, Shader packs.')}
               </span>
             </li>
-            <li><span class="num text-counter" aria-hidden="true">3</span><span class="text-body">Worlds and mods don't change. With Iris, press <Kbd keys="K" /> in game to turn shaders on or off.</span></li>
+            <li><span class="num text-counter" aria-hidden="true">3</span><span class="text-body">{t('Worlds and mods don\'t change. With Iris, press')} <Kbd keys="K" /> in game to turn shaders on or off.</span></li>
           {:else}
-            <li><span class="num text-counter" aria-hidden="true">1</span><span class="text-body">Cubby saves the pack in the <span class="text-mono">resourcepacks</span> folder of {target.name}.</span></li>
+            <li><span class="num text-counter" aria-hidden="true">1</span><span class="text-body">{t('Cubby saves the pack in the')} <span class="text-mono">resourcepacks</span> {t('folder of {name}.', { name: target.name })}</span></li>
             <li>
               <span class="num text-counter" aria-hidden="true">2</span>
               <span class="text-body">
-                {turnOn ? 'It turns it on above your other packs.' : 'It stays off until you turn it on in the Resource packs tab.'} The order matters: a pack higher in the list wins where two change the same thing.
+                {turnOn ? t('It turns it on above your other packs.') : t('It stays off until you turn it on in the Resource packs tab.')} {t('The order matters: a pack higher in the list wins where two change the same thing.')}
               </span>
             </li>
-            <li><span class="num text-counter" aria-hidden="true">3</span><span class="text-body">Changes apply when the game starts. In game, press <Kbd keys="F3" /> + <Kbd keys="T" /> to reload packs.</span></li>
+            <li><span class="num text-counter" aria-hidden="true">3</span><span class="text-body">{t('Changes apply when the game starts. In game, press')} <Kbd keys="F3" /> + <Kbd keys="T" /> to reload packs.</span></li>
           {/if}
         </ol>
       </section>

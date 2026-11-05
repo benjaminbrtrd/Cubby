@@ -174,6 +174,8 @@ export interface AppInfo {
   /** Where the CurseForge API key comes from; null when there is none. */
   curseforgeKey: 'settings' | 'environment' | 'builtIn' | null
   totalMemoryMb: number
+  /** Development build: without an account the full game starts offline instead of the demo. */
+  devBuild: boolean
 }
 
 export type CubbyEvent =

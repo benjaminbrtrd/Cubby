@@ -1,9 +1,10 @@
 <script lang="ts" module>
+  import { t } from '../i18n.svelte'
   const CMD_FOOT: { keys: string | string[]; label: string }[] = [
-    { keys: ['↑', '↓'], label: 'Browse' },
-    { keys: 'Enter', label: 'Launch' },
-    { keys: ['Ctrl', 'Enter'], label: 'Offline' },
-    { keys: 'Tab', label: 'More actions' },
+    { keys: ['↑', '↓'], label: t('Browse') },
+    { keys: 'Enter', label: t('Launch') },
+    { keys: ['Ctrl', 'Enter'], label: t('Offline') },
+    { keys: 'Tab', label: t('More actions') },
   ];
 </script>
 
@@ -84,7 +85,7 @@
   class={['cb-cmd', className]}
   role="dialog"
   aria-modal={modal ? true : undefined}
-  aria-label={label || 'Search and commands'}
+  aria-label={label || t('Search and commands')}
 >
   <div class="cb-cmd__search">
     <Icon name="search" size={18} />
@@ -95,8 +96,8 @@
       aria-controls={base + '-list'}
       aria-autocomplete="list"
       aria-activedescendant={activeId ? base + '-' + activeId : undefined}
-      aria-label={label || 'Search and commands'}
-      placeholder={placeholder || 'Search instances, servers, actions…'}
+      aria-label={label || t('Search and commands')}
+      placeholder={placeholder || t('Search instances, servers, actions…')}
       value={query || ''}
       oninput={input}
       onkeydown={keydown}

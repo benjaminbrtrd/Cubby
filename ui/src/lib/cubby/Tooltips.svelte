@@ -84,6 +84,14 @@
       if (el && el.matches(':focus-visible')) show(el);
     };
     const blur = () => hide();
+    // Focus also leaves when Svelte removes the focused element, and state can't change during that
+    // teardown: close a moment later, unless focus already opened the tip of the next element.
+    const focusOut = () => {
+      const was = anchor;
+      queueMicrotask(() => {
+        if (anchor === was) hide();
+      });
+    };
     const key = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && open) hide();
     };
@@ -91,7 +99,7 @@
     document.addEventListener('pointerout', out);
     document.addEventListener('pointerdown', blur, true);
     document.addEventListener('focusin', focus);
-    document.addEventListener('focusout', blur);
+    document.addEventListener('focusout', focusOut);
     document.addEventListener('keydown', key, true);
     window.addEventListener('scroll', blur, true);
     window.addEventListener('resize', blur);
@@ -100,7 +108,7 @@
       document.removeEventListener('pointerout', out);
       document.removeEventListener('pointerdown', blur, true);
       document.removeEventListener('focusin', focus);
-      document.removeEventListener('focusout', blur);
+      document.removeEventListener('focusout', focusOut);
       document.removeEventListener('keydown', key, true);
       window.removeEventListener('scroll', blur, true);
       window.removeEventListener('resize', blur);

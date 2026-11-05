@@ -6,6 +6,7 @@
 </script>
 
 <script lang="ts">
+  import { t } from '../../i18n.svelte'
   import { tick } from 'svelte'
   import { api } from '../../api'
   import { Banner, Button, Dialog, Icon, InstanceIcon, MetaChip, ModRow, ProgressBar, SegmentedControl, StatusTag, TextField } from '../../cubby'
@@ -61,10 +62,10 @@
     disabled: rows.filter((r) => !r.mod.enabled).length,
   })
   const filters = $derived([
-    { value: 'all', label: `All ${num(counts.all)}` },
-    { value: 'updates', label: `Updates ${num(counts.updates)}`, icon: 'update' as const },
-    { value: 'warnings', label: `Warnings ${num(counts.warnings)}`, icon: 'warning' as const },
-    { value: 'disabled', label: `Disabled ${num(counts.disabled)}`, icon: 'minimize' as const },
+    { value: 'all', label: t('All {n}', { n: num(counts.all) }) },
+    { value: 'updates', label: t('Updates {n}', { n: num(counts.updates) }), icon: 'update' as const },
+    { value: 'warnings', label: t('Warnings {n}', { n: num(counts.warnings) }), icon: 'warning' as const },
+    { value: 'disabled', label: t('Disabled {n}', { n: num(counts.disabled) }), icon: 'minimize' as const },
   ])
 
   const q = $derived(fold(query.trim()))
@@ -111,8 +112,9 @@
     try {
       await api.removeMod(id, m.fileName)
       data.mods = (data.mods ?? []).filter((x) => x.fileName !== m.fileName)
+      app.forgetFile(id, m.fileName)
       if (selected === baseFile(m.fileName)) selected = null
-      app.toast(`${modName(m)} moved to the instance’s trash folder.`, 'success')
+      app.toast(t('{m} moved to the instance’s trash folder.', { m: modName(m) }), 'success')
       removing = null
       void data.loadMods()
     } catch (e) {
@@ -157,9 +159,9 @@
 
   const kind = $derived.by(() => {
     if (!project) return null
-    if (project.categories.includes('library')) return 'Library: other mods need it'
-    if (project.categories.includes('optimization')) return 'Performance'
-    return 'Content'
+    if (project.categories.includes('library')) return t('Library: other mods need it')
+    if (project.categories.includes('optimization')) return t('Performance')
+    return t('Content')
   })
 
   /** A Markdown changelog as short plain lines. */
@@ -174,25 +176,25 @@
   const authors = (m: ModFile) => (m.authors.length ? `by ${m.authors.join(', ')}` : undefined)
 </script>
 
-<div class="ip-body" role="tabpanel" id="instance-panel" aria-label="Mods">
+<div class="ip-body" role="tabpanel" id="instance-panel" aria-label={t('Mods')}>
   <div class="toolbar">
     <div class="search">
-      <TextField label="Search mods" hideLabel icon="search" placeholder={`Search ${plural(rows.length, 'mod', 'mods')}`} bind:value={query} oninput={() => (limit = 60)} />
+      <TextField label={t('Search mods')} hideLabel icon="search" placeholder={t('Search {n}', { n: plural(rows.length, 'mod', 'mods') })} bind:value={query} oninput={() => (limit = 60)} />
     </div>
-    <Button icon="folder" onclick={() => data.openFolder('mods')}>Open folder</Button>
-    <Button variant="primary" icon="plus" onclick={() => data.discover('mod')}>Add mods</Button>
+    <Button icon="folder" onclick={() => data.openFolder('mods')}>{t('Open folder')}</Button>
+    <Button variant="primary" icon="plus" onclick={() => data.discover('mod')}>{t('Add mods')}</Button>
   </div>
   <div class="toolbar">
-    <SegmentedControl label="Show" options={filters} value={filter} onChange={(v) => ((filter = v as Filter), (limit = 60))} />
+    <SegmentedControl label={t('Show')} options={filters} value={filter} onChange={(v) => ((filter = v as Filter), (limit = 60))} />
     <span class="grow"></span>
     {#if counts.updates}
-      <Button icon="update" busy={!!updateTask} disabled={!!updateTask || running} onclick={updateAll}>Update all ({num(counts.updates)})</Button>
+      <Button icon="update" busy={!!updateTask} disabled={!!updateTask || running} onclick={updateAll}>{t('Update all ({n})', { n: num(counts.updates) })}</Button>
     {:else if data.checkingUpdates}
-      <Button icon="update" busy disabled>Checking for updates</Button>
+      <Button icon="update" busy disabled>{t('Checking for updates')}</Button>
     {:else if !data.updates}
-      <Button icon="update" onclick={() => data.checkUpdates()}>Check for updates</Button>
+      <Button icon="update" onclick={() => data.checkUpdates()}>{t('Check for updates')}</Button>
     {:else}
-      <Button variant="ghost" icon="update" onclick={() => data.checkUpdates(true)}>Check again</Button>
+      <Button variant="ghost" icon="update" onclick={() => data.checkUpdates(true)}>{t('Check again')}</Button>
     {/if}
   </div>
 
@@ -202,38 +204,38 @@
   {/if}
 
   {#if instance.loader.kind === 'vanilla' && rows.length}
-    {#snippet loaderAction()}<Button size="sm" icon="wrench" onclick={() => app.openInstance(id, 'settings')}>Change loader</Button>{/snippet}
-    <Banner tone="warning" title="These mods don’t load" actions={loaderAction}>
-      This instance runs Vanilla Minecraft, which ignores the mods folder. Pick Fabric or Quilt in Settings to load them.
+    {#snippet loaderAction()}<Button size="sm" icon="wrench" onclick={() => app.openInstance(id, 'settings')}>{t('Change loader')}</Button>{/snippet}
+    <Banner tone="warning" title={t('These mods don’t load')} actions={loaderAction}>
+      {t('This instance runs Vanilla Minecraft, which ignores the mods folder. Pick Fabric or Quilt in Settings to load them.')}
     </Banner>
   {:else if counts.warnings}
     {@const twin = rows.find((r) => r.twins)}
-    {#snippet twinAction()}<Button size="sm" icon="warning" onclick={() => (filter = 'warnings')}>Show them</Button>{/snippet}
-    <Banner tone="warning" title={counts.warnings === 2 && twin ? `${twin.name} is installed twice` : 'Some mods are installed twice'} actions={twinAction}>
-      Two files load the same mod, and the game won’t start with both. Remove the older file.
+    {#snippet twinAction()}<Button size="sm" icon="warning" onclick={() => (filter = 'warnings')}>{t('Show them')}</Button>{/snippet}
+    <Banner tone="warning" title={counts.warnings === 2 && twin ? `${twin.name} is installed twice` : t('Some mods are installed twice')} actions={twinAction}>
+      {t('Two files load the same mod, and the game won’t start with both. Remove the older file.')}
     </Banner>
   {/if}
 
-  <p class="hint text-body"><Icon name="info" size={18} />Turn a mod off to test without it. Nothing is deleted.</p>
+  <p class="hint text-body"><Icon name="info" size={18} />{t('Turn a mod off to test without it. Nothing is deleted.')}</p>
 
   {#if data.mods === null}
-    <p class="muted text-body">Reading the mods folder…</p>
+    <p class="muted text-body">{t('Reading the mods folder…')}</p>
   {:else if !rows.length}
     <div class="empty">
       {#if instance.loader.kind === 'vanilla'}
-        <p class="text-heading">Vanilla runs without mods</p>
-        <p class="muted text-body">To add mods, pick a loader like Fabric in Settings, then come back here.</p>
-        <Button icon="wrench" onclick={() => app.openInstance(id, 'settings')}>Change loader</Button>
+        <p class="text-heading">{t('Vanilla runs without mods')}</p>
+        <p class="muted text-body">{t('To add mods, pick a loader like Fabric in Settings, then come back here.')}</p>
+        <Button icon="wrench" onclick={() => app.openInstance(id, 'settings')}>{t('Change loader')}</Button>
       {:else}
-        <p class="text-heading">No mods yet</p>
-        <p class="muted text-body">Find mods made for {instance.minecraft} on Modrinth, or drop .jar files in the mods folder.</p>
-        <Button variant="primary" icon="plus" onclick={() => data.discover('mod')}>Add mods</Button>
+        <p class="text-heading">{t('No mods yet')}</p>
+        <p class="muted text-body">{t('Find mods made for {minecraft} on Modrinth, or drop .jar files in the mods folder.', { minecraft: instance.minecraft })}</p>
+        <Button variant="primary" icon="plus" onclick={() => data.discover('mod')}>{t('Add mods')}</Button>
       {/if}
     </div>
   {:else if !shown.length}
     <div class="empty">
-      <p class="text-heading">No mods match</p>
-      <Button variant="ghost" icon="close" onclick={clear}>Clear search and filter</Button>
+      <p class="text-heading">{t('No mods match')}</p>
+      <Button variant="ghost" icon="close" onclick={clear}>{t('Clear search and filter')}</Button>
     </div>
   {:else}
     <div class="list">
@@ -249,27 +251,27 @@
             iconSrc={r.source?.iconUrl ?? undefined}
             enabled={r.mod.enabled}
             onToggle={(on) => toggle(r, on)}
-            toggleLabel={`Load ${r.name} when you play`}
-            update={r.update ? `Update to ${r.update.latestVersion}` : undefined}
-            warning={r.twins ? 'Installed twice' : undefined}
-            moreLabel={`Show details for ${r.name}`}
+            toggleLabel={t('Load {name} when you play', { name: r.name })}
+            update={r.update ? t('Update to {latestVersion}', { latestVersion: r.update.latestVersion }) : undefined}
+            warning={r.twins ? t('Installed twice') : undefined}
+            moreLabel={t('Show details for {name}', { name: r.name })}
             onMore={() => details(r)}
           />
         </div>
       {/each}
     </div>
     <div class="toolbar">
-      <span class="muted text-small">Showing {num(visible.length)} of {num(rows.length)}</span>
+      <span class="muted text-small">{t('Showing {n} of {n2}', { n: num(visible.length), n2: num(rows.length) })}</span>
       {#if shown.length > visible.length}
-        <Button size="sm" variant="ghost" icon="chevron-down" onclick={() => (limit = Infinity)}>Show all {num(shown.length)}</Button>
+        <Button size="sm" variant="ghost" icon="chevron-down" onclick={() => (limit = Infinity)}>{t('Show all {n}', { n: num(shown.length) })}</Button>
       {/if}
     </div>
   {/if}
 </div>
 
-<aside class="ip-aside" aria-label="Mod details">
+<aside class="ip-aside" aria-label={t('Mod details')}>
   <div class="ip-aside__inner">
-    <p class="text-label muted">Selected mod</p>
+    <p class="text-label muted">{t('Selected mod')}</p>
     {#if sel}
       {@const m = sel.mod}
       <div class="who">
@@ -286,60 +288,60 @@
       <div class="chips">
         {#if m.version}<MetaChip>{m.version}</MetaChip>{/if}
         {#if !m.enabled}
-          <StatusTag state="disabled">Off</StatusTag>
+          <StatusTag state="disabled">{t('Off')}</StatusTag>
         {:else if sel.update}
-          <StatusTag state="update">On · update ready</StatusTag>
+          <StatusTag state="update">{t('On · update ready')}</StatusTag>
         {:else if data.updates && sel.source}
-          <StatusTag state="ready">On · up to date</StatusTag>
+          <StatusTag state="ready">{t('On · up to date')}</StatusTag>
         {:else}
-          <StatusTag state="ready">On</StatusTag>
+          <StatusTag state="ready">{t('On')}</StatusTag>
         {/if}
       </div>
       <section class="part">
-        <h3 class="text-label muted">What it does</h3>
-        <p class="text-body">{m.description || project?.summary || 'This file doesn’t describe itself.'}</p>
+        <h3 class="text-label muted">{t('What it does')}</h3>
+        <p class="text-body">{m.description || project?.summary || t('This file doesn’t describe itself.')}</p>
       </section>
       <dl class="facts">
         {#if kind}
-          <dt class="text-small muted">Type</dt>
+          <dt class="text-small muted">{t('Type')}</dt>
           <dd class="text-body">{kind}</dd>
         {/if}
-        <dt class="text-small muted">Source</dt>
-        <dd class="text-body">{sel.source ? 'Modrinth' : 'Not found on Modrinth'}</dd>
+        <dt class="text-small muted">{t('Source')}</dt>
+        <dd class="text-body">{sel.source ? 'Modrinth' : t('Not found on Modrinth')}</dd>
         {#if project}
-          <dt class="text-small muted">Updated</dt>
+          <dt class="text-small muted">{t('Updated')}</dt>
           <dd class="text-body">{relativeTime(project.updated)}</dd>
         {/if}
-        <dt class="text-small muted">Size</dt>
+        <dt class="text-small muted">{t('Size')}</dt>
         <dd class="text-body">{bytes(m.size)}</dd>
-        <dt class="text-small muted full">File</dt>
+        <dt class="text-small muted full">{t('File')}</dt>
         <dd class="text-mono full wrap">{m.fileName}</dd>
       </dl>
       {#if sel.twins}
-        <p class="warn text-small flag"><Icon name="warning" size={18} label="Warning" /><span>Also loaded from <span class="text-mono">{sel.twins.map((t) => t.fileName).join(', ')}</span>. Keep one.</span></p>
+        <p class="warn text-small flag"><Icon name="warning" size={18} label={t('Warning')} /><span>{t('Also loaded from')} <span class="text-mono">{sel.twins.map((t) => t.fileName).join(', ')}</span>{t('. Keep one.')}</span></p>
       {/if}
       {#if sel.update}
         <section class="part">
-          <h3 class="text-label muted">New in {sel.update.latestVersion}</h3>
+          <h3 class="text-label muted">{t('New in {latestVersion}', { latestVersion: sel.update.latestVersion })}</h3>
           {#if notes(sel.update.changelog).length}
             <ul class="changes text-small">
               {#each notes(sel.update.changelog) as line, i (i)}<li>{line}</li>{/each}
             </ul>
           {:else}
-            <p class="muted text-small">No changelog for this version.</p>
+            <p class="muted text-small">{t('No changelog for this version.')}</p>
           {/if}
         </section>
       {/if}
       <div class="actions">
-        {#if sel.source}<Button size="sm" icon="globe" onclick={() => sel.source && data.project(sel.source.slug, 'mod')}>Open page</Button>{/if}
+        {#if sel.source}<Button size="sm" icon="globe" onclick={() => sel.source && data.project(sel.source.slug, 'mod')}>{t('Open page')}</Button>{/if}
         {#if sel.update}
-          <Button size="sm" icon="update" busy={!!updateTask} disabled={!!updateTask || running} onclick={() => sel.update && data.applyUpdates([sel.update.fileName])}>Update</Button>
+          <Button size="sm" icon="update" busy={!!updateTask} disabled={!!updateTask || running} onclick={() => sel.update && data.applyUpdates([sel.update.fileName])}>{t('Update')}</Button>
         {/if}
-        <Button size="sm" icon={m.enabled ? 'minimize' : 'check'} onclick={() => toggle(sel, !m.enabled)}>{m.enabled ? 'Turn off' : 'Turn on'}</Button>
-        <Button size="sm" variant="danger" icon="trash" onclick={() => (removing = m)}>Remove</Button>
+        <Button size="sm" icon={m.enabled ? 'minimize' : 'check'} onclick={() => toggle(sel, !m.enabled)}>{m.enabled ? t('Turn off') : t('Turn on')}</Button>
+        <Button size="sm" variant="danger" icon="trash" onclick={() => (removing = m)}>{t('Remove')}</Button>
       </div>
     {:else}
-      <p class="muted text-body">Pick a mod to see what it does, its file and its page on Modrinth.</p>
+      <p class="muted text-body">{t('Pick a mod to see what it does, its file and its page on Modrinth.')}</p>
     {/if}
 
   </div>
@@ -348,12 +350,12 @@
 {#if removing}
   {@const m = removing}
   {#snippet removeActions()}
-    <Button variant="ghost" onclick={() => (removing = null)}>Cancel</Button>
-    <Button variant="danger" icon="trash" busy={removeBusy} disabled={removeBusy} onclick={remove}>Remove</Button>
+    <Button variant="ghost" onclick={() => (removing = null)}>{t('Cancel')}</Button>
+    <Button variant="danger" icon="trash" busy={removeBusy} disabled={removeBusy} onclick={remove}>{t('Remove')}</Button>
   {/snippet}
-  <Dialog tone="danger" icon="trash" title={`Remove ${modName(m)}?`} onClose={() => (removing = null)} actions={removeActions}>
-    <p>Moves <span class="text-mono">{m.fileName}</span> to the trash folder of this instance.</p>
-    <p>Mods that need it may stop working.</p>
+  <Dialog tone="danger" icon="trash" title={t('Remove {m}?', { m: modName(m) })} onClose={() => (removing = null)} actions={removeActions}>
+    <p>{t('Moves')} <span class="text-mono">{m.fileName}</span> {t('to the trash folder of this instance.')}</p>
+    <p>{t('Mods that need it may stop working.')}</p>
   </Dialog>
 {/if}
 

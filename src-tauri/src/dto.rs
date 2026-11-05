@@ -3,20 +3,28 @@
 use std::path::Path;
 
 use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
 use cubby_auth::AccountKind;
 use cubby_common::Error;
 use cubby_instance::{JavaOverrides, Loader, ModpackInfo};
 use cubby_modrinth as modrinth;
+use serde::{Deserialize, Serialize};
 
 pub fn message(e: Error) -> String {
     match e {
         Error::Http { url, .. } => format!("Can't reach {}. Check your connection.", host(&url)),
-        Error::HttpStatus { url, status } => format!("{} returned an error (HTTP {status}). Try again later.", host(&url)),
-        Error::HashMismatch { path, .. } => format!("{} didn't download correctly. Try again.", path.display()),
+        Error::HttpStatus { url, status } => format!(
+            "{} returned an error (HTTP {status}). Try again later.",
+            host(&url)
+        ),
+        Error::HashMismatch { path, .. } => {
+            format!("{} didn't download correctly. Try again.", path.display())
+        }
         Error::Io { path, source } => format!("Couldn't access {}: {source}", path.display()),
         Error::Json { what, .. } => format!("Couldn't read the data from {what}."),
-        Error::Toml { path, message } => format!("Couldn't read the settings in {}: {message}", path.display()),
+        Error::Toml { path, message } => format!(
+            "Couldn't read the settings in {}: {message}",
+            path.display()
+        ),
         Error::NotFound(what) => format!("Couldn't find {what}."),
         Error::Auth(msg) | Error::Java(msg) | Error::Launch(msg) | Error::Other(msg) => msg,
         Error::Cancelled => "Operation canceled.".into(),
@@ -24,7 +32,10 @@ pub fn message(e: Error) -> String {
 }
 
 fn host(url: &str) -> &str {
-    url.split("://").nth(1).and_then(|rest| rest.split('/').next()).unwrap_or(url)
+    url.split("://")
+        .nth(1)
+        .and_then(|rest| rest.split('/').next())
+        .unwrap_or(url)
 }
 
 /// URL under which the webview can load a local file through Tauri's asset protocol
@@ -67,20 +78,36 @@ impl From<&Loader> for LoaderDto {
             Loader::NeoForge { version } => ("neoforge", Some(version)),
             Loader::Forge { version } => ("forge", Some(version)),
         };
-        Self { kind: kind.into(), version: version.cloned() }
+        Self {
+            kind: kind.into(),
+            version: version.cloned(),
+        }
     }
 }
 
 impl TryFrom<LoaderDto> for Loader {
     type Error = String;
     fn try_from(l: LoaderDto) -> Result<Self, String> {
-        let version = || l.version.clone().filter(|v| !v.is_empty()).ok_or_else(|| "Choose a loader version.".to_string());
+        let version = || {
+            l.version
+                .clone()
+                .filter(|v| !v.is_empty())
+                .ok_or_else(|| "Choose a loader version.".to_string())
+        };
         Ok(match l.kind.as_str() {
             "vanilla" => Loader::Vanilla,
-            "fabric" => Loader::Fabric { version: version()? },
-            "quilt" => Loader::Quilt { version: version()? },
-            "neoforge" => Loader::NeoForge { version: version()? },
-            "forge" => Loader::Forge { version: version()? },
+            "fabric" => Loader::Fabric {
+                version: version()?,
+            },
+            "quilt" => Loader::Quilt {
+                version: version()?,
+            },
+            "neoforge" => Loader::NeoForge {
+                version: version()?,
+            },
+            "forge" => Loader::Forge {
+                version: version()?,
+            },
             other => return Err(format!("Unknown loader: {other}.")),
         })
     }
@@ -98,7 +125,10 @@ pub struct JavaOverridesDto {
 impl From<&JavaOverrides> for JavaOverridesDto {
     fn from(j: &JavaOverrides) -> Self {
         Self {
-            executable: j.executable.as_ref().map(|p| p.to_string_lossy().into_owned()),
+            executable: j
+                .executable
+                .as_ref()
+                .map(|p| p.to_string_lossy().into_owned()),
             min_memory_mb: j.min_memory_mb,
             max_memory_mb: j.max_memory_mb,
             jvm_args: j.jvm_args.clone(),
@@ -144,12 +174,20 @@ pub struct InstanceDto {
 }
 
 impl InstanceDto {
-    pub fn new(inst: &cubby_instance::Instance, instance_dir: &Path, installed: bool, blocked_files: u32) -> Self {
+    pub fn new(
+        inst: &cubby_instance::Instance,
+        instance_dir: &Path,
+        installed: bool,
+        blocked_files: u32,
+    ) -> Self {
         Self {
             id: inst.id.clone(),
             name: inst.name.clone(),
             group: inst.group.clone(),
-            icon: inst.icon.as_ref().map(|icon| icon_value(icon, instance_dir)),
+            icon: inst
+                .icon
+                .as_ref()
+                .map(|icon| icon_value(icon, instance_dir)),
             minecraft: inst.minecraft.clone(),
             loader: (&inst.loader).into(),
             created: inst.created,
@@ -179,13 +217,25 @@ pub struct ModpackDto {
 
 impl From<&ModpackInfo> for ModpackDto {
     fn from(m: &ModpackInfo) -> Self {
-        Self { provider: m.provider.clone(), project_id: m.project_id.clone(), version_id: m.version_id.clone(), title: m.title.clone(), version_number: m.version_number.clone() }
+        Self {
+            provider: m.provider.clone(),
+            project_id: m.project_id.clone(),
+            version_id: m.version_id.clone(),
+            title: m.title.clone(),
+            version_number: m.version_number.clone(),
+        }
     }
 }
 
 impl From<ModpackDto> for ModpackInfo {
     fn from(m: ModpackDto) -> Self {
-        Self { provider: m.provider, project_id: m.project_id, version_id: m.version_id, title: m.title, version_number: m.version_number }
+        Self {
+            provider: m.provider,
+            project_id: m.project_id,
+            version_id: m.version_id,
+            title: m.title,
+            version_number: m.version_number,
+        }
     }
 }
 
@@ -227,7 +277,13 @@ pub struct AccountDto {
 impl AccountDto {
     pub fn new(a: &cubby_auth::Account, is_default: bool) -> Self {
         let AccountKind::Microsoft { skin_url, .. } = &a.kind;
-        Self { id: a.id.clone(), username: a.username.clone(), kind: "microsoft", is_default, skin_url: skin_url.clone() }
+        Self {
+            id: a.id.clone(),
+            username: a.username.clone(),
+            kind: "microsoft",
+            is_default,
+            skin_url: skin_url.clone(),
+        }
     }
 }
 
@@ -300,8 +356,16 @@ pub struct WorldDto {
 
 impl WorldDto {
     pub fn new(w: cubby_instance::WorldInfo, saves_dir: &Path) -> Self {
-        let icon_url = w.has_icon.then(|| asset_url(&saves_dir.join(&w.folder_name).join("icon.png")));
-        Self { folder: w.folder_name, name: w.display_name, last_played: w.last_played, size_bytes: w.size, icon_url }
+        let icon_url = w
+            .has_icon
+            .then(|| asset_url(&saves_dir.join(&w.folder_name).join("icon.png")));
+        Self {
+            folder: w.folder_name,
+            name: w.display_name,
+            last_played: w.last_played,
+            size_bytes: w.size,
+            icon_url,
+        }
     }
 }
 
@@ -315,7 +379,11 @@ pub struct ScreenshotDto {
 
 impl From<cubby_instance::ScreenshotFile> for ScreenshotDto {
     fn from(s: cubby_instance::ScreenshotFile) -> Self {
-        Self { url: asset_url(&s.path), file_name: s.file_name, taken: s.modified.unwrap_or_else(Utc::now) }
+        Self {
+            url: asset_url(&s.path),
+            file_name: s.file_name,
+            taken: s.modified.unwrap_or_else(Utc::now),
+        }
     }
 }
 
@@ -352,6 +420,8 @@ pub struct AppInfoDto {
     /// Where the CurseForge API key comes from: "settings", "environment", "builtIn", or none.
     pub curseforge_key: Option<&'static str>,
     pub total_memory_mb: u64,
+    /// Development build: without an account the full game starts offline instead of the demo.
+    pub dev_build: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -417,7 +487,9 @@ impl From<ServerDto> for cubby_instance::ServerEntry {
         Self {
             name: s.name.trim().to_string(),
             address: s.address.trim().to_string(),
-            icon: s.icon_url.and_then(|u| u.strip_prefix(PNG_DATA_URL).map(str::to_owned)),
+            icon: s
+                .icon_url
+                .and_then(|u| u.strip_prefix(PNG_DATA_URL).map(str::to_owned)),
             accept_textures: s.accept_textures,
         }
     }
@@ -545,7 +617,12 @@ pub struct SearchResultsDto {
 
 impl From<modrinth::SearchResults> for SearchResultsDto {
     fn from(r: modrinth::SearchResults) -> Self {
-        Self { hits: r.hits.into_iter().map(Into::into).collect(), total: r.total, offset: r.offset, limit: r.limit }
+        Self {
+            hits: r.hits.into_iter().map(Into::into).collect(),
+            total: r.total,
+            offset: r.offset,
+            limit: r.limit,
+        }
     }
 }
 
@@ -595,14 +672,27 @@ impl From<modrinth::Project> for ProjectDto {
             gallery: p
                 .gallery
                 .into_iter()
-                .map(|g| GalleryImageDto { url: g.url, title: g.title, description: g.description, featured: g.featured })
+                .map(|g| GalleryImageDto {
+                    url: g.url,
+                    title: g.title,
+                    description: g.description,
+                    featured: g.featured,
+                })
                 .collect(),
             links: ProjectLinksDto {
                 source: p.links.source,
                 issues: p.links.issues,
                 wiki: p.links.wiki,
                 discord: p.links.discord,
-                donation: p.links.donation.into_iter().map(|d| DonationDto { platform: d.platform, url: d.url }).collect(),
+                donation: p
+                    .links
+                    .donation
+                    .into_iter()
+                    .map(|d| DonationDto {
+                        platform: d.platform,
+                        url: d.url,
+                    })
+                    .collect(),
             },
             version_count: p.version_count,
         }
@@ -664,12 +754,25 @@ impl From<modrinth::ProjectVersion> for ProjectVersionDto {
             files: v
                 .files
                 .into_iter()
-                .map(|f| VersionFileDto { url: f.url, file_name: f.file_name, size: f.size, primary: f.primary, sha1: f.sha1 })
+                .map(|f| VersionFileDto {
+                    url: f.url,
+                    file_name: f.file_name,
+                    size: f.size,
+                    primary: f.primary,
+                    sha1: f.sha1,
+                })
                 .collect(),
             dependencies: v
                 .dependencies
                 .into_iter()
-                .map(|d| DependencyDto { project_id: d.project_id, version_id: d.version_id, kind: d.kind, title: d.title, slug: d.slug, icon_url: d.icon_url })
+                .map(|d| DependencyDto {
+                    project_id: d.project_id,
+                    version_id: d.version_id,
+                    kind: d.kind,
+                    title: d.title,
+                    slug: d.slug,
+                    icon_url: d.icon_url,
+                })
                 .collect(),
         }
     }
@@ -734,8 +837,23 @@ impl InstallPlanDto {
                     folder: i.folder.as_str(),
                 })
                 .collect(),
-            missing: plan.missing.into_iter().map(|m| MissingDependencyDto { project_id: m.project_id, title: m.title }).collect(),
-            conflicts: plan.conflicts.into_iter().map(|c| ConflictDto { project_id: c.project_id, title: c.title, file_name: c.file_name }).collect(),
+            missing: plan
+                .missing
+                .into_iter()
+                .map(|m| MissingDependencyDto {
+                    project_id: m.project_id,
+                    title: m.title,
+                })
+                .collect(),
+            conflicts: plan
+                .conflicts
+                .into_iter()
+                .map(|c| ConflictDto {
+                    project_id: c.project_id,
+                    title: c.title,
+                    file_name: c.file_name,
+                })
+                .collect(),
             download_bytes: plan.download_bytes,
         }
     }
@@ -809,6 +927,11 @@ pub struct WorldBackupDto {
 
 impl From<cubby_instance::WorldBackup> for WorldBackupDto {
     fn from(b: cubby_instance::WorldBackup) -> Self {
-        Self { file_name: b.file_name, world: b.world, created: b.created, size_bytes: b.size }
+        Self {
+            file_name: b.file_name,
+            world: b.world,
+            created: b.created,
+            size_bytes: b.size,
+        }
     }
 }

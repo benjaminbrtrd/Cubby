@@ -1,5 +1,6 @@
 <!-- "Install to": picks the instance Discover installs to (app.target), among the player's instances. -->
 <script lang="ts">
+  import { t } from '../../i18n.svelte'
   import { Icon, InstanceIcon } from '../../cubby'
   import { instanceMeta } from '../../format'
   import { iconOf } from '../../icon'
@@ -18,11 +19,11 @@
 
   const target = $derived(app.target)
   const items = $derived(app.recent.map((i) => ({ id: i.id, instance: i })))
-  const buttonLabel = $derived(target ? `Install to ${target.name}, Minecraft ${instanceMeta(target)}. Change instance` : 'Choose an instance')
+  const buttonLabel = $derived(target ? t('Install to {name}, Minecraft {target}. Change instance', { name: target.name, target: instanceMeta(target) }) : t('Choose an instance'))
 </script>
 
 {#if target}
-  <Picker {items} value={target.id} onSelect={(id) => app.setTarget(id)} label="Install to" {buttonLabel} {variant}>
+  <Picker {items} value={target.id} onSelect={(id) => app.setTarget(id)} label={t('Install to')} {buttonLabel} {variant}>
     {#snippet trigger()}
       <InstanceIcon {...iconOf(target)} size={32} />
       {#if variant === 'block'}

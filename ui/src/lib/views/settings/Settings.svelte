@@ -6,7 +6,8 @@
   import { tick, untrack } from 'svelte'
   import { api } from '../../api'
   import { app, type SettingsSection } from '../../state.svelte'
-  import { bytes, fold, num } from '../../format'
+  import { bytes, fold, num, timeOfDay } from '../../format'
+  import { switchLanguage, t } from '../../i18n.svelte'
   import type { DataFolder, JavaInstall, Settings } from '../../types'
   import { Button, Dialog, Icon, Logo, SegmentedControl, Slider, StatusTag, Switch, TextField } from '../../cubby'
 
@@ -18,14 +19,14 @@
 
   /** The blocks, in page order; `words` feed the search field. */
   const BLOCKS: { id: BlockId; label: string; words: string }[] = [
-    { id: 'language', label: 'Language', words: 'english translation locale' },
-    { id: 'java', label: 'Java and memory', words: 'java runtime automatic memory ram jvm arguments installs detected' },
-    { id: 'game', label: 'Game', words: 'window size width height fullscreen starts launch minimize keep close play time track show' },
-    { id: 'downloads', label: 'Downloads', words: 'parallel concurrency mod updates check modrinth proxy network system manual address' },
-    { id: 'storage', label: 'Storage', words: 'data folder disk space size cache clean up instances libraries assets logs trash open' },
-    { id: 'accounts', label: 'Accounts', words: 'microsoft application client id azure sign in curseforge api key' },
-    { id: 'updates', label: 'Updates', words: 'update version new release download install automatic preview stable channel skip check restart' },
-    { id: 'about', label: 'About', words: 'version license source code github gpl data folder' },
+    { id: 'language', label: t('Language'), words: 'english french français langue translation locale' },
+    { id: 'java', label: t('Java and memory'), words: 'java runtime automatic memory ram jvm arguments installs detected' },
+    { id: 'game', label: t('Game'), words: 'window size width height fullscreen starts launch minimize keep close play time track show' },
+    { id: 'downloads', label: t('Downloads'), words: 'parallel concurrency mod updates check modrinth proxy network system manual address' },
+    { id: 'storage', label: t('Storage'), words: 'data folder disk space size cache clean up instances libraries assets logs trash open' },
+    { id: 'accounts', label: t('Accounts'), words: 'microsoft application client id azure sign in curseforge api key' },
+    { id: 'updates', label: t('Updates'), words: 'update version new release download install automatic preview stable channel skip check restart' },
+    { id: 'about', label: t('About'), words: 'version license source code github gpl data folder' },
   ]
 
   /** The block a route points at; 'general' is the top of the page. */
@@ -167,8 +168,10 @@
 
   const memHint = $derived(
     totalMb && memory > totalMb * 0.75
-      ? `That leaves little memory for Windows and other apps. Your PC has ${gb(totalMb)}.`
-      : `Used by instances that don’t set their own.${totalMb ? ` Your PC has ${gb(totalMb)}.` : ''}`,
+      ? t('That leaves little memory for Windows and other apps. Your PC has {n}.', { n: gb(totalMb) })
+      : totalMb
+        ? t('Used by instances that don’t set their own. Your PC has {total}.', { total: gb(totalMb) })
+        : t('Used by instances that don’t set their own.'),
   )
 
   let jvmArgs = $state('')
@@ -214,15 +217,22 @@
     if (v !== s.game[which]) saveGame({ [which]: v })
   }
 
+  /* Language: each name in its own language, so anyone can find theirs. */
+  const LANGUAGES = $derived([
+    { value: 'system', label: t('Windows language') },
+    { value: 'en', label: 'English' },
+    { value: 'fr', label: 'Français' },
+  ])
+
   const ON_LAUNCH = [
-    { value: 'minimize', label: 'Minimize Cubby' },
-    { value: 'keep', label: 'Keep it open' },
-    { value: 'close', label: 'Close Cubby' },
+    { value: 'minimize', label: t('Minimize Cubby') },
+    { value: 'keep', label: t('Keep it open') },
+    { value: 'close', label: t('Close Cubby') },
   ]
   const ON_LAUNCH_HINT: Record<Settings['onLaunch'], string> = {
-    minimize: 'Cubby minimizes while you play and comes back when the game closes.',
-    keep: 'Cubby stays open next to the game.',
-    close: 'Cubby hides while you play and quits when the last game closes.',
+    minimize: t('Cubby minimizes while you play and comes back when the game closes.'),
+    keep: t('Cubby stays open next to the game.'),
+    close: t('Cubby hides while you play and quits when the last game closes.'),
   }
 
   /* Downloads */
@@ -234,9 +244,9 @@
   })
 
   const PROXIES = [
-    { value: 'system', label: 'Use Windows settings' },
-    { value: 'none', label: 'No proxy' },
-    { value: 'manual', label: 'Manual' },
+    { value: 'system', label: t('Use Windows settings') },
+    { value: 'none', label: t('No proxy') },
+    { value: 'manual', label: t('Manual') },
   ]
   let proxyUrl = $state('')
   const savedProxyUrl = $derived(s?.proxy.url ?? '')
@@ -244,7 +254,7 @@
     proxyUrl = savedProxyUrl
   })
   const proxyError = $derived(
-    proxyUrl.trim() && !/^(https?|socks5h?):\/\/\S+$/i.test(proxyUrl.trim()) ? 'Start the address with http://, https:// or socks5://.' : '',
+    proxyUrl.trim() && !/^(https?|socks5h?):\/\/\S+$/i.test(proxyUrl.trim()) ? t('Start the address with http://, https:// or socks5://.') : '',
   )
   function commitProxy() {
     const v = proxyUrl.trim()
@@ -254,13 +264,13 @@
 
   /* Storage */
   const FOLDER_LABEL: Record<DataFolder['key'], string> = {
-    instances: 'Instances',
-    libraries: 'Libraries',
-    assets: 'Game assets',
-    java: 'Java runtimes',
-    meta: 'Metadata cache',
-    logs: 'Launcher logs',
-    trash: 'Trash',
+    instances: t('Instances'),
+    libraries: t('Libraries'),
+    assets: t('Game assets'),
+    java: t('Java runtimes'),
+    meta: t('Metadata cache'),
+    logs: t('Launcher logs'),
+    trash: t('Trash'),
   }
   let folders = $state<DataFolder[] | null>(null)
   const used = $derived(folders?.reduce((n, f) => n + f.sizeBytes, 0) ?? 0)
@@ -286,7 +296,7 @@
     try {
       await api.clearCache()
       cleanAsk = false
-      app.toast('Cache cleaned up.', 'success')
+      app.toast(t('Cache cleaned up.'), 'success')
       await loadFolders()
     } catch (e) {
       app.error(e)
@@ -304,7 +314,7 @@
   })
   const clientIdError = $derived(
     clientId.trim() && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clientId.trim())
-      ? 'An application id looks like 00000000-0000-0000-0000-000000000000.'
+      ? t('An application id looks like 00000000-0000-0000-0000-000000000000.')
       : '',
   )
   async function commitClientId() {
@@ -336,23 +346,23 @@
 
   /* Updates of Cubby */
   const UPDATE_MODES = [
-    { value: 'auto', label: 'Install it for me' },
-    { value: 'ask', label: 'Ask me' },
-    { value: 'off', label: 'Don’t check' },
+    { value: 'auto', label: t('Install it for me') },
+    { value: 'ask', label: t('Ask me') },
+    { value: 'off', label: t('Don’t check') },
   ]
   const UPDATE_MODE_HINT: Record<Settings['updates']['mode'], string> = {
-    auto: 'Cubby downloads it in the background and installs it when you close the app. It never interrupts a game.',
-    ask: 'Cubby tells you when a new version is out and waits for your OK before downloading it.',
-    off: 'Cubby never looks by itself. You can still check by hand.',
+    auto: t('Cubby downloads it in the background and installs it when you close the app. It never interrupts a game.'),
+    ask: t('Cubby tells you when a new version is out and waits for your OK before downloading it.'),
+    off: t('Cubby never looks by itself. You can still check by hand.'),
   }
   const CHANNELS = [
-    { value: 'stable', label: 'Stable' },
-    { value: 'preview', label: 'Preview' },
+    { value: 'stable', label: t('Stable') },
+    { value: 'preview', label: t('Preview') },
   ]
   const u = $derived(app.update)
   const updating = $derived(u.phase === 'available' || u.phase === 'downloading' || u.phase === 'ready' || u.phase === 'failed')
   const checkedText = $derived(
-    u.checkedAt ? `Last checked ${new Date(u.checkedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.` : 'Not checked yet.',
+    u.checkedAt ? t('Last checked {time}.', { time: timeOfDay(new Date(u.checkedAt).toISOString()) }) : t('Not checked yet.'),
   )
   const saveUpdates = (patch: Partial<Settings['updates']>) => s && save({ updates: { ...s.updates, ...patch } })
   async function changeChannel(channel: Settings['updates']['channel']) {
@@ -400,11 +410,11 @@
   <div class="layout">
     <div class="side">
       <div>
-        <h1 class="text-title">Settings</h1>
-        <p class="text-small muted">Changes save as you go.</p>
+        <h1 class="text-title">{t('Settings')}</h1>
+        <p class="text-small muted">{t('Changes save as you go.')}</p>
       </div>
-      <TextField label="Search settings" hideLabel icon="search" type="search" placeholder="Search settings" autocomplete="off" bind:value={query} />
-      <nav aria-label="Settings sections">
+      <TextField label={t('Search settings')} hideLabel icon="search" type="search" placeholder={t('Search settings')} autocomplete="off" bind:value={query} />
+      <nav aria-label={t('Settings sections')}>
         <ul class="nav">
           {#each shown as b (b.id)}
             {@const on = current === b.id}
@@ -421,43 +431,39 @@
 
     <div class="blocks">
       {#if !s}
-        <p class="text-small muted">Loading your settings…</p>
+        <p class="text-small muted">{t('Loading your settings…')}</p>
       {:else}
         {#if shown.length === 0}
           <div class="block empty">
-            <p class="text-body">No setting matches “{query.trim()}”.</p>
-            <div><Button size="sm" onclick={() => (query = '')}>Clear search</Button></div>
+            <p class="text-body">{t('No setting matches “{query}”.', { query: query.trim() })}</p>
+            <div><Button size="sm" onclick={() => (query = '')}>{t('Clear search')}</Button></div>
           </div>
         {/if}
 
         {#if visible.has('language')}
           <section id="{uid}-language" class="block" aria-labelledby="{uid}-h-language">
-            {@render heading('language', 'Language')}
-            <div class="row">
-              <div class="row__text">
-                <p class="text-body-strong">Language</p>
-                <p class="text-small muted">Cubby is in English for now. More languages come later.</p>
-              </div>
-              <span class="value text-body-strong">English</span>
+            {@render heading('language', t('Language'))}
+            <div class="row row--stack">
+              <SegmentedControl label={t('Language')} options={LANGUAGES} value={s.language === 'en' || s.language === 'fr' ? s.language : 'system'} onChange={(v) => void save({ language: v }).then(() => switchLanguage(v))} />
             </div>
           </section>
         {/if}
 
         {#if visible.has('java')}
           <section id="{uid}-java" class="block" aria-labelledby="{uid}-h-java">
-            {@render heading('java', 'Java and memory')}
+            {@render heading('java', t('Java and memory'))}
             {@render switchRow(
               'java-auto',
-              'Choose Java automatically',
+              t('Choose Java automatically'),
               s.java.auto
-                ? 'Cubby picks the right Java for each version and downloads it when it’s missing.'
-                : 'Cubby uses the Java found on this PC. A version with no matching Java won’t start.',
+                ? t('Cubby picks the right Java for each version and downloads it when it’s missing.')
+                : t('Cubby uses the Java found on this PC. A version with no matching Java won’t start.'),
               s.java.auto,
               (v) => saveJava({ auto: v }),
             )}
             <div class="row row--stack">
               <Slider
-                label="Default memory"
+                label={t('Default memory')}
                 min={MEM_MIN}
                 max={memMax}
                 step={512}
@@ -473,25 +479,25 @@
             </div>
             <div class="row row--stack">
               <TextField
-                label="Default JVM arguments"
+                label={t('Default JVM arguments')}
                 mono
-                placeholder="-XX:+UseZGC"
+                placeholder={t('-XX:+UseZGC')}
                 spellcheck={false}
                 autocomplete="off"
-                hint="Used by instances that don’t set their own. Leave it empty unless a mod asks for something."
+                hint={t('Used by instances that don’t set their own. Leave it empty unless a mod asks for something.')}
                 bind:value={jvmArgs}
                 onchange={() => jvmArgs.trim() !== savedJvm && saveJava({ jvmArgs: jvmArgs.trim() })}
               />
             </div>
             <div class="row row--stack">
               <div class="row__head">
-                <p class="text-body-strong grow">Java on this PC</p>
-                <Button size="sm" icon="search" busy={javaBusy} disabled={javaBusy} onclick={findJava}>Search again</Button>
+                <p class="text-body-strong grow">{t('Java on this PC')}</p>
+                <Button size="sm" icon="search" busy={javaBusy} disabled={javaBusy} onclick={findJava}>{t('Search again')}</Button>
               </div>
               {#if javas === null}
-                <p class="text-small muted">Looking for Java on this PC…</p>
+                <p class="text-small muted">{t('Looking for Java on this PC…')}</p>
               {:else if javas.length === 0}
-                <p class="text-small muted">No Java found. Cubby downloads the right one the first time you play.</p>
+                <p class="text-small muted">{t('No Java found. Cubby downloads the right one the first time you play.')}</p>
               {:else}
                 <ul class="list">
                   {#each javas as j (j.executable)}
@@ -502,7 +508,7 @@
                         <p class="text-mono muted">{j.version} · {j.arch}</p>
                         <p class="text-mono muted path">{j.executable}</p>
                       </div>
-                      {#if j.managed}<StatusTag state="ready">Managed by Cubby</StatusTag>{/if}
+                      {#if j.managed}<StatusTag state="ready">{t('Managed by Cubby')}</StatusTag>{/if}
                     </li>
                   {/each}
                 </ul>
@@ -513,50 +519,50 @@
 
         {#if visible.has('game')}
           <section id="{uid}-game" class="block" aria-labelledby="{uid}-h-game">
-            {@render heading('game', 'Game')}
+            {@render heading('game', t('Game'))}
             <div class="row">
               <div class="row__text">
-                <p id="{uid}-size" class="text-body-strong">Window size</p>
-                <p class="text-small muted">When the game isn’t fullscreen. Instances can set their own.</p>
+                <p id="{uid}-size" class="text-body-strong">{t('Window size')}</p>
+                <p class="text-small muted">{t('When the game isn’t fullscreen. Instances can set their own.')}</p>
               </div>
               <div class="size" role="group" aria-labelledby="{uid}-size">
                 <div class="size__field">
-                  <TextField label="Window width" hideLabel mono suffix="px" inputmode="numeric" bind:value={width} onchange={() => commitSize('width')} />
+                  <TextField label={t('Window width')} hideLabel mono suffix="px" inputmode="numeric" bind:value={width} onchange={() => commitSize('width')} />
                 </div>
                 <span class="text-body" aria-hidden="true">×</span>
                 <div class="size__field">
-                  <TextField label="Window height" hideLabel mono suffix="px" inputmode="numeric" bind:value={height} onchange={() => commitSize('height')} />
+                  <TextField label={t('Window height')} hideLabel mono suffix="px" inputmode="numeric" bind:value={height} onchange={() => commitSize('height')} />
                 </div>
               </div>
             </div>
-            {@render switchRow('fullscreen', 'Start in fullscreen', 'For every instance.', s.game.fullscreen, (v) => saveGame({ fullscreen: v }))}
+            {@render switchRow('fullscreen', t('Start in fullscreen'), t('For every instance.'), s.game.fullscreen, (v) => saveGame({ fullscreen: v }))}
             <div class="row row--stack">
-              <p class="text-body-strong">When the game starts</p>
+              <p class="text-body-strong">{t('When the game starts')}</p>
               <SegmentedControl
-                label="When the game starts"
+                label={t('When the game starts')}
                 options={ON_LAUNCH}
                 value={s.onLaunch}
                 onChange={(v) => save({ onLaunch: v as Settings['onLaunch'] })}
               />
               <p class="text-small muted">{ON_LAUNCH_HINT[s.onLaunch]}</p>
             </div>
-            {@render switchRow('track', 'Count play time', 'Adds each session to the instance’s play time.', s.trackPlayTime, (v) => save({ trackPlayTime: v }))}
-            {@render switchRow('show', 'Show play time', 'In the library, with each instance.', s.showPlayTime, (v) => save({ showPlayTime: v }))}
+            {@render switchRow('track', t('Count play time'), t('Adds each session to the instance’s play time.'), s.trackPlayTime, (v) => save({ trackPlayTime: v }))}
+            {@render switchRow('show', t('Show play time'), t('In the library, with each instance.'), s.showPlayTime, (v) => save({ showPlayTime: v }))}
           </section>
         {/if}
 
         {#if visible.has('downloads')}
           <section id="{uid}-downloads" class="block" aria-labelledby="{uid}-h-downloads">
-            {@render heading('downloads', 'Downloads')}
+            {@render heading('downloads', t('Downloads'))}
             <div class="row row--stack">
               <Slider
-                label="Parallel downloads"
+                label={t('Parallel downloads')}
                 min={1}
                 max={32}
                 step={1}
                 value={parallel}
-                valueText="{num(parallel)} at a time"
-                hint="More is faster on a good connection. Lower it if downloads stall."
+                valueText={t('{n} at a time', { n: num(parallel) })}
+                hint={t('More is faster on a good connection. Lower it if downloads stall.')}
                 onChange={(v) => {
                   parDraft = v
                   parSave.set(v)
@@ -565,22 +571,22 @@
             </div>
             {@render switchRow(
               'mod-updates',
-              'Check mod updates when I open an instance',
-              'Looks for new versions on Modrinth. Cubby always asks before updating.',
+              t('Check mod updates when I open an instance'),
+              t('Looks for new versions on Modrinth. Cubby always asks before updating.'),
               s.checkUpdates,
               (v) => save({ checkUpdates: v }),
             )}
             <div class="row row--stack">
-              <p class="text-body-strong">Proxy</p>
+              <p class="text-body-strong">{t('Proxy')}</p>
               <SegmentedControl
-                label="Proxy"
+                label={t('Proxy')}
                 options={PROXIES}
                 value={s.proxy.mode}
                 onChange={(v) => saveProxy({ mode: v as Settings['proxy']['mode'] })}
               />
               {#if s.proxy.mode === 'manual'}
                 <TextField
-                  label="Proxy address"
+                  label={t('Proxy address')}
                   mono
                   placeholder="http://proxy.example:8080"
                   spellcheck={false}
@@ -590,26 +596,26 @@
                   onchange={commitProxy}
                 />
               {/if}
-              <p class="text-small muted">Cubby applies this the next time it starts.</p>
+              <p class="text-small muted">{t('Cubby applies this the next time it starts.')}</p>
             </div>
           </section>
         {/if}
 
         {#if visible.has('storage')}
           <section id="{uid}-storage" class="block" aria-labelledby="{uid}-h-storage">
-            {@render heading('storage', 'Storage')}
+            {@render heading('storage', t('Storage'))}
             <div class="row row--stack">
               <div>
-                <p class="text-body-strong">Data folder</p>
-                <p class="text-small muted">Instances, Java and shared game files.{folders ? ` ${bytes(used)} used.` : ''}</p>
+                <p class="text-body-strong">{t('Data folder')}</p>
+                <p class="text-small muted">{t('Instances, Java and shared game files.')}{folders ? t(' {n} used.', { n: bytes(used) }) : ''}</p>
               </div>
               {#if app.info}<span class="well text-mono">{app.info.dataDir}</span>{/if}
             </div>
             <div class="row row--stack">
               {#if folders === null}
-                <p class="text-small muted">Measuring folders…</p>
+                <p class="text-small muted">{t('Measuring folders…')}</p>
               {:else if folders.length === 0}
-                <p class="text-small muted">No folder to show.</p>
+                <p class="text-small muted">{t('No folder to show.')}</p>
               {:else}
                 <ul class="list">
                   {#each folders as f (f.key)}
@@ -620,7 +626,7 @@
                         <p class="text-mono muted path">{f.path}</p>
                       </div>
                       <span class="text-counter size-text">{bytes(f.sizeBytes)}</span>
-                      <Button size="sm" icon="folder" onclick={() => openFolder(f.key)}>Open</Button>
+                      <Button size="sm" icon="folder" onclick={() => openFolder(f.key)}>{t('Open')}</Button>
                     </li>
                   {/each}
                 </ul>
@@ -628,45 +634,44 @@
             </div>
             <div class="row">
               <div class="row__text">
-                <p class="text-body-strong">Clean up the cache</p>
+                <p class="text-body-strong">{t('Clean up the cache')}</p>
                 <p class="text-small muted">
-                  Deletes saved version lists and loader profiles{metaSize != null ? ` (${bytes(metaSize)})` : ''}. Cubby downloads them again when it needs
-                  them.
+                  {metaSize != null ? t('Deletes saved version lists and loader profiles ({size}). Cubby downloads them again when it needs them.', { size: bytes(metaSize) }) : t('Deletes saved version lists and loader profiles. Cubby downloads them again when it needs them.')}
                 </p>
               </div>
-              <Button size="sm" icon="trash" onclick={() => (cleanAsk = true)}>Clean up</Button>
+              <Button size="sm" icon="trash" onclick={() => (cleanAsk = true)}>{t('Clean up')}</Button>
             </div>
           </section>
         {/if}
 
         {#if visible.has('accounts')}
           <section id="{uid}-accounts" class="block" aria-labelledby="{uid}-h-accounts">
-            {@render heading('accounts', 'Accounts')}
+            {@render heading('accounts', t('Accounts'))}
             <div class="row row--stack">
               <div class="row__head">
-                <p class="text-body-strong">Microsoft sign-in</p>
+                <p class="text-body-strong">{t('Microsoft sign-in')}</p>
                 {#if app.info?.msaConfigured}
-                  <StatusTag state="ready">Ready</StatusTag>
+                  <StatusTag state="ready">{t('Ready')}</StatusTag>
                 {:else}
-                  <StatusTag state="offline">Not available</StatusTag>
+                  <StatusTag state="offline">{t('Not available')}</StatusTag>
                 {/if}
               </div>
               <p class="text-small muted">
                 {#if msaSource === 'builtIn'}
-                  Included in Cubby. Players sign in with their Microsoft account, there is nothing to set up.
+                  {t('Included in Cubby. Players sign in with their Microsoft account, there is nothing to set up.')}
                 {:else if msaSource === 'settings'}
-                  Uses your own application id, below, instead of the one included in Cubby.
+                  {t('Uses your own application id, below, instead of the one included in Cubby.')}
                 {:else if msaSource === 'environment'}
-                  Uses the application id from the <span class="text-mono">CUBBY_MSA_CLIENT_ID</span> variable.
+                  {t('Uses the application id from the')} <span class="text-mono">CUBBY_MSA_CLIENT_ID</span> variable.
                 {:else}
-                  This copy of Cubby was built without a Microsoft application id, so it only starts the Minecraft demo. Official builds include one, or add your own below.
+                  {t('This copy of Cubby was built without a Microsoft application id, so it only starts the Minecraft demo. Official builds include one, or add your own below.')}
                 {/if}
               </p>
               <details class="advanced" open={msaSource === 'settings' || !app.info?.msaConfigured}>
-                <summary class="text-body-strong">Use your own Azure application</summary>
+                <summary class="text-body-strong">{t('Use your own Azure application')}</summary>
                 <div class="advanced__body">
                   <TextField
-                    label="Application id"
+                    label={t('Application id')}
                     mono
                     placeholder="00000000-0000-0000-0000-000000000000"
                     spellcheck={false}
@@ -676,42 +681,41 @@
                     onchange={commitClientId}
                   />
                   <p class="text-small muted">
-                    For developers. The application must accept personal Microsoft accounts, allow public client flows, and be approved by Mojang for
-                    Minecraft. Leave it empty to use the one included in Cubby.
+                    {t('For developers. The application must accept personal Microsoft accounts, allow public client flows, and be approved by Mojang for Minecraft. Leave it empty to use the one included in Cubby.')}
                   </p>
                 </div>
               </details>
             </div>
             <div class="row row--stack">
               <div class="row__head">
-                <label class="text-body-strong" for="{uid}-cf">CurseForge API key</label>
+                <label class="text-body-strong" for="{uid}-cf">{t('CurseForge API key')}</label>
                 {#if cfSource}
-                  <StatusTag state="ready">Ready</StatusTag>
+                  <StatusTag state="ready">{t('Ready')}</StatusTag>
                 {:else}
-                  <StatusTag state="offline">Not set</StatusTag>
+                  <StatusTag state="offline">{t('Not set')}</StatusTag>
                 {/if}
               </div>
               <p class="text-small muted">
                 {#if cfSource === 'builtIn'}
-                  Included in Cubby. CurseForge modpacks work, there is nothing to set up. A key of your own, below, replaces it.
+                  {t('Included in Cubby. CurseForge modpacks work, there is nothing to set up. A key of your own, below, replaces it.')}
                 {:else if cfSource === 'settings'}
-                  Uses your own key, below, instead of any other.
+                  {t('Uses your own key, below, instead of any other.')}
                 {:else if cfSource === 'environment'}
-                  Uses the key from the <span class="text-mono">CUBBY_CURSEFORGE_API_KEY</span> variable. A key of your own, below, replaces it.
+                  {t('Uses the key from the')} <span class="text-mono">CUBBY_CURSEFORGE_API_KEY</span> {t('variable. A key of your own, below, replaces it.')}
                 {:else}
-                  CurseForge modpacks need a key. Get a free one from CurseForge for developers and paste it below.
+                  {t('CurseForge modpacks need a key. Get a free one from CurseForge for developers and paste it below.')}
                 {/if}
               </p>
               <TextField
                 id="{uid}-cf"
                 type="password"
                 mono
-                placeholder="Paste your key"
+                placeholder={t('Paste your key')}
                 spellcheck={false}
                 autocomplete="off"
                 bind:value={cfKey}
                 onchange={commitCfKey}
-                hint="Saved on this PC. Leave it empty to use the key included in Cubby, if there is one."
+                hint={t('Saved on this PC. Leave it empty to use the key included in Cubby, if there is one.')}
               />
             </div>
           </section>
@@ -719,41 +723,41 @@
 
         {#if visible.has('updates')}
           <section id="{uid}-updates" class="block" aria-labelledby="{uid}-h-updates">
-            {@render heading('updates', 'Updates')}
+            {@render heading('updates', t('Updates'))}
             <div class="row">
               <div class="row__text">
                 <p class="text-body-strong">Cubby {#if app.info}<span class="text-mono">{app.info.version}</span>{/if}</p>
                 <p class="text-small muted">
-                  {#if u.phase === 'checking'}Looking for a new version…
-                  {:else if updating && u.info}{u.info.version} is {u.phase === 'ready' ? 'ready to install' : u.phase === 'downloading' ? 'downloading' : 'available'}. {checkedText}
+                  {#if u.phase === 'checking'}{t('Looking for a new version…')}
+                  {:else if updating && u.info}{t(u.phase === 'ready' ? '{version} is ready to install.' : u.phase === 'downloading' ? '{version} is downloading.' : '{version} is available.', { version: u.info.version })} {checkedText}
                   {:else if u.error}{u.error}
                   {:else}{checkedText}{/if}
                 </p>
               </div>
               {#if u.phase === 'checking'}
-                <Button size="sm" busy disabled>Checking…</Button>
+                <Button size="sm" busy disabled>{t('Checking…')}</Button>
               {:else if u.phase === 'available'}
-                <StatusTag state="update">Update available</StatusTag>
-                <Button size="sm" variant="primary" icon="download" onclick={() => app.downloadUpdate()}>Download update</Button>
+                <StatusTag state="update">{t('Update available')}</StatusTag>
+                <Button size="sm" variant="primary" icon="download" onclick={() => app.downloadUpdate()}>{t('Download update')}</Button>
               {:else if u.phase === 'downloading'}
-                <StatusTag state="download">Downloading</StatusTag>
+                <StatusTag state="download">{t('Downloading')}</StatusTag>
               {:else if u.phase === 'ready'}
-                <StatusTag state="ready">Ready</StatusTag>
-                <Button size="sm" variant="primary" icon="update" onclick={() => (app.updateDialog = 'restart')}>Restart and update</Button>
+                <StatusTag state="ready">{t('Ready')}</StatusTag>
+                <Button size="sm" variant="primary" icon="update" onclick={() => (app.updateDialog = 'restart')}>{t('Restart and update')}</Button>
               {:else if u.phase === 'failed'}
-                <StatusTag state="crashed">Failed</StatusTag>
-                <Button size="sm" icon="update" onclick={() => app.downloadUpdate()}>Try again</Button>
+                <StatusTag state="crashed">{t('Failed')}</StatusTag>
+                <Button size="sm" icon="update" onclick={() => app.downloadUpdate()}>{t('Try again')}</Button>
               {:else}
-                {#if u.error}<StatusTag state="offline">Not checked</StatusTag>
-                {:else if s.updates.mode === 'off'}<StatusTag state="disabled">Off</StatusTag>
-                {:else if u.checkedAt}<StatusTag state="ready">Up to date</StatusTag>{/if}
-                <Button size="sm" icon="update" onclick={() => app.checkForUpdate(true)}>{u.error ? 'Try again' : 'Check for updates'}</Button>
+                {#if u.error}<StatusTag state="offline">{t('Not checked')}</StatusTag>
+                {:else if s.updates.mode === 'off'}<StatusTag state="disabled">{t('Off')}</StatusTag>
+                {:else if u.checkedAt}<StatusTag state="ready">{t('Up to date')}</StatusTag>{/if}
+                <Button size="sm" icon="update" onclick={() => app.checkForUpdate(true)}>{u.error ? t('Try again') : t('Check for updates')}</Button>
               {/if}
             </div>
             <div class="row row--stack">
-              <p class="text-body-strong">When an update is available</p>
+              <p class="text-body-strong">{t('When an update is available')}</p>
               <SegmentedControl
-                label="When an update is available"
+                label={t('When an update is available')}
                 options={UPDATE_MODES}
                 value={s.updates.mode}
                 onChange={(v) => saveUpdates({ mode: v as Settings['updates']['mode'] })}
@@ -761,17 +765,17 @@
               <p class="text-small muted">{UPDATE_MODE_HINT[s.updates.mode]}</p>
             </div>
             <div class="row row--stack">
-              <p class="text-body-strong">Version channel</p>
-              <SegmentedControl label="Version channel" options={CHANNELS} value={s.updates.channel} onChange={(v) => changeChannel(v as Settings['updates']['channel'])} />
-              <p class="text-small muted">Preview gets new versions earlier, with rough edges. Stable only gets finished releases.</p>
+              <p class="text-body-strong">{t('Version channel')}</p>
+              <SegmentedControl label={t('Version channel')} options={CHANNELS} value={s.updates.channel} onChange={(v) => changeChannel(v as Settings['updates']['channel'])} />
+              <p class="text-small muted">{t('Preview gets new versions earlier, with rough edges. Stable only gets finished releases.')}</p>
             </div>
             {#if s.updates.skipped}
               <div class="row">
                 <div class="row__text">
-                  <p class="text-body-strong">Skipped version</p>
-                  <p class="text-small muted">You chose to skip {s.updates.skipped}. Cubby stays quiet until a newer one comes out.</p>
+                  <p class="text-body-strong">{t('Skipped version')}</p>
+                  <p class="text-small muted">{t('You chose to skip {skipped}. Cubby stays quiet until a newer one comes out.', { skipped: s.updates.skipped })}</p>
                 </div>
-                <Button size="sm" onclick={async () => { await saveUpdates({ skipped: null }); await app.checkForUpdate() }}>Stop skipping</Button>
+                <Button size="sm" onclick={async () => { await saveUpdates({ skipped: null }); await app.checkForUpdate() }}>{t('Stop skipping')}</Button>
               </div>
             {/if}
           </section>
@@ -779,23 +783,23 @@
 
         {#if visible.has('about')}
           <section id="{uid}-about" class="block" aria-labelledby="{uid}-h-about">
-            {@render heading('about', 'About')}
+            {@render heading('about', t('About'))}
             <div class="about">
               <Logo size={32} />
               <p class="text-body-strong">Cubby {#if app.info}<span class="text-mono">{app.info.version}</span>{/if}</p>
-              <p class="text-small muted">A free Minecraft launcher.</p>
+              <p class="text-small muted">{t('A free Minecraft launcher.')}</p>
               {#if app.info}
                 <div>
-                  <p class="text-label muted label">Data folder</p>
+                  <p class="text-label muted label">{t('Data folder')}</p>
                   <span class="well text-mono">{app.info.dataDir}</span>
                 </div>
               {/if}
               <p class="links text-small">
-                <a class="link" href={SOURCE} onclick={(e) => openLink(e, SOURCE)}>Source code</a>
-                <a class="link" href={LICENSE} onclick={(e) => openLink(e, LICENSE)}>License <span class="text-mono">GPL-3.0</span></a>
+                <a class="link" href={SOURCE} onclick={(e) => openLink(e, SOURCE)}>{t('Source code')}</a>
+                <a class="link" href={LICENSE} onclick={(e) => openLink(e, LICENSE)}>{t('License')} <span class="text-mono">GPL-3.0</span></a>
               </p>
               <p class="text-small muted">
-                Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft. Made by Benjamin ·
+                {t('Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft.')}
                 <a class="link" href="mailto:contact@cubbylauncher.com">contact@cubbylauncher.com</a>
               </p>
             </div>
@@ -808,12 +812,12 @@
 
 {#if cleanAsk}
   {#snippet cleanActions()}
-    <Button variant="ghost" onclick={() => (cleanAsk = false)}>Cancel</Button>
-    <Button variant="danger" icon="trash" busy={cleaning} disabled={cleaning} onclick={cleanCache}>Clean up</Button>
+    <Button variant="ghost" onclick={() => (cleanAsk = false)}>{t('Cancel')}</Button>
+    <Button variant="danger" icon="trash" busy={cleaning} disabled={cleaning} onclick={cleanCache}>{t('Clean up')}</Button>
   {/snippet}
-  <Dialog tone="danger" icon="trash" title="Clean up the cache?" onClose={() => (cleanAsk = false)} actions={cleanActions}>
-    <p>Cubby deletes its saved version lists and loader profiles, then downloads them again the next time it needs them.</p>
-    <p>Your instances, worlds, Java and accounts stay as they are.</p>
+  <Dialog tone="danger" icon="trash" title={t('Clean up the cache?')} onClose={() => (cleanAsk = false)} actions={cleanActions}>
+    <p>{t('Cubby deletes its saved version lists and loader profiles, then downloads them again the next time it needs them.')}</p>
+    <p>{t('Your instances, worlds, Java and accounts stay as they are.')}</p>
   </Dialog>
 {/if}
 
@@ -946,10 +950,6 @@
     align-items: center;
     gap: var(--space-2) var(--space-3);
   }
-  .value {
-    flex: none;
-  }
-
   .size {
     flex: none;
     display: flex;

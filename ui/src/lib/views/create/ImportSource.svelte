@@ -1,5 +1,6 @@
 <!-- Import: a .mrpack or CurseForge .zip from the PC or from a web address, plus the Prism Launcher import. -->
 <script lang="ts">
+  import { t } from '../../i18n.svelte'
   import { api } from '../../api'
   import { Banner, Button, Icon, SegmentedControl, TextField } from '../../cubby'
   import { loaderName, plural } from '../../format'
@@ -9,8 +10,8 @@
 
   type Mode = 'file' | 'url'
   const MODES = [
-    { value: 'file', label: 'A file on this PC', icon: 'folder' as const },
-    { value: 'url', label: 'A web address', icon: 'globe' as const },
+    { value: 'file', label: t('A file on this PC'), icon: 'folder' as const },
+    { value: 'url', label: t('A web address'), icon: 'globe' as const },
   ]
 
   function message(e: unknown): string {
@@ -89,7 +90,7 @@
   let submitted = $state(false)
   let busy = $state(false)
 
-  const nameError = $derived(submitted && !name.trim() ? 'Give the instance a name.' : undefined)
+  const nameError = $derived(submitted && !name.trim() ? t('Give the instance a name.') : undefined)
   const source = $derived(mode === 'file' ? !!info && !info.blockedReason : !!urlText && !urlBad)
   const canImport = $derived(source && !busy && !inspecting)
 
@@ -103,7 +104,7 @@
       await app.refreshInstances()
       app.selected = inst.id
       app.openInstance(inst.id)
-      app.toast(`${inst.name} is installing. You can follow it in Downloads.`, 'success', { label: 'Downloads', run: () => app.navigate({ name: 'downloads' }) })
+      app.toast(t('{name} is installing. You can follow it in Downloads.', { name: inst.name }), 'success', { label: t('Downloads'), run: () => app.navigate({ name: 'downloads' }) })
     } catch (e) {
       app.error(e)
     } finally {
@@ -111,68 +112,68 @@
     }
   }
 
-  const FORMAT = { mrpack: 'Modrinth pack (.mrpack)', curseforge: 'CurseForge pack (.zip)' } as const
+  const FORMAT = { mrpack: t('Modrinth pack (.mrpack)'), curseforge: t('CurseForge pack (.zip)') } as const
 </script>
 
 <div class="import">
-  <h1 class="text-title">Import a modpack</h1>
-  <p class="text-body muted lead">Bring in a pack you downloaded, or one a friend shared. Cubby supports Modrinth <span class="text-mono">.mrpack</span> files and CurseForge <span class="text-mono">.zip</span> packs.</p>
+  <h1 class="text-title">{t('Import a modpack')}</h1>
+  <p class="text-body muted lead">{t('Bring in a pack you downloaded, or one a friend shared. Cubby supports Modrinth')} <span class="text-mono">.mrpack</span> {t('files and CurseForge')} <span class="text-mono">.zip</span> packs.</p>
 
   <div class="cols">
     <section class="col" aria-labelledby="im-source">
-      <h2 id="im-source" class="text-heading">Where is it?</h2>
-      <SegmentedControl label="Where the pack is" options={MODES} value={mode} onChange={(v) => (mode = v as Mode)} />
+      <h2 id="im-source" class="text-heading">{t('Where is it?')}</h2>
+      <SegmentedControl label={t('Where the pack is')} options={MODES} value={mode} onChange={(v) => (mode = v as Mode)} />
 
       {#if mode === 'file'}
         <div class="pick">
-          <Button icon="folder" busy={picking} disabled={picking || inspecting} onclick={choose}>{path ? 'Choose another file' : 'Choose a file'}</Button>
-          {#if path}<span class="text-mono muted path" title={path}>{fileName(path)}</span>{:else}<span class="text-small muted">Nothing chosen yet.</span>{/if}
+          <Button icon="folder" busy={picking} disabled={picking || inspecting} onclick={choose}>{path ? t('Choose another file') : t('Choose a file')}</Button>
+          {#if path}<span class="text-mono muted path" title={path}>{fileName(path)}</span>{:else}<span class="text-small muted">{t('Nothing chosen yet.')}</span>{/if}
         </div>
 
         {#if inspecting}
-          <p class="text-small muted" role="status">Reading {path ? fileName(path) : 'the file'}…</p>
+          <p class="text-small muted" role="status">{t('Reading {file}…', { file: path ? fileName(path) : t('the file') })}</p>
         {:else if inspectError}
-          {#snippet again()}<Button size="sm" onclick={choose}>Choose another file</Button>{/snippet}
-          <Banner tone="danger" title="Cubby can't read this file" actions={again}>{inspectError}</Banner>
+          {#snippet again()}<Button size="sm" onclick={choose}>{t('Choose another file')}</Button>{/snippet}
+          <Banner tone="danger" title={t('Cubby can\'t read this file')} actions={again}>{inspectError}</Banner>
         {:else if info}
           <dl class="card">
             <div class="card__head">
               <span class="text-heading">{info.name}</span>
               {#if info.version}<span class="text-mono muted">{info.version}</span>{/if}
             </div>
-            <dt class="text-small muted">Format</dt>
+            <dt class="text-small muted">{t('Format')}</dt>
             <dd class="text-body">{FORMAT[info.format]}</dd>
             <dt class="text-small muted">Minecraft</dt>
             <dd class="text-mono">{info.minecraft}</dd>
-            <dt class="text-small muted">Loader</dt>
+            <dt class="text-small muted">{t('Loader')}</dt>
             <dd class="text-mono">{info.loader ? `${loaderName(info.loader.kind)} ${info.loader.version}` : 'Vanilla'}</dd>
-            <dt class="text-small muted">Files</dt>
-            <dd class="text-body">{plural(info.fileCount, 'file', 'files')} to download</dd>
+            <dt class="text-small muted">{t('Files')}</dt>
+            <dd class="text-body">{t('{n} to download', { n: plural(info.fileCount, 'file', 'files') })}</dd>
           </dl>
           {#if info.blockedReason}
             {#snippet settingsAction()}
-              <Button size="sm" icon="settings" onclick={() => app.navigate({ name: 'settings', section: 'accounts' })}>Open Settings</Button>
+              <Button size="sm" icon="settings" onclick={() => app.navigate({ name: 'settings', section: 'accounts' })}>{t('Open Settings')}</Button>
             {/snippet}
-            <Banner tone="warning" title="Cubby can't install this pack yet" actions={settingsAction}>{info.blockedReason}</Banner>
+            <Banner tone="warning" title={t('Cubby can\'t install this pack yet')} actions={settingsAction}>{info.blockedReason}</Banner>
           {/if}
         {/if}
       {:else}
-        <TextField label="Web address" icon="globe" placeholder="https://…/pack.mrpack" spellcheck={false} autocomplete="off" bind:value={url} error={urlBad ? 'Enter a web address that starts with http:// or https://.' : undefined} hint={urlBad ? undefined : 'A direct link to a .mrpack or .zip file.'} />
+        <TextField label={t('Web address')} icon="globe" placeholder="https://…/pack.mrpack" spellcheck={false} autocomplete="off" bind:value={url} error={urlBad ? t('Enter a web address that starts with http:// or https://.') : undefined} hint={urlBad ? undefined : t('A direct link to a .mrpack or .zip file.')} />
       {/if}
     </section>
 
     <section class="col" aria-labelledby="im-name">
-      <h2 id="im-name" class="text-heading">The new instance</h2>
+      <h2 id="im-name" class="text-heading">{t('The new instance')}</h2>
       <Identity bind:name bind:group withIcon={false} {nameError} onName={() => (nameTouched = true)} />
-      <Button variant="primary" size="lg" icon="import" busy={busy} disabled={!canImport} onclick={run} class="wide">Import modpack</Button>
-      <p class="text-small muted">Your file stays where it is. You can keep using Cubby while it installs.</p>
+      <Button variant="primary" size="lg" icon="import" busy={busy} disabled={!canImport} onclick={run} class="wide">{t('Import modpack')}</Button>
+      <p class="text-small muted">{t('Your file stays where it is. You can keep using Cubby while it installs.')}</p>
     </section>
   </div>
 
   <div class="prism">
     <Icon name="library" size={18} />
-    <span class="text-body">Coming from Prism Launcher?</span>
-    <Button variant="ghost" size="sm" icon="import" onclick={() => (app.prismImportOpen = true)}>Import from Prism Launcher</Button>
+    <span class="text-body">{t('Coming from Prism Launcher?')}</span>
+    <Button variant="ghost" size="sm" icon="import" onclick={() => (app.prismImportOpen = true)}>{t('Import from Prism Launcher')}</Button>
   </div>
 </div>
 

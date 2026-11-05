@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../i18n.svelte'
   import { Banner, Button, Dialog, Icon, MetaChip, ProgressBar, StatusTag, Switch } from '../../cubby'
   import { api } from '../../api'
   import { app } from '../../state.svelte'
@@ -54,7 +55,7 @@
       const imported = await api.importPrism(picked.map((p) => p.path))
       await app.refreshInstances()
       if (imported[0]) app.selected = imported[0].id
-      app.toast(`Imported ${plural(imported.length, 'instance', 'instances')} from Prism Launcher.`, 'success')
+      app.toast(t('Imported {n} from Prism Launcher.', { n: plural(imported.length, 'instance', 'instances') }), 'success')
       close()
     } catch (e) {
       app.error(e)
@@ -65,27 +66,27 @@
 </script>
 
 {#snippet actions()}
-  <Button variant="ghost" onclick={close}>Cancel</Button>
+  <Button variant="ghost" onclick={close}>{t('Cancel')}</Button>
   <Button variant="primary" icon="import" busy={busy} disabled={busy || !picked.length} onclick={run}>
-    {picked.length ? `Import ${plural(picked.length, 'instance', 'instances')}` : 'Import'}
+    {picked.length ? t('Import {n}', { n: plural(picked.length, 'instance', 'instances') }) : t('Import')}
   </Button>
 {/snippet}
 
-<Dialog wide icon="import" title="Bring your worlds" onClose={close} {actions}>
-  <p class="text-body">Cubby found these on your PC. <span class="muted">Pick what to bring over.</span></p>
+<Dialog wide icon="import" title={t('Bring your worlds')} onClose={close} {actions}>
+  <p class="text-body">{t('Cubby found these on your PC.')} <span class="muted">{t('Pick what to bring over.')}</span></p>
 
   {#if found === null}
-    <p class="text-small muted">Looking for Prism Launcher instances…</p>
+    <p class="text-small muted">{t('Looking for Prism Launcher instances…')}</p>
   {:else if failed}
-    <Banner tone="danger" title="Couldn't read Prism Launcher's instances">{failed}</Banner>
+    <Banner tone="danger" title={t('Couldn\'t read Prism Launcher\'s instances')}>{failed}</Banner>
   {:else if !found.length}
     <div class="source source--none">
       <div class="source__text">
         <p class="text-body-strong">Prism Launcher</p>
-        <p class="text-small">Nothing in its usual folder</p>
+        <p class="text-small">{t('Nothing in its usual folder')}</p>
         <p class="text-mono">%APPDATA%\PrismLauncher\instances</p>
       </div>
-      <StatusTag state="offline">Not found</StatusTag>
+      <StatusTag state="offline">{t('Not found')}</StatusTag>
     </div>
   {:else}
     <div class="source">
@@ -95,12 +96,12 @@
           <span class="text-small muted">{plural(found.length, 'instance', 'instances')}</span>
         </p>
       </div>
-      <Button size="sm" variant="ghost" icon={allOn ? 'minimize' : 'check'} onclick={toggleAll}>{allOn ? 'Select none' : 'Select all'}</Button>
+      <Button size="sm" variant="ghost" icon={allOn ? 'minimize' : 'check'} onclick={toggleAll}>{allOn ? t('Select none') : t('Select all')}</Button>
     </div>
-    <ul class="found" aria-label="Prism Launcher instances">
+    <ul class="found" aria-label={t('Prism Launcher instances')}>
       {#each found as p (p.path)}
         <li>
-          <Switch bind:checked={chosen[p.path]} label="Import {p.name}" hideLabel disabled={busy} />
+          <Switch bind:checked={chosen[p.path]} label={t('Import {name}', { name: p.name })} hideLabel disabled={busy} />
           <div class="item">
             <p class="item__head">
               <span class="text-body-strong">{p.name}</span>
@@ -115,18 +116,18 @@
     </ul>
   {/if}
 
-  <p class="text-small muted">Safe: Cubby copies the mods, worlds, screenshots and settings. Prism Launcher stays as it is.</p>
+  <p class="text-small muted">{t('Safe: Cubby copies the mods, worlds, screenshots and settings. Prism Launcher stays as it is.')}</p>
   <p class="later text-small muted">
     <Icon name="import" size={18} />
     <span>
-      Have a <span class="text-mono">.mrpack</span> or <span class="text-mono">.zip</span> file? Go to
-      <button type="button" class="link" onclick={openImport}>New instance, then Import</button>.
+      {t('Have a')} <span class="text-mono">.mrpack</span> {t('or')} <span class="text-mono">.zip</span> {t('file? Go to')}
+      <button type="button" class="link" onclick={openImport}>{t('New instance, then Import')}</button>.
     </span>
   </p>
 
   {#if busy}
     <div class="progress">
-      <ProgressBar tone="diamond" label="Copying {plural(picked.length, 'instance', 'instances')}" detail="Big modpacks can take a few minutes." />
+      <ProgressBar tone="diamond" label={t('Copying {n}', { n: plural(picked.length, 'instance', 'instances') })} detail={t('Big modpacks can take a few minutes.')} />
     </div>
   {/if}
 </Dialog>

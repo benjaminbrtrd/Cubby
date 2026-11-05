@@ -4,6 +4,7 @@
 import type { IconName } from '../../cubby'
 import { loaderName } from '../../format'
 import type { ContentSource, Instance, LoaderKind, ProjectHit, ProjectKind, ProjectVersion, SideSupport } from '../../types'
+import { t } from '../../i18n.svelte'
 
 export const PAGE_SIZE = 20
 
@@ -24,36 +25,36 @@ export interface KindText {
 
 export const KINDS: Record<ProjectKind, KindText> = {
   mod: {
-    label: 'Mods',
-    one: 'mod',
-    many: 'mods',
+    label: t('Mods'),
+    one: t('mod'),
+    many: t('mods'),
     folder: 'mods',
     tab: 'mods',
-    help: 'Mods add things to the game: blocks, mobs, tools, menus or new ways to play. Cubby checks each one against your instance and adds the mods it needs.',
+    help: t('Mods add things to the game: blocks, mobs, tools, menus or new ways to play. Cubby checks each one against your instance and adds the mods it needs.'),
   },
   modpack: {
-    label: 'Modpacks',
-    one: 'modpack',
-    many: 'modpacks',
+    label: t('Modpacks'),
+    one: t('modpack'),
+    many: t('modpacks'),
     folder: '',
     tab: null,
-    help: 'A modpack is a set of mods picked and tested together. Cubby installs it as a new instance with the right Minecraft version and loader, ready to play.',
+    help: t('A modpack is a set of mods picked and tested together. Cubby installs it as a new instance with the right Minecraft version and loader, ready to play.'),
   },
   shader: {
-    label: 'Shader packs',
-    one: 'shader pack',
-    many: 'shader packs',
+    label: t('Shader packs'),
+    one: t('shader pack'),
+    many: t('shader packs'),
     folder: 'shaderpacks',
     tab: 'shaders',
-    help: 'Shader packs change how light, shadows, water and sky are drawn. They run through the Iris mod; blocks and gameplay stay the same.',
+    help: t('Shader packs change how light, shadows, water and sky are drawn. They run through the Iris mod; blocks and gameplay stay the same.'),
   },
   resourcepack: {
-    label: 'Resource packs',
-    one: 'resource pack',
-    many: 'resource packs',
+    label: t('Resource packs'),
+    one: t('resource pack'),
+    many: t('resource packs'),
     folder: 'resourcepacks',
     tab: 'resourcepacks',
-    help: 'Resource packs change how blocks, items, mobs and menus look, and sometimes how they sound. They add nothing new, so they are safe in any world.',
+    help: t('Resource packs change how blocks, items, mobs and menus look, and sometimes how they sound. They add nothing new, so they are safe in any world.'),
   },
 }
 
@@ -74,7 +75,7 @@ export interface CategoryGroup {
 export const CATEGORIES: Record<ProjectKind, CategoryGroup[]> = {
   mod: [
     {
-      label: 'Categories',
+      label: t('Categories'),
       items: [
         'adventure',
         'decoration',
@@ -99,87 +100,87 @@ export const CATEGORIES: Record<ProjectKind, CategoryGroup[]> = {
   ],
   modpack: [
     {
-      label: 'Categories',
+      label: t('Categories'),
       items: ['adventure', 'challenging', 'combat', 'kitchen-sink', 'lightweight', 'magic', 'multiplayer', 'optimization', 'quests', 'technology'],
     },
   ],
   shader: [
-    { label: 'Style', items: ['vanilla-like', 'semi-realistic', 'realistic', 'fantasy', 'cartoon'] },
-    { label: 'Features', items: ['atmosphere', 'bloom', 'colored-lighting', 'foliage', 'path-tracing', 'pbr', 'reflections', 'shadows'] },
-    { label: 'Performance impact', items: ['potato', 'low', 'medium', 'high', 'screenshot'] },
+    { label: t('Style'), items: ['vanilla-like', 'semi-realistic', 'realistic', 'fantasy', 'cartoon'] },
+    { label: t('Features'), items: ['atmosphere', 'bloom', 'colored-lighting', 'foliage', 'path-tracing', 'pbr', 'reflections', 'shadows'] },
+    { label: t('Performance impact'), items: ['potato', 'low', 'medium', 'high', 'screenshot'] },
   ],
   resourcepack: [
     {
-      label: 'Style',
+      label: t('Style'),
       items: ['vanilla-like', 'simplistic', 'realistic', 'themed', 'decoration', 'combat', 'tweaks', 'utility', 'modded'],
     },
-    { label: 'Changes', items: ['blocks', 'items', 'entities', 'gui', 'fonts', 'audio', 'environment', 'equipment', 'models', 'core-shaders', 'locale'] },
-    { label: 'Resolution', items: ['8x-', '16x', '32x', '48x', '64x', '128x', '256x', '512x+'] },
+    { label: t('Changes'), items: ['blocks', 'items', 'entities', 'gui', 'fonts', 'audio', 'environment', 'equipment', 'models', 'core-shaders', 'locale'] },
+    { label: t('Resolution'), items: ['8x-', '16x', '32x', '48x', '64x', '128x', '256x', '512x+'] },
   ],
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
-  adventure: 'Adventure',
-  challenging: 'Challenging',
-  combat: 'Combat',
-  cursed: 'Cursed',
-  decoration: 'Decoration',
-  economy: 'Economy',
-  equipment: 'Equipment',
-  food: 'Food',
-  'game-mechanics': 'Game mechanics',
-  'kitchen-sink': 'Kitchen sink',
-  library: 'Library',
-  lightweight: 'Lightweight',
-  magic: 'Magic',
-  management: 'Management',
-  minigame: 'Minigames',
-  mobs: 'Mobs',
-  multiplayer: 'Multiplayer',
-  optimization: 'Performance',
-  quests: 'Quests',
-  social: 'Social',
-  storage: 'Storage',
-  technology: 'Technology',
-  transportation: 'Transportation',
-  utility: 'Utility',
-  worldgen: 'World generation',
+  adventure: t('Adventure'),
+  challenging: t('Challenging'),
+  combat: t('Combat'),
+  cursed: t('Cursed'),
+  decoration: t('Decoration'),
+  economy: t('Economy'),
+  equipment: t('Equipment'),
+  food: t('Food'),
+  'game-mechanics': t('Game mechanics'),
+  'kitchen-sink': t('Kitchen sink'),
+  library: t('Library'),
+  lightweight: t('Lightweight'),
+  magic: t('Magic'),
+  management: t('Management'),
+  minigame: t('Minigames'),
+  mobs: t('Mobs'),
+  multiplayer: t('Multiplayer'),
+  optimization: t('Performance'),
+  quests: t('Quests'),
+  social: t('Social'),
+  storage: t('Storage'),
+  technology: t('Technology'),
+  transportation: t('Transportation'),
+  utility: t('Utility'),
+  worldgen: t('World generation'),
   // shader packs
-  'vanilla-like': 'Close to the original',
+  'vanilla-like': t('Close to the original'),
   'semi-realistic': 'Semi-realistic',
-  realistic: 'Realistic',
-  fantasy: 'Fantasy',
-  cartoon: 'Cartoon',
-  atmosphere: 'Atmosphere',
-  bloom: 'Bloom',
-  'colored-lighting': 'Colored lighting',
-  foliage: 'Waving plants',
-  'path-tracing': 'Path tracing',
-  pbr: 'PBR materials',
-  reflections: 'Reflections',
-  shadows: 'Shadows',
-  potato: 'Very light',
-  low: 'Light',
-  medium: 'Medium',
-  high: 'Heavy',
-  screenshot: 'For screenshots',
+  realistic: t('Realistic'),
+  fantasy: t('Fantasy'),
+  cartoon: t('Cartoon'),
+  atmosphere: t('Atmosphere'),
+  bloom: t('Bloom'),
+  'colored-lighting': t('Colored lighting'),
+  foliage: t('Waving plants'),
+  'path-tracing': t('Path tracing'),
+  pbr: t('PBR materials'),
+  reflections: t('Reflections'),
+  shadows: t('Shadows'),
+  potato: t('Very light'),
+  low: t('Light'),
+  medium: t('Medium'),
+  high: t('Heavy'),
+  screenshot: t('For screenshots'),
   // resource packs
-  simplistic: 'Simple',
-  themed: 'Themed',
-  tweaks: 'Tweaks',
-  modded: 'For mods',
-  blocks: 'Blocks',
-  items: 'Items',
-  entities: 'Mobs and entities',
-  gui: 'Menus',
-  fonts: 'Fonts',
-  audio: 'Sounds',
-  environment: 'Sky and weather',
-  models: 'Models',
-  'core-shaders': 'Core shaders',
-  locale: 'Language',
-  '8x-': '8x or lower',
-  '512x+': '512x or higher',
+  simplistic: t('Simple'),
+  themed: t('Themed'),
+  tweaks: t('Tweaks'),
+  modded: t('For mods'),
+  blocks: t('Blocks'),
+  items: t('Items'),
+  entities: t('Mobs and entities'),
+  gui: t('Menus'),
+  fonts: t('Fonts'),
+  audio: t('Sounds'),
+  environment: t('Sky and weather'),
+  models: t('Models'),
+  'core-shaders': t('Core shaders'),
+  locale: t('Language'),
+  '8x-': t('8x or lower'),
+  '512x+': t('512x or higher'),
 }
 
 /** Readable name of a Modrinth category slug ("game-mechanics" → "Game mechanics"). */
@@ -208,14 +209,14 @@ const LOADER_LABELS: Record<string, string> = {
   iris: 'Iris',
   optifine: 'OptiFine',
   canvas: 'Canvas',
-  vanilla: 'Core shaders',
+  vanilla: t('Core shaders'),
   minecraft: 'Minecraft',
-  datapack: 'Data pack',
+  datapack: t('Data pack'),
   liteloader: 'LiteLoader',
   modloader: 'ModLoader',
   rift: 'Rift',
   babric: 'Babric',
-  'legacy-fabric': 'Legacy Fabric',
+  'legacy-fabric': t('Legacy Fabric'),
   ornithe: 'Ornithe',
   nilloader: 'NilLoader',
 }
@@ -242,7 +243,7 @@ export function acceptedLoaders(kind: LoaderKind): string[] {
 /** "Fabric, Quilt and NeoForge" */
 export function listWords(words: string[], and = 'and'): string {
   if (words.length <= 1) return words[0] ?? ''
-  return `${words.slice(0, -1).join(', ')} ${and} ${words[words.length - 1]}`
+  return `${words.slice(0, -1).join(', ')} ${t(and)} ${words[words.length - 1]}`
 }
 
 const RELEASE = /^(\d+)\.(\d+)(?:\.(\d+))?$/
@@ -282,18 +283,18 @@ export function sideText(client: SideSupport, server: SideSupport): string | nul
   const onClient = client === 'required' || client === 'optional'
   const onServer = server === 'required' || server === 'optional'
   if (client === 'unknown' && server === 'unknown') return null
-  if (onClient && onServer) return 'Client and server'
-  if (onClient) return 'Client only'
-  if (onServer) return 'Server only'
+  if (onClient && onServer) return t('Client and server')
+  if (onClient) return t('Client only')
+  if (onServer) return t('Server only')
   return null
 }
 
 /** What a player should know about servers, from client_side / server_side. */
 export function serverHint(client: SideSupport, server: SideSupport): string | null {
-  if (server === 'required') return 'Playing on a server? The server needs it too.'
-  if (server === 'optional' && client === 'required') return "You can still join servers that don't have it. Some features may need it on the server too."
-  if (server === 'unsupported' && client !== 'unsupported') return "It only runs in your game. Servers don't need it."
-  if (client === 'unsupported' || client === 'optional') return 'Made for servers. It also works in single player.'
+  if (server === 'required') return t('Playing on a server? The server needs it too.')
+  if (server === 'optional' && client === 'required') return t('You can still join servers that don\'t have it. Some features may need it on the server too.')
+  if (server === 'unsupported' && client !== 'unsupported') return t('It only runs in your game. Servers don\'t need it.')
+  if (client === 'unsupported' || client === 'optional') return t('Made for servers. It also works in single player.')
   return null
 }
 
@@ -335,21 +336,21 @@ export function hitFit(hit: Supported & { kind: ProjectKind }, target: Instance 
     const mc = newestMc(hit.gameVersions)
     const loaders = modLoadersOf(hit.loaders).map(loaderLabel)
     const meta = [mc, loaders[0]].filter(Boolean).join(' · ')
-    return { tone: 'info', icon: 'plus', word: meta ? `New instance · ${meta}` : 'Installs as a new instance' }
+    return { tone: 'info', icon: 'plus', word: meta ? t('New instance · {meta}', { meta }) : t('Installs as a new instance') }
   }
-  if (!target) return { tone: 'info', icon: 'info', word: 'Pick an instance to check' }
-  if (hit.kind === 'mod' && target.loader.kind === 'vanilla') return { tone: 'warn', icon: 'warning', word: 'Needs a mod loader' }
-  if (hit.kind === 'shader' && target.loader.kind === 'vanilla') return { tone: 'warn', icon: 'warning', word: 'Needs Iris and a mod loader' }
+  if (!target) return { tone: 'info', icon: 'info', word: t('Pick an instance to check') }
+  if (hit.kind === 'mod' && target.loader.kind === 'vanilla') return { tone: 'warn', icon: 'warning', word: t('Needs a mod loader') }
+  if (hit.kind === 'shader' && target.loader.kind === 'vanilla') return { tone: 'warn', icon: 'warning', word: t('Needs Iris and a mod loader') }
   if (!gameFits(hit.gameVersions, target)) {
     const mc = newestMc(hit.gameVersions)
-    if (hit.kind === 'resourcepack') return { tone: 'warn', icon: 'warning', word: mc ? `Made for Minecraft ${mc}` : `Not made for ${target.minecraft}` }
-    return { tone: 'warn', icon: 'warning', word: mc ? `Needs Minecraft ${mc}` : `Not for ${target.minecraft}` }
+    if (hit.kind === 'resourcepack') return { tone: 'warn', icon: 'warning', word: mc ? t('Made for Minecraft {mc}', { mc }) : t('Not made for {minecraft}', { minecraft: target.minecraft }) }
+    return { tone: 'warn', icon: 'warning', word: mc ? t('Needs Minecraft {mc}', { mc }) : t('Not for {minecraft}', { minecraft: target.minecraft }) }
   }
   if (hit.kind === 'mod' && !loaderFits(hit.loaders, target)) {
     const names = modLoadersOf(hit.loaders).map(loaderLabel)
-    return { tone: 'warn', icon: 'warning', word: names.length ? `Needs ${listWords(names, 'or')}` : `Not for ${loaderName(target.loader)}` }
+    return { tone: 'warn', icon: 'warning', word: names.length ? t('Needs {mods}', { mods: listWords(names, 'or') }) : t('Not for {loader}', { loader: loaderName(target.loader) }) }
   }
-  return { tone: 'ok', icon: 'check', word: `Works with ${target.name}` }
+  return { tone: 'ok', icon: 'check', word: t('Works with {name}', { name: target.name }) }
 }
 
 /** The version to offer first: the newest release that fits the target, else the newest one that fits. */
@@ -367,9 +368,9 @@ export function orderVersions(versions: ProjectVersion[], kind: ProjectKind, tar
 }
 
 export const CHANNEL: Record<ProjectVersion['channel'], { word: string; icon: IconName; tone?: 'snapshot'; hint: string }> = {
-  release: { word: 'Release', icon: 'check', hint: 'Finished version' },
-  beta: { word: 'Beta', icon: 'warning', tone: 'snapshot', hint: 'Beta versions can have bugs' },
-  alpha: { word: 'Alpha', icon: 'warning', tone: 'snapshot', hint: 'Alpha versions are early tests and can break worlds' },
+  release: { word: t('Release'), icon: 'check', hint: t('Finished version') },
+  beta: { word: t('Beta'), icon: 'warning', tone: 'snapshot', hint: t('Beta versions can have bugs') },
+  alpha: { word: t('Alpha'), icon: 'warning', tone: 'snapshot', hint: t('Alpha versions are early tests and can break worlds') },
 }
 
 /** Size of the file that gets downloaded for a version. */
@@ -389,12 +390,12 @@ export function shaderMods(target: Instance | undefined): Needed[] {
   if (!target || target.loader.kind === 'vanilla') return []
   if (target.loader.kind === 'forge')
     return [
-      { slug: 'oculus', title: 'Oculus', why: 'Runs shader packs on Forge.' },
-      { slug: 'embeddium', title: 'Embeddium', why: 'Oculus needs it to draw the game.' },
+      { slug: 'oculus', title: 'Oculus', why: t('Runs shader packs on Forge.') },
+      { slug: 'embeddium', title: 'Embeddium', why: t('Oculus needs it to draw the game.') },
     ]
   return [
-    { slug: 'iris', title: 'Iris Shaders', why: 'Runs shader packs.' },
-    { slug: 'sodium', title: 'Sodium', why: 'Iris needs it to draw the game.' },
+    { slug: 'iris', title: t('Iris Shaders'), why: t('Runs shader packs.') },
+    { slug: 'sodium', title: 'Sodium', why: t('Iris needs it to draw the game.') },
   ]
 }
 

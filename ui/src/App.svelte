@@ -2,6 +2,7 @@
   import { onMount } from 'svelte'
   import { app, sectionOf } from './lib/state.svelte'
   import { windowAction } from './lib/api'
+  import { setLanguage, t } from './lib/i18n.svelte'
   import { Button, Hotbar, TitleBar, Tooltips, type HotbarItem } from './lib/cubby'
   import Toasts from './lib/views/shell/Toasts.svelte'
   import Palette from './lib/views/shell/Palette.svelte'
@@ -42,19 +43,21 @@
     app.applyAppearance()
   })
 
+  $effect(() => setLanguage(app.settings?.language))
+
   const activeTasks = $derived(Object.keys(app.tasks).length)
 
   const nav = $derived<HotbarItem[]>([
-    { id: 'library', label: 'Library', icon: 'library' },
-    { id: 'discover', label: 'Discover', icon: 'discover' },
-    { id: 'servers', label: 'Servers', icon: 'servers' },
-    { id: 'captures', label: 'Screenshots', icon: 'captures' },
-    { id: 'downloads', label: 'Downloads', icon: 'download', badge: activeTasks || undefined },
+    { id: 'library', label: t('Library'), icon: 'library' },
+    { id: 'discover', label: t('Discover'), icon: 'discover' },
+    { id: 'servers', label: t('Servers'), icon: 'servers' },
+    { id: 'captures', label: t('Screenshots'), icon: 'captures' },
+    { id: 'downloads', label: t('Downloads'), icon: 'download', badge: activeTasks || undefined },
   ])
-  const navFoot: HotbarItem[] = [
-    { id: 'accounts', label: 'Accounts', icon: 'accounts' },
-    { id: 'settings', label: 'Settings', icon: 'settings' },
-  ]
+  const navFoot = $derived<HotbarItem[]>([
+    { id: 'accounts', label: t('Accounts'), icon: 'accounts' },
+    { id: 'settings', label: t('Settings'), icon: 'settings' },
+  ])
   const SLOTS = ['library', 'discover', 'servers', 'captures', 'downloads', 'accounts', 'settings']
 
   function go(id: string) {
@@ -64,7 +67,7 @@
 
   const account = $derived(
     app.defaultAccount
-      ? { name: app.defaultAccount.username, label: `Account: ${app.defaultAccount.username}`, art: accountHead }
+      ? { name: app.defaultAccount.username, label: t('Account: {username}', { username: app.defaultAccount.username }), art: accountHead }
       : undefined,
   )
 
@@ -140,7 +143,7 @@
     {#if bannerShown}<div class="update"><UpdateBanner /></div>{/if}
     <main id="content" tabindex="-1">
       {#if !app.loaded}
-        <p class="loading text-small">Loading your instances…</p>
+        <p class="loading text-small">{t('Loading your instances…')}</p>
       {:else if app.route.name === 'library'}
         <Library />
       {:else if app.route.name === 'instance'}
@@ -177,15 +180,15 @@
 
 {#snippet updateChip()}
   {#if upd.phase === 'available'}
-    <Button size="sm" icon="download" onclick={() => (app.updateDialog = 'notes')}>Update available</Button>
+    <Button size="sm" icon="download" onclick={() => (app.updateDialog = 'notes')}>{t('Update available')}</Button>
   {:else if upd.phase === 'downloading'}
-    <Button size="sm" icon="download" disabled>Updating{updPercent != null ? ` ${updPercent}%` : ''}</Button>
+    <Button size="sm" icon="download" disabled>{updPercent != null ? t('Updating {percent}%', { percent: updPercent }) : t('Updating')}</Button>
   {:else if waitingForGame}
-    <Button size="sm" icon="clock" onclick={() => (app.updateDialog = 'playing')}>Update after play</Button>
+    <Button size="sm" icon="clock" onclick={() => (app.updateDialog = 'playing')}>{t('Update after play')}</Button>
   {:else if upd.phase === 'ready'}
-    <Button size="sm" variant="primary" icon="update" onclick={() => (app.updateDialog = 'restart')}>Restart to update</Button>
+    <Button size="sm" variant="primary" icon="update" onclick={() => (app.updateDialog = 'restart')}>{t('Restart to update')}</Button>
   {:else if upd.phase === 'failed'}
-    <Button size="sm" icon="warning" onclick={() => app.downloadUpdate()}>Update failed</Button>
+    <Button size="sm" icon="warning" onclick={() => app.downloadUpdate()}>{t('Update failed')}</Button>
   {/if}
 {/snippet}
 

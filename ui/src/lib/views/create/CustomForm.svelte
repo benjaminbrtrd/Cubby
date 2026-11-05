@@ -1,32 +1,33 @@
 <script lang="ts">
+  import { t } from '../../i18n.svelte'
   import { Banner, Button, Icon, IconPicker, SegmentedControl, TextField, pickIcon, rovingKeys, type Ground, type Motif } from '../../cubby'
   import { api } from '../../api'
   import { app } from '../../state.svelte'
   import { encodeIcon } from '../../icon'
-  import { LOCALE, fold, loaderName } from '../../format'
+  import { locale, fold, loaderName } from '../../format'
   import type { GameVersion, LoaderKind, LoaderVersion } from '../../types'
 
   type Channel = 'release' | 'snapshot' | 'old'
 
   const CHANNELS = [
-    { value: 'release', label: 'Releases' },
-    { value: 'snapshot', label: 'Snapshots' },
-    { value: 'old', label: 'Old versions' },
+    { value: 'release', label: t('Releases') },
+    { value: 'snapshot', label: t('Snapshots') },
+    { value: 'old', label: t('Old versions') },
   ]
   const CHANNEL_HINT: Record<Channel, string> = {
-    release: 'Not sure? Take the latest release. Pick 1.20.1 for the biggest choice of mods.',
-    snapshot: 'Snapshots are test builds of the next update. Back up worlds before you open them.',
-    old: 'Alpha, beta and classic versions, as they were. Most mods and servers need a newer version.',
+    release: t('Not sure? Take the latest release. Pick 1.20.1 for the biggest choice of mods.'),
+    snapshot: t('Snapshots are test builds of the next update. Back up worlds before you open them.'),
+    old: t('Alpha, beta and classic versions, as they were. Most mods and servers need a newer version.'),
   }
   const LOADERS: { kind: LoaderKind; name: string; text: string; ready: boolean }[] = [
-    { kind: 'vanilla', name: 'None', text: 'The game as Mojang made it', ready: true },
-    { kind: 'fabric', name: 'Fabric', text: 'Light and quick to update, home of most performance mods', ready: true },
-    { kind: 'quilt', name: 'Quilt', text: 'Runs most Fabric mods, with extra tools for mod makers', ready: true },
-    { kind: 'neoforge', name: 'NeoForge', text: 'Big content mods like Create and Mekanism', ready: true },
-    { kind: 'forge', name: 'Forge', text: 'The classic loader, best for older versions', ready: true },
+    { kind: 'vanilla', name: t('None'), text: t('The game as Mojang made it'), ready: true },
+    { kind: 'fabric', name: 'Fabric', text: t('Light and quick to update, home of most performance mods'), ready: true },
+    { kind: 'quilt', name: 'Quilt', text: t('Runs most Fabric mods, with extra tools for mod makers'), ready: true },
+    { kind: 'neoforge', name: 'NeoForge', text: t('Big content mods like Create and Mekanism'), ready: true },
+    { kind: 'forge', name: 'Forge', text: t('The classic loader, best for older versions'), ready: true },
   ]
   const READY = LOADERS.filter((l) => l.ready)
-  const monthYear = new Intl.DateTimeFormat(LOCALE, { month: 'short', year: 'numeric' })
+  const monthYear = $derived(new Intl.DateTimeFormat(locale(), { month: 'short', year: 'numeric' }))
   const listId = $props.id()
 
   // form state
@@ -85,8 +86,8 @@
   const shownIndex = $derived(Math.max(0, shown.findIndex((v) => v.id === minecraft)))
 
   function tagOf(v: GameVersion): string {
-    if (v.id === latestRelease) return 'Latest release'
-    if (v.id === latestSnapshot) return 'Newest'
+    if (v.id === latestRelease) return t('Latest release')
+    if (v.id === latestSnapshot) return t('Newest')
     return ''
   }
 
@@ -142,8 +143,8 @@
     const file = e.currentTarget.files?.[0]
     e.currentTarget.value = ''
     if (!file) return
-    if (!/^image\/(png|jpeg)$/.test(file.type)) return app.toast('Pick a PNG or JPG image.', 'error')
-    if (file.size > 512_000) return app.toast('Pick an image under 512 KB.', 'error')
+    if (!/^image\/(png|jpeg)$/.test(file.type)) return app.toast(t('Pick a PNG or JPG image.'), 'error')
+    if (file.size > 512_000) return app.toast(t('Pick an image under 512 KB.'), 'error')
     const reader = new FileReader()
     reader.onload = () => {
       if (typeof reader.result === 'string') {
@@ -151,13 +152,13 @@
         iconTouched = true
       }
     }
-    reader.onerror = () => app.toast("Couldn't read this image.", 'error')
+    reader.onerror = () => app.toast(t('Couldn\'t read this image.'), 'error')
     reader.readAsDataURL(file)
   }
 
   // create
 
-  const nameError = $derived(submitted && !name.trim() ? 'Give the instance a name.' : undefined)
+  const nameError = $derived(submitted && !name.trim() ? t('Give the instance a name.') : undefined)
   const loaderMissing = $derived(loader !== 'vanilla' && loaderVersions !== null && !loaderVersion)
   const ready = $derived(!!minecraft && (loader === 'vanilla' || !!loaderVersion))
   const canCreate = $derived(ready && !!name.trim() && !busy)
@@ -178,7 +179,7 @@
       app.selected = instance.id
       app.openInstance(instance.id)
       if (andPlay) void app.launch(instance.id)
-      else app.toast(`${instance.name} is ready. Game files are downloaded the first time you play.`, 'success')
+      else app.toast(t('{name} is ready. Game files are downloaded the first time you play.', { name: instance.name }), 'success')
     } catch (e) {
       app.error(e)
     } finally {
@@ -242,16 +243,16 @@
 <div class="screen">
   <div class="split">
     <div class="content">
-      <h1 class="text-title">Custom instance</h1>
+      <h1 class="text-title">{t('Custom instance')}</h1>
 
       <div class="top">
-        <section class="identity" aria-label="Name and icon">
+        <section class="identity" aria-label={t('Name and icon')}>
           <div class="fields">
             <div class="name">
-              <TextField label="Name" bind:value={name} error={nameError} oninput={() => (nameTouched = true)} />
+              <TextField label={t('Name')} bind:value={name} error={nameError} oninput={() => (nameTouched = true)} />
             </div>
             <div class="group">
-              <TextField label="Group" icon="folder" placeholder="No group" list={listId} bind:value={group} />
+              <TextField label={t('Group')} icon="folder" placeholder={t('No group')} list={listId} bind:value={group} />
               <datalist id={listId}>
                 {#each app.groups as g (g.name)}<option value={g.name}></option>{/each}
               </datalist>
@@ -269,15 +270,15 @@
         </section>
 
         <section class="versions" aria-labelledby="ni-version">
-          <h2 id="ni-version" class="text-heading">Minecraft version</h2>
-          <SegmentedControl label="Version type" options={CHANNELS} value={channel} onChange={(v) => (channel = v as Channel)} />
-          <TextField label="Filter versions" hideLabel size="sm" icon="search" placeholder="Filter versions" bind:value={versionQuery} />
+          <h2 id="ni-version" class="text-heading">{t('Minecraft version')}</h2>
+          <SegmentedControl label={t('Version type')} options={CHANNELS} value={channel} onChange={(v) => (channel = v as Channel)} />
+          <TextField label={t('Filter versions')} hideLabel size="sm" icon="search" placeholder={t('Filter versions')} bind:value={versionQuery} />
           {#if versionsError}
-            <Banner tone="danger" title="Couldn't load the version list" actions={retryVersions}>{versionsError}</Banner>
+            <Banner tone="danger" title={t('Couldn\'t load the version list')} actions={retryVersions}>{versionsError}</Banner>
           {:else if versions === null}
-            <p class="well-note text-small">Loading versions…</p>
+            <p class="well-note text-small">{t('Loading versions…')}</p>
           {:else if !shown.length}
-            <p class="well-note text-small">No version matches “{versionQuery.trim()}”.</p>
+            <p class="well-note text-small">{t('No version matches “{versionQuery}”.', { versionQuery: versionQuery.trim() })}</p>
           {:else}
             <!-- svelte-ignore a11y_interactive_supports_focus -->
             <div class="vlist" role="radiogroup" aria-labelledby="ni-version" onkeydown={(e) => rovingKeys(e, shown.length, shownIndex, (to) => (minecraft = shown[to].id))}>
@@ -298,11 +299,11 @@
 
       <section class="loaders" aria-labelledby="ni-loader">
         <div class="loaders__head">
-          <h2 id="ni-loader" class="text-heading">Mod loader</h2>
-          <span class="text-small muted">A loader lets the game run mods. You can change it later.</span>
+          <h2 id="ni-loader" class="text-heading">{t('Mod loader')}</h2>
+          <span class="text-small muted">{t('A loader lets the game run mods. You can change it later.')}</span>
           <span class="grow"></span>
           {#if loader !== 'vanilla'}
-            <span class="text-small muted" id="ni-loader-version">Loader version</span>
+            <span class="text-small muted" id="ni-loader-version">{t('Loader version')}</span>
             <div class="anchor" bind:this={loaderAnchor} onfocusout={leaveMenu}>
               <Button
                 size="sm"
@@ -314,15 +315,15 @@
                 onclick={() => (loaderMenu = !loaderMenu)}
               >
                 {#if loaderVersions === null}
-                  Loading…
+                  {t('Loading…')}
                 {:else if loaderVersion}
-                  {loaderVersion}{loaderVersion === recommended ? ' (recommended)' : ''}
+                  {loaderVersion}{loaderVersion === recommended ? t(' (recommended)') : ''}
                 {:else}
-                  None available
+                  {t('None available')}
                 {/if}
               </Button>
               {#if loaderMenu && loaderVersions?.length}
-                <div class="menu" role="menu" tabindex="-1" aria-label="{loaderInfo.name} version" onkeydown={menuKeys} {@attach focusChecked}>
+                <div class="menu" role="menu" tabindex="-1" aria-label={t('{name} version', { name: loaderInfo.name })} onkeydown={menuKeys} {@attach focusChecked}>
                   {#each loaderVersions as lv (lv.version)}
                     <button
                       type="button"
@@ -336,7 +337,7 @@
                     >
                       <span class="menu__check">{#if lv.version === loaderVersion}<Icon name="check" size={18} />{/if}</span>
                       <span class="text-mono">{lv.version}</span>
-                      {#if lv.version === recommended}<span class="text-small muted">Recommended</span>{:else if !lv.stable}<span class="text-small muted">Beta</span>{/if}
+                      {#if lv.version === recommended}<span class="text-small muted">{t('Recommended')}</span>{:else if !lv.stable}<span class="text-small muted">{t('Beta')}</span>{/if}
                     </button>
                   {/each}
                 </div>
@@ -359,7 +360,7 @@
             >
               <span class="card__head">
                 <span class="text-body-strong">{l.name}</span>
-                {#if on}<span class="card__check"><Icon name="check" size={18} label="Selected" /></span>{/if}
+                {#if on}<span class="card__check"><Icon name="check" size={18} label={t('Selected')} /></span>{/if}
               </span>
               <span class="text-small muted">{l.text}</span>
             </button>
@@ -369,10 +370,10 @@
           <p class="warn text-small">
             <Icon name="warning" size={18} />
             {#if loaderError}
-              <span>Couldn't load {loaderInfo.name} versions: {loaderError}</span>
-              <Button size="sm" variant="ghost" icon="update" onclick={() => loaderTry++}>Try again</Button>
+              <span>{t('Couldn\'t load {name} versions: {loaderError}', { name: loaderInfo.name, loaderError })}</span>
+              <Button size="sm" variant="ghost" icon="update" onclick={() => loaderTry++}>{t('Try again')}</Button>
             {:else}
-              <span>{loaderInfo.name} has no version for Minecraft <span class="text-mono">{minecraft}</span>. Pick another version or loader.</span>
+              <span>{t('{name} has no version for Minecraft', { name: loaderInfo.name })} <span class="text-mono">{minecraft}</span>{t('. Pick another version or loader.')}</span>
             {/if}
           </p>
         {/if}
@@ -380,28 +381,28 @@
     </div>
 
     <aside class="aside" aria-labelledby="ni-download">
-      <h2 id="ni-download" class="text-heading">What Cubby will download</h2>
+      <h2 id="ni-download" class="text-heading">{t('What Cubby will download')}</h2>
       <ul class="dl">
         <li>
           <span class="dl__icon"><Icon name="cube" size={18} /></span>
           <div>
             <div class="text-body-strong">Minecraft <span class="text-mono">{minecraft ?? '…'}</span></div>
-            <div class="text-small muted">Game and libraries, from Mojang</div>
+            <div class="text-small muted">{t('Game and libraries, from Mojang')}</div>
           </div>
         </li>
         <li>
           <span class="dl__icon"><Icon name="folder" size={18} /></span>
           <div>
-            <div class="text-body-strong">Game assets</div>
-            <div class="text-small muted">Sounds and textures, shared by your instances</div>
+            <div class="text-body-strong">{t('Game assets')}</div>
+            <div class="text-small muted">{t('Sounds and textures, shared by your instances')}</div>
           </div>
         </li>
         {#if loader !== 'vanilla'}
           <li>
             <span class="dl__icon"><Icon name="mods" size={18} /></span>
             <div>
-              <div class="text-body-strong">{loaderInfo.name} loader <span class="text-mono">{loaderVersion ?? '…'}</span></div>
-              <div class="text-small muted">Runs your mods</div>
+              <div class="text-body-strong">{t('{name} loader', { name: loaderInfo.name })} <span class="text-mono">{loaderVersion ?? '…'}</span></div>
+              <div class="text-small muted">{t('Runs your mods')}</div>
             </div>
           </li>
         {/if}
@@ -410,29 +411,29 @@
           <div>
             <div class="text-body-strong">Java</div>
             <div class="text-small muted">
-              {app.settings?.java.auto === false ? 'Uses the Java from your settings' : 'Cubby picks the version this game needs'}
+              {app.settings?.java.auto === false ? t('Uses the Java from your settings') : t('Cubby picks the version this game needs')}
             </div>
           </div>
         </li>
         <li class="dl__foot">
           <span class="dl__icon"><Icon name="clock" size={18} /></span>
-          <span class="text-small">Game files are downloaded the first time you play.</span>
+          <span class="text-small">{t('Game files are downloaded the first time you play.')}</span>
         </li>
       </ul>
 
       <div class="go">
         <Button variant="primary" icon="play" busy={busy === 'play'} disabled={!!busy || !ready} onclick={() => create(true)}>
-          Create and play
+          {t('Create and play')}
         </Button>
-        <Button icon="plus" busy={busy === 'create'} disabled={!!busy || !ready} onclick={() => create(false)}>Create</Button>
-        <p class="text-small muted">You can change all of this later.</p>
+        <Button icon="plus" busy={busy === 'create'} disabled={!!busy || !ready} onclick={() => create(false)}>{t('Create')}</Button>
+        <p class="text-small muted">{t('You can change all of this later.')}</p>
       </div>
     </aside>
   </div>
 </div>
 
 {#snippet retryVersions()}
-  <Button size="sm" icon="update" onclick={loadVersions}>Try again</Button>
+  <Button size="sm" icon="update" onclick={loadVersions}>{t('Try again')}</Button>
 {/snippet}
 
 <style>

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../i18n.svelte'
   import { untrack } from 'svelte'
   import { api } from '../../api'
   import {
@@ -20,7 +21,7 @@
   import { app } from '../../state.svelte'
   import type { Screenshot, Server, ServerStatus } from '../../types'
   import { skinHead } from '../accounts/Accounts.svelte'
-  import { LogParser } from './crash'
+  import { LogParser } from './log'
 
   let { id }: { id: string } = $props()
 
@@ -74,9 +75,9 @@
   })
 
   const levelOptions = $derived<SegmentedOption[]>([
-    { value: 'all', label: 'All' },
-    { value: 'warn', label: `Warnings ${num(counts.warn)}`, icon: 'warning' },
-    { value: 'error', label: `Errors ${num(counts.error)}`, icon: 'error' },
+    { value: 'all', label: t('All') },
+    { value: 'warn', label: t('Warnings {n}', { n: num(counts.warn) }), icon: 'warning' },
+    { value: 'error', label: t('Errors {n}', { n: num(counts.error) }), icon: 'error' },
   ])
 
   const visible = $derived.by(() => {
@@ -120,9 +121,9 @@
     const text = (app.logs[id] ?? []).map((l) => l.line).join('\n')
     try {
       await navigator.clipboard.writeText(text)
-      app.toast('Log copied to the clipboard.', 'success')
+      app.toast(t('Log copied to the clipboard.'), 'success')
     } catch {
-      app.toast('Couldn’t copy the log. Open the logs folder and copy the file from there.', 'error')
+      app.toast(t('Couldn’t copy the log. Open the logs folder and copy the file from there.'), 'error')
     }
   }
 
@@ -147,7 +148,7 @@
   })
 
   function elapsed(ms: number): string {
-    return ms < 60_000 ? '< 1 min' : session(ms)
+    return ms < 60_000 ? t('< 1 min') : session(ms)
   }
 
   function playAgain() {
@@ -214,9 +215,9 @@
     if (!server) return
     try {
       await navigator.clipboard.writeText(server.address)
-      app.toast('Address copied. Paste it in Multiplayer, Direct Connection.', 'success')
+      app.toast(t('Address copied. Paste it in Multiplayer, Direct Connection.'), 'success')
     } catch {
-      app.toast('Couldn’t copy the address.', 'error')
+      app.toast(t('Couldn’t copy the address.'), 'error')
     }
   }
 
@@ -231,9 +232,9 @@
 <div class="screen">
   {#if !instance}
     <div class="content">
-      <h1 class="text-title">Game log</h1>
-      <Banner tone="info" title="This instance isn’t here anymore">It may have been moved to the trash.</Banner>
-      <div><Button icon="library" onclick={() => app.navigate({ name: 'library' })}>Back to the library</Button></div>
+      <h1 class="text-title">{t('Game log')}</h1>
+      <Banner tone="info" title={t('This instance isn’t here anymore')}>{t('It may have been moved to the trash.')}</Banner>
+      <div><Button icon="library" onclick={() => app.navigate({ name: 'library' })}>{t('Back to the library')}</Button></div>
     </div>
   {:else}
     <div class="layout">
@@ -246,7 +247,7 @@
               {#if running && startedAt != null}
                 <StatusTag state="running" detail={elapsed(now - startedAt)} />
               {:else if launch}
-                <StatusTag state="installing" detail={launchPct != null ? `${Math.round(launchPct)}%` : null}>Getting ready</StatusTag>
+                <StatusTag state="installing" detail={launchPct != null ? `${Math.round(launchPct)}%` : null}>{t('Getting ready')}</StatusTag>
               {:else if app.crash?.instanceId === id}
                 <StatusTag state="crashed" />
               {:else}
@@ -257,71 +258,71 @@
             </div>
           </div>
           {#if running}
-            <PlayButton state="running" detail={facts.world ?? facts.server ?? undefined} aria-label={`Stop ${instance.name}`} onclick={() => app.kill(id)} />
+            <PlayButton state="running" detail={facts.world ?? facts.server ?? undefined} aria-label={t('Stop {name}', { name: instance.name })} onclick={() => app.kill(id)} />
           {:else if launch}
             <PlayButton state="installing" detail={launch.label} progress={launchPct} />
           {:else}
-            <PlayButton label="Play again" aria-label={`Play ${instance.name} again`} onclick={playAgain} />
+            <PlayButton label={t('Play again')} aria-label={t('Play {name} again', { name: instance.name })} onclick={playAgain} />
           {/if}
-          <IconButton icon="settings" label="Instance settings" onclick={() => app.openInstance(id, 'settings')} />
+          <IconButton icon="settings" label={t('Instance settings')} onclick={() => app.openInstance(id, 'settings')} />
         </header>
 
         {#if !running && !launch}
-          <Banner tone="info" title="The game isn’t running">
-            {#if parsed.length}This is the log of its last session.{:else}Play to see the game log here.{/if}
+          <Banner tone="info" title={t('The game isn’t running')}>
+            {#if parsed.length}{t('This is the log of its last session.')}{:else}{t('Play to see the game log here.')}{/if}
           </Banner>
         {/if}
 
         {#if facts.world || facts.server || account || facts.java || facts.maxMemoryMb || startedAt}
-          <dl class="facts" aria-label="This session">
+          <dl class="facts" aria-label={t('This session')}>
             {#if facts.world}
-              <div class="fact"><dt class="text-small">World</dt><dd class="text-body-strong">{facts.world}</dd></div>
+              <div class="fact"><dt class="text-small">{t('World')}</dt><dd class="text-body-strong">{facts.world}</dd></div>
             {:else if facts.server}
-              <div class="fact"><dt class="text-small">Server</dt><dd class="text-mono">{facts.server}</dd></div>
+              <div class="fact"><dt class="text-small">{t('Server')}</dt><dd class="text-mono">{facts.server}</dd></div>
             {/if}
             {#if account}
               <div class="fact">
-                <dt class="text-small">Account</dt>
+                <dt class="text-small">{t('Account')}</dt>
                 <dd class="account">{@render skinHead(account.url, account.name, 24, '')}<span class="text-body-strong">{account.name}</span></dd>
               </div>
             {/if}
             {#if facts.java}
-              <div class="fact"><dt class="text-small">Runtime</dt><dd class="text-body-strong">Java <span class="text-mono">{facts.java}</span></dd></div>
+              <div class="fact"><dt class="text-small">{t('Runtime')}</dt><dd class="text-body-strong">Java <span class="text-mono">{facts.java}</span></dd></div>
             {/if}
             {#if facts.maxMemoryMb}
-              <div class="fact"><dt class="text-small">Max memory</dt><dd class="text-body-strong">{megabytes(facts.maxMemoryMb)}</dd></div>
+              <div class="fact"><dt class="text-small">{t('Max memory')}</dt><dd class="text-body-strong">{megabytes(facts.maxMemoryMb)}</dd></div>
             {/if}
             {#if startedAt}
-              <div class="fact"><dt class="text-small">Started</dt><dd class="text-body-strong">{timeOfDay(new Date(startedAt).toISOString())}</dd></div>
+              <div class="fact"><dt class="text-small">{t('Started')}</dt><dd class="text-body-strong">{timeOfDay(new Date(startedAt).toISOString())}</dd></div>
             {/if}
           </dl>
         {/if}
 
-        <section class="log" aria-label="Game log">
+        <section class="log" aria-label={t('Game log')}>
           <div class="cb-log__toolbar toolbar">
-            <SegmentedControl label="Show lines" options={levelOptions} value={filter} onChange={(v) => (filter = v as Filter)} />
+            <SegmentedControl label={t('Show lines')} options={levelOptions} value={filter} onChange={(v) => (filter = v as Filter)} />
             <div class="search">
-              <TextField label="Search the log" hideLabel icon="search" placeholder="Search the log" size="sm" type="search" bind:value={query} />
+              <TextField label={t('Search the log')} hideLabel icon="search" placeholder={t('Search the log')} size="sm" type="search" bind:value={query} />
             </div>
             {#if !follow && hasLines}
-              <Button size="sm" variant="ghost" icon="chevron-down" onclick={toLatest}>Latest lines</Button>
+              <Button size="sm" variant="ghost" icon="chevron-down" onclick={toLatest}>{t('Latest lines')}</Button>
             {/if}
-            <Button size="sm" icon="copy" disabled={!parsed.length} onclick={copyLog}>Copy log</Button>
-            <Button size="sm" icon="folder" onclick={openLogs}>Open logs folder</Button>
+            <Button size="sm" icon="copy" disabled={!parsed.length} onclick={copyLog}>{t('Copy log')}</Button>
+            <Button size="sm" icon="folder" onclick={openLogs}>{t('Open logs folder')}</Button>
           </div>
           <div class="lines" bind:this={logBox}>
             {#if hasLines}
-              <LogViewer lines={visible} live={running} label={running ? 'Game log, live' : 'Game log of the last session'} />
+              <LogViewer lines={visible} live={running} label={running ? t('Game log, live') : t('Game log of the last session')} />
             {:else}
               <div class="empty">
                 <Icon name={parsed.length ? 'search' : 'terminal'} size={27} />
                 <p class="text-body">
                   {#if parsed.length}
-                    No line matches this filter.
+                    {t('No line matches this filter.')}
                   {:else if running || launch}
-                    Waiting for the first lines…
+                    {t('Waiting for the first lines…')}
                   {:else}
-                    No log yet.
+                    {t('No log yet.')}
                   {/if}
                 </p>
                 {#if parsed.length}
@@ -331,7 +332,7 @@
                     onclick={() => {
                       filter = 'all'
                       query = ''
-                    }}>Show all lines</Button
+                    }}>{t('Show all lines')}</Button
                   >
                 {/if}
               </div>
@@ -340,25 +341,25 @@
         </section>
       </div>
 
-      <aside class="aside" aria-label={running ? 'While you play' : 'Last session'}>
-        <h2 class="text-heading">{running ? 'While you play' : 'Last session'}</h2>
+      <aside class="aside" aria-label={running ? t('While you play') : t('Last session')}>
+        <h2 class="text-heading">{running ? t('While you play') : t('Last session')}</h2>
 
         <section class="block" aria-labelledby="shots-title">
           <div class="block-head">
-            <h3 id="shots-title" class="text-body-strong">Screenshots{sessionShots ? `: ${num(sessionShots.length)}` : ''}</h3>
-            <span class="text-small muted">this session</span>
+            <h3 id="shots-title" class="text-body-strong">{t('Screenshots')}{sessionShots ? `: ${num(sessionShots.length)}` : ''}</h3>
+            <span class="text-small muted">{t('this session')}</span>
           </div>
           {#if sessionShots == null}
-            <p class="text-small muted">Looking for screenshots…</p>
+            <p class="text-small muted">{t('Looking for screenshots…')}</p>
           {:else if !sessionShots.length}
-            <p class="text-small muted">None yet. Press F2 in game to take one.</p>
+            <p class="text-small muted">{t('None yet. Press F2 in game to take one.')}</p>
           {:else}
             <div class="shots">
               {#each sessionShots.slice(0, 6) as s (s.fileName)}
                 <button
                   type="button"
                   class="shot"
-                  aria-label={`Screenshot taken at ${timeOfDay(s.taken)}, open Screenshots`}
+                  aria-label={t('Screenshot taken at {taken}, open Screenshots', { taken: timeOfDay(s.taken) })}
                   onclick={() => app.navigate({ name: 'captures' })}
                 >
                   <img src={s.url} alt="" loading="lazy" />
@@ -367,7 +368,7 @@
             </div>
             {#if sessionShots.length > 6}
               <Button size="sm" variant="ghost" iconEnd="chevron-right" onclick={() => app.navigate({ name: 'captures' })}>
-                See all {plural(sessionShots.length, 'screenshot', 'screenshots')}
+                {t('See all {n}', { n: plural(sessionShots.length, 'screenshot', 'screenshots') })}
               </Button>
             {/if}
           {/if}
@@ -375,7 +376,7 @@
 
         {#if server}
           <section class="block" aria-labelledby="server-title">
-            <h3 id="server-title" class="text-label muted">Your server</h3>
+            <h3 id="server-title" class="text-label muted">{t('Your server')}</h3>
             <div class="server">
               <div class="server-top">
                 <span class="server-icon">
@@ -387,24 +388,24 @@
                 </div>
               </div>
               {#if !status}
-                <p class="text-small muted">Checking the server…</p>
+                <p class="text-small muted">{t('Checking the server…')}</p>
               {:else}
                 <div class="server-stats">
                   <StatusTag state={status.online ? 'online' : 'offline'} />
                   {#if status.online}
                     <span class="text-small">
-                      <span class="text-counter">{num(status.playersOnline)}/{num(status.playersMax)}</span> players
+                      <span class="text-counter">{num(status.playersOnline)}/{num(status.playersMax)}</span> {t('players')}
                     </span>
                     {#if status.pingMs != null}<span class="text-mono muted">{status.pingMs} ms</span>{/if}
                   {/if}
                 </div>
                 {#if status.online && motd}<p class="text-small muted motd">{motd}</p>{/if}
-                {#if !status.online}<p class="text-small muted">Can’t reach server</p>{/if}
+                {#if !status.online}<p class="text-small muted">{t('Can’t reach server')}</p>{/if}
               {/if}
               {#if running}
-                <Button size="sm" icon="copy" onclick={copyAddress}>Copy address</Button>
+                <Button size="sm" icon="copy" onclick={copyAddress}>{t('Copy address')}</Button>
               {:else}
-                <Button size="sm" icon="play" disabled={!status?.online || !!launch} aria-label={`Join ${server.name} with ${instance.name}`} onclick={join}>Join</Button>
+                <Button size="sm" icon="play" disabled={!status?.online || !!launch} aria-label={t('Join {name} with {name2}', { name: server.name, name2: instance.name })} onclick={join}>{t('Join')}</Button>
               {/if}
             </div>
           </section>
@@ -413,7 +414,7 @@
         {#if running}
           <div class="note">
             <Banner tone="info">
-              Closing Cubby won’t stop the game.{#if trackPlayTime}{' '}Keep it open to count this session in your play time.{/if}
+              {t('Closing Cubby won’t stop the game.')}{#if trackPlayTime}{' '}{t('Keep it open to count this session in your play time.')}{/if}
             </Banner>
           </div>
         {/if}
