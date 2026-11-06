@@ -2,9 +2,15 @@ name: Release
 
 # Push a tag like v2026.11.0 (or v2026.11.0-alpha.1) to build Cubby for Windows, macOS (Apple Silicon
 # and Intel) and Linux, and attach everything to a draft GitHub release.
+# "Run workflow" with a tag builds that release again, into its existing release (draft or published).
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to build, e.g. v2026.11.0-alpha.2'
+        required: true
 
 permissions:
   contents: write
@@ -17,12 +23,14 @@ jobs:
       id: ${{ steps.create.outputs.id }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
 
       - name: Create the draft release
         id: create
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.ref_name }}
+          TAG: ${{ inputs.tag || github.ref_name }}
         run: |
           version="${TAG#v}"
           # Named like the first release: "Cubby v2026.11.0-alpha.1".
@@ -34,7 +42,9 @@ jobs:
           prerelease=""
           [[ "$version" == *-* ]] && prerelease="--prerelease"
           gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --draft $prerelease --title "$title" --notes-file notes.md --verify-tag
-          id=$(gh api "repos/$GITHUB_REPOSITORY/releases" --jq ".[] | select(.tag_name == \"$TAG\") | .id" | head -n1)
+          # Without an id the builds would succeed and upload nothing: stop here instead.
+          id=$(gh release view "$TAG" --json databaseId --jq .databaseId)
+          [ -n "$id" ] || { echo "::error::No release found for $TAG"; exit 1; }
           echo "id=$id" >> "$GITHUB_OUTPUT"
 
   build:
@@ -61,6 +71,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
 
       - name: Linux system libraries
         if: runner.os == 'Linux'
@@ -109,7 +121,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
-      TAG: ${{ github.ref_name }}
+      TAG: ${{ inputs.tag || github.ref_name }}
     steps:
       - name: Write latest.json
         run: |
@@ -132,3 +144,18 @@ jobs:
             '{version: $v, notes: "", pub_date: $d, platforms: $p}' > latest.json
           cat latest.json
           gh release upload "$TAG" latest.json --repo "$GITHUB_REPOSITORY" --clobber
+
+      # A release already published (built again with "Run workflow") missed update-manifest.yml: point the
+      # update channels at it here, with its published text as the notes.
+      - name: Update channels of a published release
+        run: |
+          cd sigs
+          [ "$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft)" = "false" ] || exit 0
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json body --jq .body > body.md
+          jq --rawfile notes body.md '.notes = $notes' latest.json > channel.json && mv channel.json latest.json
+          channels="preview"
+          [ "$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isPrerelease --jq .isPrerelease)" = "true" ] || channels="$channels stable"
+          for channel in $channels; do
+            gh release view "updates-$channel" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1               || gh release create "updates-$channel" --repo "$GITHUB_REPOSITORY" --target "${{ github.event.repository.default_branch }}"                    --prerelease --latest=false --title "Update channel: $channel"                    --notes "Read by Cubby to find new versions. Nothing to download here."
+            gh release upload "updates-$channel" latest.json --repo "$GITHUB_REPOSITORY" --clobber
+          done
