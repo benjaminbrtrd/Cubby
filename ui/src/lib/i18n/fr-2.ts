@@ -264,7 +264,7 @@ export const FR_2: Record<string, Entry> = {
   "Use global settings": "Utiliser les paramètres globaux",
   "The same as every instance that uses the global settings.": "Comme toutes les instances qui utilisent les paramètres globaux.",
   "Global settings": "Paramètres globaux",
-  "That leaves little memory for Windows. The game may stutter or close.": "Il reste peu de mémoire pour Windows. Le jeu peut saccader ou se fermer.",
+  "That leaves little memory for {os}. The game may stutter or close.": "Il reste peu de mémoire pour {os}. Le jeu peut saccader ou se fermer.",
   "Cubby uses the Java this version needs and downloads it when it’s missing.": "Cubby utilise le Java dont cette version a besoin et le télécharge s’il manque.",
   "Choose Java": "Choisir Java",
   "JVM arguments": "Arguments JVM",

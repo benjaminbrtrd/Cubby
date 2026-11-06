@@ -19,6 +19,7 @@
 
 <script lang="ts">
   import { t } from '../../i18n.svelte'
+  import { osName } from '../../platform'
   import { onDestroy, untrack } from 'svelte'
   import { api } from '../../api'
   import {
@@ -346,11 +347,11 @@
               value={Math.min(mem, memMax)}
               valueText={megabytes(mem)}
               marks={memMarks}
-              hint={t('Your PC has {n}. Leave at least a quarter of it for Windows and other apps.', { n: gigabytes(total) })}
+              hint={t('Your computer has {n}. Leave at least a quarter of it for {os} and other apps.', { n: gigabytes(total), os: osName })}
               onChange={setMemory}
             />
             {#if mem > total * 0.75}
-              <p class="text-small warn flag"><Icon name="warning" size={18} label={t('Warning')} /><span>{t('That leaves little memory for Windows. The game may stutter or close.')}</span></p>
+              <p class="text-small warn flag"><Icon name="warning" size={18} label={t('Warning')} /><span>{t('That leaves little memory for {os}. The game may stutter or close.', { os: osName })}</span></p>
             {/if}
           </div>
           <div class="setting setting--wide">

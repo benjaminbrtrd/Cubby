@@ -16,9 +16,12 @@
 
 ## 📦 Install
 
-Download **`Cubby_{{VERSION}}_x64-setup.exe`** below and run it. Windows 10 and 11, 64-bit.
-
-If Windows warns about the installer, click *More info*, then *Run anyway*: it isn't signed yet.
+| | Download | |
+|---|---|---|
+| **Windows** 10 and 11 | `Cubby_{{VERSION}}_x64-setup.exe` | If Windows warns about the installer, click *More info*, then *Run anyway*: it isn't signed yet. |
+| **macOS** 11 or later, Apple Silicon | `Cubby_{{VERSION}}_aarch64.dmg` | Drag Cubby to Applications. The first time macOS blocks it because it isn't notarized yet: open *System Settings*, *Privacy & Security*, and click *Open Anyway*. |
+| **macOS** 11 or later, Intel | `Cubby_{{VERSION}}_x64.dmg` | Same as above. |
+| **Linux** 64-bit | `Cubby_{{VERSION}}_amd64.AppImage` | Make it executable, then run it. Debian and Ubuntu can use `Cubby_{{VERSION}}_amd64.deb` instead. |
 
 ---
 

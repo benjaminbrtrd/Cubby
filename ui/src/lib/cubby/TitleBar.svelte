@@ -5,6 +5,7 @@
   import Icon from './Icon.svelte';
   import Kbd from './Kbd.svelte';
   import Logo from './Logo.svelte';
+  import { isMac } from '../platform';
   import type { TitleBarProps } from './types';
 
   let {
@@ -23,7 +24,7 @@
 </script>
 
 <!-- The whole bar is a Tauri drag region; its buttons stay clickable. -->
-<header class={['cb-titlebar', className]} data-tauri-drag-region="">
+<header class={['cb-titlebar', isMac && 'cb-titlebar--mac', className]} data-tauri-drag-region="">
   <div class="cb-titlebar__brand" data-tauri-drag-region=""><Logo size={32} /></div>
   <button type="button" class="cb-titlebar__search text-body" onclick={onSearch}>
     <Icon name="search" size={18} />
@@ -37,9 +38,12 @@
       <span class="cb-keep-case">{account.name}</span>
     </button>
   {/if}
-  <div class="cb-titlebar__win">
-    <button type="button" class="cb-win" aria-label={labels.minimize || 'Minimize'} onclick={onMinimize}><Icon name="minimize" size={16} /></button>
-    <button type="button" class="cb-win" aria-label={labels.maximize || 'Maximize'} onclick={onMaximize}><Icon name="maximize" size={16} /></button>
-    <button type="button" class="cb-win cb-win--close" aria-label={labels.close || 'Close'} onclick={onClose}><Icon name="close" size={16} /></button>
-  </div>
+  <!-- A Mac window keeps its own buttons, top left -->
+  {#if !isMac}
+    <div class="cb-titlebar__win">
+      <button type="button" class="cb-win" aria-label={labels.minimize || 'Minimize'} onclick={onMinimize}><Icon name="minimize" size={16} /></button>
+      <button type="button" class="cb-win" aria-label={labels.maximize || 'Maximize'} onclick={onMaximize}><Icon name="maximize" size={16} /></button>
+      <button type="button" class="cb-win cb-win--close" aria-label={labels.close || 'Close'} onclick={onClose}><Icon name="close" size={16} /></button>
+    </div>
+  {/if}
 </header>

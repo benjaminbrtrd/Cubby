@@ -75,7 +75,7 @@ export const FR_6: Record<string, Entry> = {
   "Accept": "Accepter",
   "Refuse": "Refuser",
   "Remove {name}?": "Retirer {name} ?",
-  "Your PC has {n}. Leave at least a quarter of it for Windows and other apps.": "Votre PC a {n}. Laissez-en au moins un quart à Windows et aux autres applications.",
+  "Your computer has {n}. Leave at least a quarter of it for {os} and other apps.": "Votre ordinateur a {n}. Laissez-en au moins un quart à {os} et aux autres applications.",
   "Your own Java": "Votre propre Java",
   " (Java {needed})": " (Java {needed})",
   "Global window size": "Taille de fenêtre globale",
@@ -258,7 +258,7 @@ export const FR_6: Record<string, Entry> = {
   "Add a server to see its status here.": "Ajoutez un serveur pour voir son état ici.",
 
   // Settings
-  "That leaves little memory for Windows and other apps. Your PC has {n}.": "Il reste peu de mémoire pour Windows et les autres applications. Votre PC a {n}.",
+  "That leaves little memory for {os} and other apps. Your computer has {n}.": "Il reste peu de mémoire pour {os} et les autres applications. Votre ordinateur a {n}.",
   "Used by instances that don’t set their own. Your PC has {total}.": "Utilisée par les instances qui n’ont pas la leur. Votre PC a {total}.",
   "Used by instances that don’t set their own.": "Utilisée par les instances qui n’ont pas la leur.",
   "Cubby minimizes while you play and comes back when the game closes.": "Cubby se réduit pendant la partie et revient quand le jeu se ferme.",

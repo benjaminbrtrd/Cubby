@@ -21,8 +21,13 @@ jobs:
       TAG: ${{ github.event.release.tag_name }}
       PRERELEASE: ${{ github.event.release.prerelease }}
     steps:
+      # The notes Cubby shows are the release text as published, not the template of the draft.
       - name: Get the manifest of this release
-        run: gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern latest.json
+        env:
+          BODY: ${{ github.event.release.body }}
+        run: |
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern latest.json
+          jq --arg notes "$BODY" '.notes = $notes' latest.json > notes.json && mv notes.json latest.json
 
       - name: Point the channels at it
         run: |

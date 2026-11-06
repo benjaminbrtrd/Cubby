@@ -1,7 +1,7 @@
 name: Release
 
-# Push a tag like v2026.11.0 (or v2026.11.0-alpha.1) to build the Windows installer
-# and attach it to a draft GitHub release.
+# Push a tag like v2026.11.0 (or v2026.11.0-alpha.1) to build Cubby for Windows, macOS (Apple Silicon
+# and Intel) and Linux, and attach everything to a draft GitHub release.
 on:
   push:
     tags: ['v*']
@@ -10,10 +10,67 @@ permissions:
   contents: write
 
 jobs:
-  windows:
-    runs-on: windows-latest
+  # The draft release first, so the three builds upload to the same one.
+  draft:
+    runs-on: ubuntu-latest
+    outputs:
+      id: ${{ steps.create.outputs.id }}
     steps:
       - uses: actions/checkout@v4
+
+      # v2026.11.0-alpha.1 becomes "Cubby 2026.11 alpha 1", with a notes template to fill in before publishing.
+      - name: Create the draft release
+        id: create
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          version="${TAG#v}"
+          if [[ "$version" =~ ^([0-9]+\.[0-9]+)\.([0-9]+)(-([a-z]+)\.?([0-9]+)?)? ]]; then
+            title="Cubby ${BASH_REMATCH[1]}"
+            [ "${BASH_REMATCH[2]}" != "0" ] && title="$title.${BASH_REMATCH[2]}"
+            [ -n "${BASH_REMATCH[4]}" ] && title="$title ${BASH_REMATCH[4]}"
+            [ -n "${BASH_REMATCH[5]}" ] && title="$title ${BASH_REMATCH[5]}"
+          else
+            title="Cubby $version"
+          fi
+          sed -e "s/{{TITLE}}/$title/g" -e "s/{{VERSION}}/$version/g" .github/release-notes.md > notes.md
+          prerelease=""
+          [[ "$version" == *-* ]] && prerelease="--prerelease"
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --draft $prerelease --title "$title" --notes-file notes.md --verify-tag
+          id=$(gh api "repos/$GITHUB_REPOSITORY/releases" --jq ".[] | select(.tag_name == \"$TAG\") | .id" | head -n1)
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: draft
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows
+            os: windows-latest
+            args: --bundles nsis
+          - name: macOS (Apple Silicon)
+            os: macos-latest
+            target: aarch64-apple-darwin
+            args: --target aarch64-apple-darwin
+          - name: macOS (Intel)
+            os: macos-latest
+            target: x86_64-apple-darwin
+            args: --target x86_64-apple-darwin
+          - name: Linux
+            os: ubuntu-22.04
+            args: ''
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Linux system libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev
 
       - uses: actions/setup-node@v4
         with:
@@ -22,35 +79,21 @@ jobs:
           cache-dependency-path: ui/package-lock.json
 
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
 
       - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
 
       - name: Interface dependencies
         working-directory: ui
         run: npm ci
 
-      # v2026.11.0-alpha.1 becomes "Cubby 2026.11 alpha 1", with a notes template to fill in before publishing.
-      - name: Release title and notes
-        id: notes
-        shell: pwsh
-        env:
-          TAG: ${{ github.ref_name }}
-        run: |
-          $version = $env:TAG.TrimStart('v')
-          $m = [regex]::Match($version, '^(\d+\.\d+)\.(\d+)(?:-([a-z]+)\.?(\d+)?)?')
-          $title = 'Cubby ' + $(if ($m.Groups[2].Value -eq '0') { $m.Groups[1].Value } else { "$($m.Groups[1].Value).$($m.Groups[2].Value)" })
-          if ($m.Groups[3].Success) { $title += ' ' + $m.Groups[3].Value }
-          if ($m.Groups[4].Success) { $title += ' ' + $m.Groups[4].Value }
-          $body = (Get-Content .github/release-notes.md -Raw -Encoding utf8).Replace('{{TITLE}}', $title).Replace('{{VERSION}}', $version)
-          "title=$title" >> $env:GITHUB_OUTPUT
-          "body<<NOTES_END" >> $env:GITHUB_OUTPUT
-          $body >> $env:GITHUB_OUTPUT
-          "NOTES_END" >> $env:GITHUB_OUTPUT
-
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Signs the installer for the in-app updater; the public key is in tauri.conf.json.
+          # Signs the update archives for the in-app updater; the public key is in tauri.conf.json.
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           # Optional: without them, CurseForge search is off and only the demo can be played.
@@ -58,9 +101,38 @@ jobs:
           CUBBY_MSA_CLIENT_ID: ${{ vars.CUBBY_MSA_CLIENT_ID }}
         with:
           tauriScript: npm run tauri
-          args: --bundles nsis
-          tagName: ${{ github.ref_name }}
-          releaseName: ${{ steps.notes.outputs.title }}
-          releaseBody: ${{ steps.notes.outputs.body }}
-          releaseDraft: true
-          prerelease: ${{ contains(github.ref_name, '-') }}
+          args: ${{ matrix.args }}
+          releaseId: ${{ needs.draft.outputs.id }}
+          # The manifest job writes latest.json once every build is there (four jobs writing it at once lose entries).
+          uploadUpdaterJson: false
+
+  # latest.json lists the update archive of every platform, for the in-app updater.
+  manifest:
+    needs: [draft, build]
+    if: ${{ !cancelled() && needs.draft.result == 'success' }}
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ github.ref_name }}
+    steps:
+      - name: Write latest.json
+        run: |
+          mkdir sigs && cd sigs
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern '*.sig'
+          base="https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG"
+          platforms='{}'
+          for sig in *.sig; do
+            asset="${sig%.sig}"
+            case "$asset" in
+              *x64-setup.exe) key=windows-x86_64 ;;
+              *aarch64.app.tar.gz) key=darwin-aarch64 ;;
+              *x64.app.tar.gz) key=darwin-x86_64 ;;
+              *amd64.AppImage) key=linux-x86_64 ;;
+              *) continue ;;
+            esac
+            platforms=$(jq --arg k "$key" --arg s "$(cat "$sig")" --arg u "$base/$asset" '. + {($k): {signature: $s, url: $u}}' <<< "$platforms")
+          done
+          jq -n --arg v "${TAG#v}" --arg d "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --argjson p "$platforms" \
+            '{version: $v, notes: "", pub_date: $d, platforms: $p}' > latest.json
+          cat latest.json
+          gh release upload "$TAG" latest.json --repo "$GITHUB_REPOSITORY" --clobber

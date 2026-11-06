@@ -193,6 +193,6 @@ export const FR: Record<string, Entry> = {
 
   // Settings
   Language: 'Langue',
-  'Windows language': 'Langue de Windows',
+  '{os} language': 'Langue de {os}',
   'Some screens are still in English while the translation is finished.': 'Certains écrans sont encore en anglais, le temps de finir la traduction.',
 }

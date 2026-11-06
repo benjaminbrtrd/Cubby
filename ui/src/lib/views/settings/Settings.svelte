@@ -5,6 +5,7 @@
 <script lang="ts">
   import { tick, untrack } from 'svelte'
   import { api } from '../../api'
+  import { osName } from '../../platform'
   import { app, type SettingsSection } from '../../state.svelte'
   import { bytes, fold, num, timeOfDay } from '../../format'
   import { switchLanguage, t } from '../../i18n.svelte'
@@ -168,7 +169,7 @@
 
   const memHint = $derived(
     totalMb && memory > totalMb * 0.75
-      ? t('That leaves little memory for Windows and other apps. Your PC has {n}.', { n: gb(totalMb) })
+      ? t('That leaves little memory for {os} and other apps. Your computer has {n}.', { n: gb(totalMb), os: osName })
       : totalMb
         ? t('Used by instances that don’t set their own. Your PC has {total}.', { total: gb(totalMb) })
         : t('Used by instances that don’t set their own.'),
@@ -219,7 +220,7 @@
 
   /* Language: each name in its own language, so anyone can find theirs. */
   const LANGUAGES = $derived([
-    { value: 'system', label: t('Windows language') },
+    { value: 'system', label: t('{os} language', { os: osName }) },
     { value: 'en', label: 'English' },
     { value: 'fr', label: 'Français' },
   ])
@@ -244,7 +245,7 @@
   })
 
   const PROXIES = [
-    { value: 'system', label: t('Use Windows settings') },
+    { value: 'system', label: t('Use {os} settings', { os: osName }) },
     { value: 'none', label: t('No proxy') },
     { value: 'manual', label: t('Manual') },
   ]

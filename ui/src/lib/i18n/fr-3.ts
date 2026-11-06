@@ -159,7 +159,7 @@ export const FR_3: Record<string, Entry> = {
   "Minimize Cubby": "Réduire Cubby",
   "Keep it open": "Le laisser ouvert",
   "Close Cubby": "Fermer Cubby",
-  "Use Windows settings": "Utiliser les réglages de Windows",
+  "Use {os} settings": "Utiliser les réglages de {os}",
   "No proxy": "Pas de proxy",
   "Manual": "Manuel",
   "Install it for me": "L’installer pour moi",
