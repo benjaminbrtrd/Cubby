@@ -29,17 +29,19 @@ function cachedLang(): Lang | null {
   }
 }
 
-let current = $state<Lang>(cachedLang() ?? systemLang())
 /** The language the page loaded with: module-level tables were built in it. */
-const loaded: Lang = current
+const loaded: Lang = cachedLang() ?? systemLang()
+let current = $state<Lang>(loaded)
 
 /** The language in use. Reading it makes a template follow language changes. */
 export function lang(): Lang {
   return current
 }
 
-/** From Settings: "system", "en" or "fr". */
+/** From Settings: "system", "en" or "fr". Nothing happens before the settings are read (undefined), so a start in another
+ *  language than the system's doesn't reload twice. */
 export function setLanguage(setting: string | null | undefined) {
+  if (setting === undefined) return
   const next: Lang = setting === 'en' || setting === 'fr' ? setting : systemLang()
   let cached = false
   try {

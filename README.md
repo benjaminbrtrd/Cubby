@@ -27,7 +27,7 @@ It's a native app built with Rust and Tauri, so there's no bundled browser and n
 
 ## Download
 
-Cubby runs on Windows 10 and 11 (64-bit). Get the installer from the [releases page](https://github.com/benjaminbrtrd/Cubby/releases). macOS and Linux builds are planned.
+Cubby runs on Windows 10 and 11, on macOS 11 or later (Apple Silicon and Intel) and on 64-bit Linux. Get it from the [releases page](https://github.com/benjaminbrtrd/Cubby/releases).
 
 The full game needs a signed-in Microsoft account that owns Minecraft: Java Edition. Without one, Cubby only starts the Minecraft demo.
 
@@ -39,7 +39,7 @@ To publish a release, push a tag such as `v2026.11.0`: GitHub Actions builds the
 
 ## Building from source
 
-You need [Rust](https://rustup.rs) 1.90 or newer, [Node.js](https://nodejs.org) 20 or newer, and the WebView2 runtime (already installed on Windows 11).
+You need [Rust](https://rustup.rs) 1.90 or newer and [Node.js](https://nodejs.org) 20 or newer. On Windows, the WebView2 runtime (already there on Windows 11). On Linux, WebKitGTK 4.1 and its development files (`libwebkit2gtk-4.1-dev` on Debian and Ubuntu).
 
 ```sh
 git clone https://github.com/benjaminbrtrd/Cubby cubby

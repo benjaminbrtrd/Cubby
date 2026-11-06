@@ -43,7 +43,9 @@
     app.applyAppearance()
   })
 
-  $effect(() => setLanguage(app.settings?.language))
+  $effect(() => {
+    if (app.settings) setLanguage(app.settings.language ?? 'system')
+  })
 
   const activeTasks = $derived(Object.keys(app.tasks).length)
 
