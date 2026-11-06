@@ -100,7 +100,7 @@ jobs:
           args: ${{ matrix.args }}
           releaseId: ${{ needs.draft.outputs.id }}
           # The manifest job writes latest.json once every build is there (four jobs writing it at once lose entries).
-          uploadUpdaterJson: false
+          includeUpdaterJson: false
 
   # latest.json lists the update archive of every platform, for the in-app updater.
   manifest:
