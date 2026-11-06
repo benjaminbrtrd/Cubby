@@ -4,15 +4,7 @@
 
 <h2 align="center">{{TITLE}}</h2>
 
-<!-- One or two sentences on what this release is about. -->
-
-## ✨ What's new
-
-- 
-
-## 🐛 Fixes
-
-- 
+{{NOTES}}
 
 ## 📦 Install
 

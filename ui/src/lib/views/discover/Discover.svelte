@@ -103,7 +103,7 @@
   })
 
   /** What a pack search returned, to open a pack page from its card. */
-  let packRaw = $state<PackSummary[]>([])
+  const packRaw = new Map<string, PackSummary>()
   let openPack = $state<PackSummary | null>(null)
   /** Loader and Minecraft version filters of the pack sources (the providers can't filter, so Cubby does). */
   let packLoaders = $state<string[]>([])
@@ -138,9 +138,9 @@
       if (!provider.available) return Promise.reject(provider.reason ?? t('{name} isn\'t available right now.', { name: provider.name }))
       const wanted = PACK_SORT[d.sort]
       const sort = provider.sorts.includes(wanted) ? wanted : (provider.sorts[0] ?? 'relevance')
-      const offset = provider.paged ? d.page * PAGE_SIZE : 0
+      const offset = provider.paged ? q.offset : 0
       return api.packSearch(provider.id, d.query, sort, offset).then((page) => {
-        packRaw = page.hits
+        for (const p of page.hits) packRaw.set(p.id, p)
         return { hits: page.hits.map(toHit), total: provider.paged ? (page.total ?? page.hits.length) : page.hits.length, offset, limit: PAGE_SIZE }
       })
     }
@@ -148,7 +148,7 @@
   }
 
   function openPackOf(h: ProjectHit) {
-    const raw = packRaw.find((p) => p.id === h.id)
+    const raw = packRaw.get(h.id)
     if (raw) openPack = raw
   }
 
@@ -159,11 +159,44 @@
     packLoaders = []
     packVersions = []
     openPack = null
+    packRaw.clear()
     app.discover.categories = []
   })
 
+  /** Filters Cubby applies itself, on top of what the source searched: pack loaders and versions, Hide installed. */
+  const localFilter = $derived.by(() => {
+    const loaders = packProvider ? packLoaders : []
+    const versions = packProvider ? packVersions : []
+    const hideIn = d.hideInstalled && target && kind !== 'modpack' && !fromCf ? target.id : null
+    if (!loaders.length && !versions.length && !hideIn) return null
+    return (h: ProjectHit) =>
+      (!loaders.length || h.loaders.some((l) => loaders.includes(l))) &&
+      (!versions.length || h.gameVersions.some((v) => versions.includes(v))) &&
+      (!hideIn || !app.installedIn(hideIn, h.id))
+  })
+  /** Sources that return everything at once (ATLauncher, Technic). */
+  const clientPaged = $derived(!!packProvider && !packProvider.paged)
+  /**
+   * Local mode: Cubby filters the results itself, so a page of the source isn't a page here. The source's pages
+   * are read one after the other into `buffer` until there are enough matches for the page shown, so every page
+   * holds PAGE_SIZE results (only the last one has fewer).
+   */
+  const local = $derived(clientPaged || localFilter !== null)
+  /** How many of the source's pages one page here may read before showing what it found. */
+  const MAX_READS = 15
+  interface Buffer {
+    key: string
+    hits: ProjectHit[]
+    next: number
+    total: number
+    done: boolean
+  }
+  // plain: only the effect below reads it, `results` and `bufferDone` carry what the page shows
+  let buffer: Buffer = { key: '', hits: [], next: 0, total: 0, done: false }
+  let bufferDone = $state(true)
+
   $effect(() => {
-    const q: ProjectQuery = {
+    const base: ProjectQuery = {
       query: d.query,
       kind,
       gameVersion: scoped ? targetMc : null,
@@ -171,24 +204,64 @@
       categories: [...d.categories],
       environment: kind === 'mod' && !fromCf ? d.environment : null,
       sort: d.sort,
-      offset: d.page * PAGE_SIZE,
+      offset: 0,
       limit: PAGE_SIZE,
     }
+    const page = d.page
+    const isLocal = local
+    const filter = localFilter
     void retries
     const mine = ++seq
-    loading = true
     error = null
-    ;search(q)
-      .then((r) => {
-        if (mine !== seq) return
-        results = r
-        loading = false
-      })
-      .catch((e) => {
+
+    if (!isLocal) {
+      loading = true
+      search({ ...base, offset: page * PAGE_SIZE })
+        .then((r) => {
+          if (mine !== seq) return
+          results = r
+          loading = false
+        })
+        .catch((e) => {
+          if (mine !== seq) return
+          error = message(e)
+          loading = false
+        })
+      return
+    }
+
+    const key = JSON.stringify([source, base])
+    if (buffer.key !== key) buffer = { key, hits: [], next: 0, total: 0, done: false }
+    const buf = buffer
+    // one more than the page, to know whether a next page exists
+    const want = (page + 1) * PAGE_SIZE + 1
+    const matched = () => (filter ? buf.hits.filter(filter).length : buf.hits.length)
+    const publish = () => {
+      results = { hits: buf.hits.slice(), total: buf.total, offset: 0, limit: PAGE_SIZE }
+      bufferDone = buf.done
+      loading = false
+    }
+    if (buf.done || matched() >= want) return publish()
+
+    loading = true
+    void (async () => {
+      try {
+        for (let reads = 0; !buf.done && matched() < want && reads < MAX_READS; reads++) {
+          const r = await search({ ...base, offset: buf.next })
+          if (mine !== seq) return
+          const seen = new Set(buf.hits.map((h) => h.id))
+          buf.hits.push(...r.hits.filter((h) => !seen.has(h.id)))
+          buf.total = r.total
+          buf.next += r.hits.length
+          buf.done = clientPaged || !r.hits.length || buf.next >= r.total
+        }
+        if (mine === seq) publish()
+      } catch (e) {
         if (mine !== seq) return
         error = message(e)
         loading = false
-      })
+      }
+    })()
   })
 
   $effect(() => {
@@ -197,29 +270,28 @@
 
   const offline = $derived(!!error && (/(network|connect|dns|resolve|timed? ?out|offline|unreachable|socket|tls|fetch)/i.test(error) || !navigator.onLine))
   const allHits = $derived(results?.hits ?? [])
-  /** Loaders and Minecraft versions found in this source's results, for the filters. */
-  const packLoaderChoices = $derived([...new Set(allHits.flatMap((h) => h.loaders))].sort())
-  const packVersionChoices = $derived(
-    [...new Set(allHits.flatMap((h) => h.gameVersions))]
-      .sort((a, b) => b.localeCompare(a, undefined, { numeric: true }))
-      .slice(0, 12),
+  /** Loaders and Minecraft versions found in this source's results, for the filters (the chosen ones always stay). */
+  const packLoaderChoices = $derived([...new Set([...packLoaders, ...allHits.flatMap((h) => h.loaders)])].sort())
+  const packVersionChoices = $derived.by(() => {
+    const newest = [...new Set(allHits.flatMap((h) => h.gameVersions))].sort((a, b) => b.localeCompare(a, undefined, { numeric: true })).slice(0, 12)
+    return [...new Set([...packVersions, ...newest])].sort((a, b) => b.localeCompare(a, undefined, { numeric: true }))
+  })
+  /** Results that pass Cubby's own filters (all of them in server paging). */
+  const matches = $derived(local && localFilter ? allHits.filter(localFilter) : allHits)
+  const shown = $derived(local ? matches.slice(d.page * PAGE_SIZE, (d.page + 1) * PAGE_SIZE) : matches)
+  /** Exact unless Cubby is still reading the source's pages: then a next page may exist. */
+  const pages = $derived(
+    !results ? 1 : local ? Math.max(1, Math.ceil(matches.length / PAGE_SIZE) + (bufferDone ? 0 : 1)) : Math.max(1, Math.ceil(results.total / PAGE_SIZE)),
   )
-  const packFiltered = $derived(
-    packProvider
-      ? allHits.filter(
-          (h) =>
-            (!packLoaders.length || h.loaders.some((l) => packLoaders.includes(l))) &&
-            (!packVersions.length || h.gameVersions.some((v) => packVersions.includes(v))),
-        )
-      : allHits,
-  )
-  /** Sources that return everything at once are paged here. */
-  const clientPaged = $derived(!!packProvider && !packProvider.paged)
-  const hits = $derived(clientPaged ? packFiltered.slice(d.page * PAGE_SIZE, (d.page + 1) * PAGE_SIZE) : packFiltered)
-  const shown = $derived(d.hideInstalled && target && kind !== 'modpack' && !fromCf ? hits.filter((h) => !app.installedIn(target.id, h.id)) : hits)
-  const hiddenCount = $derived(hits.length - shown.length)
-  const pages = $derived(!results ? 1 : Math.max(1, Math.ceil((clientPaged ? packFiltered.length : results.total) / PAGE_SIZE)))
+  /** Everything read was already installed: only Hide installed emptied the list. */
+  const allInstalled = $derived(local && !!allHits.length && !matches.length && d.hideInstalled && !packLoaders.length && !packVersions.length)
   const filtered = $derived(d.categories.length > 0 || d.environment !== null || d.hideInstalled || packLoaders.length > 0 || packVersions.length > 0)
+  const sourceName = $derived(sources.find((p) => p.id === source)?.name ?? 'Modrinth')
+
+  // the last page read can turn out shorter than expected: stay on a page that exists
+  $effect(() => {
+    if (local && bufferDone && results && d.page >= pages) app.discover.page = pages - 1
+  })
 
   // filters
   function setKind(k: string) {
@@ -311,7 +383,7 @@
     if (have) {
       const update = app.updates[target.id]?.some((u) => u.projectId === h.id)
       if (update) return { fit: { tone: 'busy', icon: 'update', word: t('Update available') }, action: 'update', version: have.versionNumber }
-      return { fit: { tone: 'have', icon: 'check', word: `In ${target.name}` }, action: 'installed', version: have.versionNumber }
+      return { fit: { tone: 'have', icon: 'check', word: t('In {name}', { name: target.name }) }, action: 'installed', version: have.versionNumber }
     }
     const fit = hitFit(h, target)
     return { fit, action: fit.tone === 'ok' ? 'install' : 'other', version: null }
@@ -459,9 +531,6 @@
             </ul>
           </section>
         {/if}
-        {#if !clientPaged && (packLoaderChoices.length || packVersionChoices.length)}
-          <p class="text-small muted hint">{t('Filters apply to the packs on this page.')}</p>
-        {/if}
       {/if}
 
       {#if fromCf && cfCategories[kind]?.length}
@@ -547,10 +616,10 @@
         <p class="text-body-strong summary" aria-live="polite">
           <span class="info-ic"><Icon name="info" size={18} /></span>
           {#if loading && !results}
-            <span>{t('Searching Modrinth…')}</span>
+            <span>{t('Searching {name}…', { name: sourceName })}</span>
           {:else if results}
             <span>
-              {plural(clientPaged ? packFiltered.length : results.total, 'result', 'results')}.
+              {local ? (bufferDone ? plural(matches.length, 'result', 'results') : t('At least {n}', { n: plural(matches.length, 'result', 'results') })) : plural(results.total, 'result', 'results')}.
               {#if kind === 'modpack'}
                 {t('Each one installs as a new instance.')}
               {:else if scoped && target}
@@ -565,7 +634,7 @@
               </button>
             {/if}
           {:else}
-            <span>{t('Modrinth search')}</span>
+            <span>{t('{name} search', { name: sourceName })}</span>
           {/if}
         </p>
         <p class="text-small muted new"><span class="ink">{t('New to {many}?', { many: words.many })}</span> {words.help}</p>
@@ -576,7 +645,7 @@
           {#snippet retryAction()}
             <Button size="sm" icon="update" onclick={() => retries++}>{t('Retry')}</Button>
           {/snippet}
-          <Banner tone="warning" icon={offline ? 'offline' : 'warning'} title={offline ? t('Can\'t reach Modrinth') : t('Search didn\'t work')} actions={retryAction}>
+          <Banner tone="warning" icon={offline ? 'offline' : 'warning'} title={offline ? t('Can’t reach {name}', { name: sourceName }) :t('Search didn\'t work')} actions={retryAction}>
             {offline ? t('Check your internet connection, then try again.') : error}
           </Banner>
         {:else if loading}
@@ -594,11 +663,11 @@
           <div class="empty">
             <span class="empty-ic" aria-hidden="true"><Icon name="search" size={27} /></span>
             <h2 class="text-heading">
-              {hits.length ? t('Everything here is already in {name}', { name: target?.name ?? t('your instance') }) : t('No {many} found', { many: words.many })}
+              {allInstalled ? t('Everything here is already in {name}', { name: target?.name ?? t('your instance') }) : t('No {many} found', { many: words.many })}
             </h2>
             <p class="text-body muted">
-              {#if hits.length}
-                {t('Turn off Hide installed, or go to the next page.')}
+              {#if allInstalled}
+                {t('Turn off Hide installed to see them.')}
               {:else if d.query}
                 {scoped && target ? t('Nothing matches “{query}” for {target}. Check the spelling or try fewer words.', { query: d.query, target: instanceMeta(target) }) : t('Nothing matches “{query}”. Check the spelling or try fewer words.', { query: d.query })}
               {:else if scoped && target}
@@ -608,16 +677,12 @@
               {/if}
             </p>
             <div class="empty-actions">
-              {#if hits.length && d.page + 1 < pages}<Button iconEnd="chevron-right" onclick={() => goPage(d.page + 1)}>{t('Next page')}</Button>{/if}
               {#if scoped}<Button onclick={() => setScoped(false)}>{t('Show everything')}</Button>{/if}
               {#if filtered}<Button onclick={clearFilters}>{t('Clear filters')}</Button>{/if}
               {#if d.query}<Button onclick={clearSearch}>{t('Clear search')}</Button>{/if}
             </div>
           </div>
         {:else}
-          {#if hiddenCount}
-            <p class="text-small muted">{t('{n} hidden on this page: already in {name}.', { n: plural(hiddenCount, words.one, words.many), name: target?.name ?? "" })}</p>
-          {/if}
           <ul class="grid">
             {#each shown as h (h.id)}
               {@const s = cardState(h)}
@@ -672,7 +737,7 @@
 
         {#if results && !error && pages > 1}
           <nav class="pages" aria-label={t('Result pages')}>
-            <span class="text-small muted">{t('Page {n} of {n2}', { n: num(d.page + 1), n2: num(pages) })}</span>
+            <span class="text-small muted">{!local || bufferDone ? t('Page {n} of {n2}', { n: num(d.page + 1), n2: num(pages) }) : t('Page {n}', { n: num(d.page + 1) })}</span>
             <span class="grow"></span>
             <Button size="sm" disabled={d.page === 0 || loading} onclick={() => goPage(d.page - 1)}>{t('Previous')}</Button>
             {#each pageList as p, i (i)}

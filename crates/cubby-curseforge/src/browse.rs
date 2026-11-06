@@ -261,7 +261,7 @@ impl CurseForgeClient {
             .filter(|c| c.is_class != Some(true) && c.class_id.is_none_or(|id| id == u64::from(class)) && !c.name.trim().is_empty())
             .map(|c| ResourceCategory { id: c.id, name: c.name.trim().to_string() })
             .collect();
-        out.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+        out.sort_by_key(|a| a.name.to_lowercase());
         out.dedup_by_key(|c| c.id);
         Ok(out)
     }

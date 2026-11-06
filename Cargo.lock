@@ -708,7 +708,7 @@ checksum = "914a755b7c2d4af2bdcff7ce1739e2db9a1b81a9b07123d8015786ae03c0980d"
 
 [[package]]
 name = "cubby"
-version = "2026.11.0-alpha.1"
+version = "2026.11.0-alpha.2"
 dependencies = [
  "chrono",
  "cubby-atlauncher",
@@ -743,7 +743,7 @@ dependencies = [
 
 [[package]]
 name = "cubby-atlauncher"
-version = "2026.11.0-alpha.1"
+version = "2026.11.0-alpha.2"
 dependencies = [
  "cubby-common",
  "futures",
@@ -759,7 +759,7 @@ dependencies = [
 
 [[package]]
 name = "cubby-auth"
-version = "2026.11.0-alpha.1"
+version = "2026.11.0-alpha.2"
 dependencies = [
  "base64 0.23.1",
  "chrono",
@@ -774,7 +774,7 @@ dependencies = [
 
 [[package]]
 name = "cubby-common"
-version = "2026.11.0-alpha.1"
+version = "2026.11.0-alpha.2"
 dependencies = [
  "dirs 6.0.0",
  "futures",
@@ -790,7 +790,7 @@ dependencies = [
 
 [[package]]
 name = "cubby-curseforge"
-version = "2026.11.0-alpha.1"
+version = "2026.11.0-alpha.2"
 dependencies = [
  "cubby-common",
  "reqwest 0.12.28",
@@ -803,7 +803,7 @@ dependencies = [
 
 [[package]]
 name = "cubby-ftb"
-version = "2026.11.0-alpha.1"
+version = "2026.11.0-alpha.2"
 dependencies = [
  "chrono",
  "cubby-common",
@@ -817,7 +817,7 @@ dependencies = [
 
 [[package]]
 name = "cubby-instance"
-version = "2026.11.0-alpha.1"
+version = "2026.11.0-alpha.2"
 dependencies = [
  "chrono",
  "cubby-common",
@@ -832,7 +832,7 @@ dependencies = [
 
 [[package]]
 name = "cubby-java"
-version = "2026.11.0-alpha.1"
+version = "2026.11.0-alpha.2"
 dependencies = [
  "cubby-common",
  "futures",
@@ -845,7 +845,7 @@ dependencies = [
 
 [[package]]
 name = "cubby-launch"
-version = "2026.11.0-alpha.1"
+version = "2026.11.0-alpha.2"
 dependencies = [
  "chrono",
  "cubby-common",
@@ -859,7 +859,7 @@ dependencies = [
 
 [[package]]
 name = "cubby-meta"
-version = "2026.11.0-alpha.1"
+version = "2026.11.0-alpha.2"
 dependencies = [
  "cubby-common",
  "cubby-launch",
@@ -872,7 +872,7 @@ dependencies = [
 
 [[package]]
 name = "cubby-modrinth"
-version = "2026.11.0-alpha.1"
+version = "2026.11.0-alpha.2"
 dependencies = [
  "chrono",
  "cubby-common",
@@ -887,7 +887,7 @@ dependencies = [
 
 [[package]]
 name = "cubby-packinstall"
-version = "2026.11.0-alpha.1"
+version = "2026.11.0-alpha.2"
 dependencies = [
  "cubby-common",
  "cubby-ftb",
@@ -905,7 +905,7 @@ dependencies = [
 
 [[package]]
 name = "cubby-technic"
-version = "2026.11.0-alpha.1"
+version = "2026.11.0-alpha.2"
 dependencies = [
  "cubby-common",
  "reqwest 0.12.28",

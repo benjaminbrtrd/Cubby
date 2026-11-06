@@ -34,7 +34,10 @@ jobs:
           else
             title="Cubby $version"
           fi
-          sed -e "s/{{TITLE}}/$title/g" -e "s/{{VERSION}}/$version/g" .github/release-notes.md > notes.md
+          # The notes of this version, written in .github/releases/<tag>.md, or an empty outline to fill in.
+          body=".github/releases/$TAG.md"
+          [ -f "$body" ] || body=.github/releases/_draft.md
+          sed -e "/{{NOTES}}/{r $body" -e 'd}' .github/release-notes.md | sed -e "s/{{TITLE}}/$title/g" -e "s/{{VERSION}}/$version/g" > notes.md
           prerelease=""
           [[ "$version" == *-* ]] && prerelease="--prerelease"
           gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --draft $prerelease --title "$title" --notes-file notes.md --verify-tag

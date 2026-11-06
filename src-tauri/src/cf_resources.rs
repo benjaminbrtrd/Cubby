@@ -80,7 +80,7 @@ pub async fn curseforge_search(core: State<'_, Core>, query: ProjectQueryDto) ->
         offset: query.offset,
         limit: query.limit,
     };
-    let page = client.search_resources(&wanted).await.map_err(|e| crate::dto::message(e))?;
+    let page = client.search_resources(&wanted).await.map_err(crate::dto::message)?;
     let kind_name: &'static str = match kind {
         ResourceKind::Mod => "mod",
         ResourceKind::Shader => "shader",
