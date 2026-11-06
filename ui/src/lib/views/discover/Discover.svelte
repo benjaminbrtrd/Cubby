@@ -692,7 +692,7 @@
                   <div class="head">
                     <div class="name-line">
                       <button type="button" class="title text-body-strong" onclick={() => open(h)}>{h.title}</button>
-                      <span class="text-small muted author" title={t('by {author}', { author: h.author })}>{t('by {author}', { author: h.author })}</span>
+                      {#if h.author}<span class="text-small muted author" title={t('by {author}', { author: h.author })}>{t('by {author}', { author: h.author })}</span>{/if}
                     </div>
                     <p class="text-small muted summary-text" title={h.summary}>{h.summary}</p>
                   </div>
@@ -705,8 +705,8 @@
                     <span class="text-small muted">{t('Version')} <span class="text-mono">{s.version}</span></span>
                   {:else}
                     <span class="text-small muted stats">
-                      <span class="stat"><Icon name="download" size={18} />{compactNum(h.downloads)}<span class="cb-visually-hidden"> {t('downloads')}</span></span>
-                      <span class="stat"><Icon name="clock" size={18} /><span class="cb-visually-hidden">{t('Updated')} </span>{relativeTime(h.updated, '')}</span>
+                      {#if h.downloads > 0}<span class="stat"><Icon name="download" size={18} />{compactNum(h.downloads)}<span class="cb-visually-hidden"> {t('downloads')}</span></span>{/if}
+                      {#if h.updated}<span class="stat"><Icon name="clock" size={18} /><span class="cb-visually-hidden">{t('Updated')} </span>{relativeTime(h.updated, '')}</span>{/if}
                     </span>
                   {/if}
                 </div>
