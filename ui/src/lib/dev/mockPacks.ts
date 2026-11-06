@@ -33,7 +33,7 @@ const MD = (name: string, summary: string) =>
 export const PACK_MARKDOWN = MD
 
 export const PROVIDERS: PackProvider[] = [
-  { id: 'atlauncher', name: 'ATLauncher', available: true, reason: null, sorts: ['relevance', 'name'], paged: false },
+  { id: 'modrinth', name: 'Modrinth', available: true, reason: null, sorts: ['relevance', 'downloads', 'updated', 'newest'], paged: true },
   {
     id: 'curseforge',
     name: 'CurseForge',
@@ -42,8 +42,8 @@ export const PROVIDERS: PackProvider[] = [
     sorts: ['relevance', 'downloads', 'updated', 'newest', 'name'],
     paged: true,
   },
+  { id: 'atlauncher', name: 'ATLauncher', available: true, reason: null, sorts: ['relevance', 'name'], paged: false },
   { id: 'ftb', name: 'FTB', available: true, reason: null, sorts: ['relevance', 'downloads', 'updated'], paged: true },
-  { id: 'modrinth', name: 'Modrinth', available: true, reason: null, sorts: ['relevance', 'downloads', 'updated', 'newest'], paged: true },
   { id: 'technic', name: 'Technic', available: true, reason: null, sorts: ['relevance'], paged: false },
 ]
 

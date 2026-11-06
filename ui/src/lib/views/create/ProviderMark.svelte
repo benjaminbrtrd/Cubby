@@ -1,10 +1,16 @@
-<!-- The mark of a modpack provider: its logo (ui/public/providers/<id>.svg, from the project's own site or repository)
-     when Cubby has one, else letters on the provider's colour. -->
+<!-- The mark of a modpack provider: its official logo (ui/public/providers, from the project's own site or repository,
+     or Simple Icons for CurseForge), else letters on the provider's colour. -->
 <script lang="ts" module>
   import type { ProviderId } from '../../types'
 
-  /** Providers whose official logo is in public/providers. */
-  const LOGOS: ProviderId[] = ['atlauncher', 'modrinth']
+  /** Official logos in public/providers. `crop`: the file is the logo with its name beside it, only the left square is shown. */
+  const LOGOS: Partial<Record<ProviderId, { file: string; crop?: boolean }>> = {
+    atlauncher: { file: 'atlauncher.svg' },
+    curseforge: { file: 'curseforge.svg' },
+    ftb: { file: 'ftb.svg' },
+    modrinth: { file: 'modrinth.svg' },
+    technic: { file: 'technic.png', crop: true },
+  }
 
   export const MARKS: Record<ProviderId, { letters: string; color: string; ink: string }> = {
     atlauncher: { letters: 'AT', color: 'var(--diamond)', ink: 'var(--edge)' },
@@ -18,11 +24,11 @@
 <script lang="ts">
   let { id, size = 28 }: { id: ProviderId; size?: number } = $props()
   const m = $derived(MARKS[id])
-  const logo = $derived(LOGOS.includes(id))
+  const logo = $derived(LOGOS[id])
 </script>
 
 {#if logo}
-  <img class="logo" src="/providers/{id}.svg" alt="" width={size} height={size} />
+  <img class={['logo', logo.crop && 'crop']} src="/providers/{logo.file}" alt="" width={size} height={size} />
 {:else}
   <span class="mark" style:background={m.color} style:color={m.ink} style:width="{size}px" style:height="{size}px" aria-hidden="true">{m.letters}</span>
 {/if}
@@ -32,6 +38,10 @@
     flex: none;
     display: block;
     object-fit: contain;
+  }
+  .logo.crop {
+    object-fit: cover;
+    object-position: left center;
   }
   .mark {
     flex: none;

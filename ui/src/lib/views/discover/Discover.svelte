@@ -23,12 +23,8 @@
   import { CATEGORIES, KINDS, KIND_ORDER, PAGE_SIZE, categoryLabel, hitFit, type Fit } from './discover'
 
   const d = $derived(app.discover)
-  /** Where this tab can look: every provider for modpacks, Modrinth and CurseForge for the rest. Modrinth first. */
-  const sources = $derived(
-    [...(app.providers ?? [])]
-      .filter((p) => d.kind === 'modpack' || p.id === 'modrinth' || p.id === 'curseforge')
-      .sort((a, b) => (a.id === 'modrinth' ? -1 : b.id === 'modrinth' ? 1 : a.name.localeCompare(b.name))),
-  )
+  /** Where this tab can look: every provider for modpacks, Modrinth and CurseForge for the rest, in the app's order. */
+  const sources = $derived((app.providers ?? []).filter((p) => d.kind === 'modpack' || p.id === 'modrinth' || p.id === 'curseforge'))
   /** The chosen source, or Modrinth when this tab doesn't offer it. */
   const source = $derived(sources.some((p) => p.id === d.provider) ? d.provider : 'modrinth')
   /** Modpacks of another provider (ATLauncher, CurseForge, FTB, Technic): same grid, searched through the pack commands. */

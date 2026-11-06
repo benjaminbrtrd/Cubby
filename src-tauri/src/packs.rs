@@ -141,8 +141,9 @@ fn parse_id(id: &str, what: &str) -> CmdResult<u64> {
 pub fn pack_providers(core: State<'_, Core>) -> Vec<PackProviderDto> {
     use PackSort::*;
     let has_key = core.curseforge_key_with_source().is_some();
+    // The order the sources are offered in: Modrinth, CurseForge, then the others.
     vec![
-        PackProviderDto { id: ProviderId::Atlauncher, name: "ATLauncher", available: true, reason: None, sorts: vec![Relevance, Name], paged: false },
+        PackProviderDto { id: ProviderId::Modrinth, name: "Modrinth", available: true, reason: None, sorts: vec![Relevance, Downloads, Updated, Newest], paged: true },
         PackProviderDto {
             id: ProviderId::Curseforge,
             name: "CurseForge",
@@ -151,8 +152,8 @@ pub fn pack_providers(core: State<'_, Core>) -> Vec<PackProviderDto> {
             sorts: vec![Relevance, Downloads, Updated, Newest, Name],
             paged: true,
         },
+        PackProviderDto { id: ProviderId::Atlauncher, name: "ATLauncher", available: true, reason: None, sorts: vec![Relevance, Name], paged: false },
         PackProviderDto { id: ProviderId::Ftb, name: "FTB", available: true, reason: None, sorts: vec![Relevance, Downloads, Updated, Newest, Name], paged: true },
-        PackProviderDto { id: ProviderId::Modrinth, name: "Modrinth", available: true, reason: None, sorts: vec![Relevance, Downloads, Updated, Newest], paged: true },
         PackProviderDto { id: ProviderId::Technic, name: "Technic", available: true, reason: None, sorts: vec![Relevance], paged: false },
     ]
 }
