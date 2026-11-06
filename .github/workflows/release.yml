@@ -18,7 +18,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # v2026.11.0-alpha.1 becomes "Cubby 2026.11 alpha 1", with a notes template to fill in before publishing.
       - name: Create the draft release
         id: create
         env:
@@ -26,14 +25,8 @@ jobs:
           TAG: ${{ github.ref_name }}
         run: |
           version="${TAG#v}"
-          if [[ "$version" =~ ^([0-9]+\.[0-9]+)\.([0-9]+)(-([a-z]+)\.?([0-9]+)?)? ]]; then
-            title="Cubby ${BASH_REMATCH[1]}"
-            [ "${BASH_REMATCH[2]}" != "0" ] && title="$title.${BASH_REMATCH[2]}"
-            [ -n "${BASH_REMATCH[4]}" ] && title="$title ${BASH_REMATCH[4]}"
-            [ -n "${BASH_REMATCH[5]}" ] && title="$title ${BASH_REMATCH[5]}"
-          else
-            title="Cubby $version"
-          fi
+          # Named like the first release: "Cubby v2026.11.0-alpha.1".
+          title="Cubby $TAG"
           # The notes of this version, written in .github/releases/<tag>.md, or an empty outline to fill in.
           body=".github/releases/$TAG.md"
           [ -f "$body" ] || body=.github/releases/_draft.md
