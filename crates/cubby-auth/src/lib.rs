@@ -6,6 +6,7 @@
 
 pub mod account;
 pub mod msa;
+pub mod skins;
 pub mod store;
 pub mod xbox;
 

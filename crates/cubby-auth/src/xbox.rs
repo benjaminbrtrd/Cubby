@@ -256,7 +256,7 @@ pub fn jwt_claim(jwt: &str, claim: &str) -> Option<String> {
 }
 
 
-async fn send(req: reqwest::RequestBuilder, url: &str) -> Result<(u16, Vec<u8>)> {
+pub(crate) async fn send(req: reqwest::RequestBuilder, url: &str) -> Result<(u16, Vec<u8>)> {
     let resp = req.send().await.map_err(|e| Error::http(url, e))?;
     let status = resp.status().as_u16();
     let body = resp.bytes().await.map_err(|e| Error::http(url, e))?;
@@ -267,7 +267,7 @@ async fn post_json(http: &Http, url: &str, body: &Value) -> Result<(u16, Vec<u8>
     send(http.client().post(url).header("Accept", "application/json").header("x-xbl-contract-version", "1").json(body), url).await
 }
 
-async fn get_bearer(http: &Http, url: &str, token: &str) -> Result<(u16, Vec<u8>)> {
+pub(crate) async fn get_bearer(http: &Http, url: &str, token: &str) -> Result<(u16, Vec<u8>)> {
     send(http.client().get(url).bearer_auth(token).header("Accept", "application/json"), url).await
 }
 

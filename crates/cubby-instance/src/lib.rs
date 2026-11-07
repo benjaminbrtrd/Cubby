@@ -6,12 +6,13 @@ mod model;
 mod nbt;
 pub mod prism;
 mod servers;
+pub mod skins;
 mod settings;
 mod store;
 mod util;
 
 pub use content::{
-    delete_screenshot, list_mods, list_packs, list_screenshots, list_worlds, remove_mod, set_mod_enabled,
+    delete_screenshot, list_mods, list_packs, list_screenshots, list_worlds, remove_mod, remove_pack, set_mod_enabled,
     set_resource_packs, set_shader_pack, LoaderKind, ModFile, ModMeta, PackFile, PackKind, ScreenshotFile, WorldInfo,
 };
 pub use servers::{read_servers, write_servers, ServerEntry};

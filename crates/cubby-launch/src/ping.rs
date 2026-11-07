@@ -25,6 +25,11 @@ pub struct ServerStatus {
     pub players_online: u32,
     pub players_max: u32,
     pub version: Option<String>,
+    /// The protocol number the server reports. A server that takes several versions (a proxy, ViaVersion) answers
+    /// with the protocol the client asked with when it accepts it, and with its own otherwise.
+    pub protocol: Option<i32>,
+    /// The protocol the ping was made with.
+    pub asked_protocol: i32,
     /// Round trip of the ping/pong exchange, in milliseconds.
     pub ping_ms: Option<u32>,
     /// The `data:image/png;base64,...` icon, when the server has one.
@@ -33,19 +38,36 @@ pub struct ServerStatus {
 
 impl ServerStatus {
     fn offline() -> Self {
-        Self { online: false, motd: String::new(), players_online: 0, players_max: 0, version: None, ping_ms: None, favicon: None }
+        Self { online: false, motd: String::new(), players_online: 0, players_max: 0, version: None, protocol: None, asked_protocol: PROTOCOL_VERSION, ping_ms: None, favicon: None }
     }
 }
 
 /// Pings `address` (`host`, `host:port` or `[ipv6]:port`), bounded by `timeout` as a whole.
 pub async fn ping(address: &str, timeout: Duration) -> ServerStatus {
+    ping_with(address, timeout, PROTOCOL_VERSION).await
+}
+
+/// Like [`ping`], asking with the protocol number of a given Minecraft version: the answer tells whether the server
+/// takes that version (see [`ServerStatus::protocol`]).
+pub async fn ping_with(address: &str, timeout: Duration, protocol: i32) -> ServerStatus {
     let Some((host, port)) = parse_address(address) else {
         return ServerStatus::offline();
     };
-    match tokio::time::timeout(timeout, query(&host, port)).await {
+    match tokio::time::timeout(timeout, query(&host, port, protocol)).await {
         Ok(Ok(status)) => status,
         _ => ServerStatus::offline(),
     }
+}
+
+/// The protocol number of a Minecraft version, from the `version.json` inside its client jar (versions from 1.14 on);
+/// `None` for an older or unreadable jar.
+pub fn client_protocol(jar: &std::path::Path) -> Option<i32> {
+    use std::io::Read;
+    let mut zip = zip::ZipArchive::new(std::fs::File::open(jar).ok()?).ok()?;
+    let mut text = String::new();
+    zip.by_name("version.json").ok()?.take(64 * 1024).read_to_string(&mut text).ok()?;
+    let value: Value = serde_json::from_str(&text).ok()?;
+    i32::try_from(value["protocol_version"].as_i64()?).ok()
 }
 
 fn parse_address(address: &str) -> Option<(String, u16)> {
@@ -77,13 +99,13 @@ fn parse_address(address: &str) -> Option<(String, u16)> {
     }
 }
 
-async fn query(host: &str, port: u16) -> std::io::Result<ServerStatus> {
+async fn query(host: &str, port: u16, protocol: i32) -> std::io::Result<ServerStatus> {
     let mut stream = TcpStream::connect((host, port)).await?;
     let _ = stream.set_nodelay(true);
 
     let mut handshake = Vec::new();
     write_varint(&mut handshake, 0x00);
-    write_varint(&mut handshake, PROTOCOL_VERSION);
+    write_varint(&mut handshake, protocol);
     write_string(&mut handshake, host);
     handshake.extend_from_slice(&port.to_be_bytes());
     write_varint(&mut handshake, 1);
@@ -99,6 +121,7 @@ async fn query(host: &str, port: u16) -> std::io::Result<ServerStatus> {
     let json = cursor.get(..len).ok_or_else(|| invalid("truncated status string"))?;
     let value: Value = serde_json::from_slice(json).map_err(|e| invalid(&e.to_string()))?;
     let mut status = parse_status(&value);
+    status.asked_protocol = protocol;
 
     // The ping is best effort: a server that does not answer it is still online.
     let token = 0x5348_4152_4400_0001i64;
@@ -123,6 +146,8 @@ fn parse_status(value: &Value) -> ServerStatus {
         players_online: players["online"].as_u64().unwrap_or(0) as u32,
         players_max: players["max"].as_u64().unwrap_or(0) as u32,
         version: value["version"]["name"].as_str().map(str::to_string),
+        protocol: value["version"]["protocol"].as_i64().and_then(|p| i32::try_from(p).ok()),
+        asked_protocol: PROTOCOL_VERSION,
         ping_ms: None,
         favicon: value["favicon"].as_str().map(str::to_string),
     }
@@ -305,8 +330,45 @@ mod tests {
         assert_eq!(status.motd, "Cubby test");
         assert_eq!((status.players_online, status.players_max), (3, 20));
         assert_eq!(status.version.as_deref(), Some("1.21"));
+        assert_eq!((status.protocol, status.asked_protocol), (Some(767), PROTOCOL_VERSION));
         assert_eq!(status.favicon.as_deref(), Some("data:image/png;base64,AAAA"));
         assert!(status.ping_ms.is_some());
+    }
+
+    #[test]
+    fn reads_the_protocol_of_a_client_jar() {
+        use std::io::Write;
+        let dir = std::env::temp_dir().join(format!("cubby-protocol-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let jar = dir.join("c.jar");
+        let mut zip = zip::ZipWriter::new(std::fs::File::create(&jar).unwrap());
+        zip.start_file("version.json", zip::write::SimpleFileOptions::default()).unwrap();
+        zip.write_all(br#"{"id":"1.21.1","protocol_version":767,"world_version":3955}"#).unwrap();
+        zip.finish().unwrap();
+        assert_eq!(client_protocol(&jar), Some(767));
+        assert_eq!(client_protocol(&dir.join("missing.jar")), None);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[tokio::test]
+    async fn the_protocol_asked_is_the_one_sent() {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        tokio::spawn(async move {
+            let (mut socket, _) = listener.accept().await.unwrap();
+            let handshake = read_packet(&mut socket).await.unwrap();
+            let mut cursor = &handshake[..];
+            assert_eq!(read_varint_slice(&mut cursor).unwrap(), 0);
+            let asked = read_varint_slice(&mut cursor).unwrap();
+            let _ = read_packet(&mut socket).await.unwrap();
+            // a server that takes several versions answers with the protocol asked
+            let mut body = vec![0x00];
+            write_string(&mut body, &json!({"version": {"name": "Requires MC 1.8 / 1.21", "protocol": asked}, "players": {"max": 1, "online": 0}, "description": "x"}).to_string());
+            send_packet(&mut socket, &body).await.unwrap();
+        });
+        let status = ping_with(&format!("127.0.0.1:{port}"), Duration::from_secs(5), 773).await;
+        assert!(status.online);
+        assert_eq!((status.protocol, status.asked_protocol), (Some(773), 773));
     }
 
     #[tokio::test]
