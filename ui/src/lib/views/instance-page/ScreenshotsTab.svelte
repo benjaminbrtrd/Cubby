@@ -402,12 +402,13 @@
   }
   .danger {
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-2) var(--space-3);
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
     margin-top: auto;
     padding-top: var(--space-4);
     border-top: var(--border-hair) solid var(--line);
+    text-align: end;
   }
   .full {
     display: block;

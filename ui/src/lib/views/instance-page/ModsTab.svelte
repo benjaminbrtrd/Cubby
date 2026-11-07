@@ -85,10 +85,10 @@
 
   function select(r: Row) {
     selected = r.key
+    void focusPanel()
   }
 
-  async function details(r: Row) {
-    selected = r.key
+  async function focusPanel() {
     await tick()
     asideTitle?.focus()
   }
@@ -216,7 +216,6 @@
     </Banner>
   {/if}
 
-  <p class="hint text-body"><Icon name="info" size={18} />{t('Turn a mod off to test without it. Nothing is deleted.')}</p>
 
   {#if data.mods === null}
     <p class="muted text-body">{t('Reading the mods folder…')}</p>
@@ -228,7 +227,7 @@
         <Button icon="wrench" onclick={() => app.openInstance(id, 'settings')}>{t('Change loader')}</Button>
       {:else}
         <p class="text-heading">{t('No mods yet')}</p>
-        <p class="muted text-body">{t('Find mods made for {minecraft} on Modrinth, or drop .jar files in the mods folder.', { minecraft: instance.minecraft })}</p>
+        <p class="muted text-body">{t('Find mods made for {minecraft}, or drop .jar files in the mods folder.', { minecraft: instance.minecraft })}</p>
         <Button variant="primary" icon="plus" onclick={() => data.discover('mod')}>{t('Add mods')}</Button>
       {/if}
     </div>
@@ -240,9 +239,9 @@
   {:else}
     <div class="list">
       {#each visible as r (r.key)}
-        <!-- Click anywhere on a row to show it in the panel; the ⋯ button does the same from the keyboard. -->
-        <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-        <div class={['row', selected === r.key && 'is-selected']} onclick={() => select(r)}>
+        <div class={['row', selected === r.key && 'is-selected']}>
+          <!-- Stretched over the whole row: a click anywhere on it, apart from the switch, shows the mod in the panel. -->
+          <button type="button" class="row__hit" aria-pressed={selected === r.key} aria-label={t('Show details for {name}', { name: r.name })} onclick={() => select(r)}></button>
           <ModRow
             name={r.name}
             version={r.mod.version ?? undefined}
@@ -254,8 +253,6 @@
             toggleLabel={t('Load {name} when you play', { name: r.name })}
             update={r.update ? t('Update to {latestVersion}', { latestVersion: r.update.latestVersion }) : undefined}
             warning={r.twins ? t('Installed twice') : undefined}
-            moreLabel={t('Show details for {name}', { name: r.name })}
-            onMore={() => details(r)}
           />
         </div>
       {/each}
@@ -341,7 +338,7 @@
         <Button size="sm" variant="danger" icon="trash" onclick={() => (removing = m)}>{t('Remove')}</Button>
       </div>
     {:else}
-      <p class="muted text-body">{t('Pick a mod to see what it does, its file and its page on Modrinth.')}</p>
+      <p class="muted text-body">{t('Pick a mod to see what it does and its file.')}</p>
     {/if}
 
   </div>
@@ -389,12 +386,6 @@
   .wrap {
     overflow-wrap: anywhere;
   }
-  .hint {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    color: var(--ink-muted);
-  }
 
   .list {
     background: var(--surface);
@@ -403,6 +394,28 @@
   }
   .row {
     position: relative;
+  }
+  .row__hit {
+    all: unset;
+    position: absolute;
+    inset: 0;
+    cursor: pointer;
+  }
+  .row__hit:focus-visible {
+    box-shadow: inset 0 0 0 3px var(--focus);
+  }
+  /* the row's content sits above the stretched button; only its own controls take clicks */
+  .row > :global(.cb-mod) {
+    position: relative;
+    pointer-events: none;
+  }
+  .row :global(.cb-mod button),
+  .row :global(.cb-mod input),
+  .row :global(.cb-mod a) {
+    pointer-events: auto;
+  }
+  .row:hover :global(.cb-mod) {
+    background: var(--surface-hover);
   }
   .row + .row {
     border-top: var(--border-hair) solid var(--line);

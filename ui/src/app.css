@@ -8,18 +8,20 @@ body,
 }
 
 body {
+  -webkit-user-select: none;
   user-select: none;
+  cursor: default;
 }
 
-/* Text the player may want to copy */
+/* Only what is meant to be copied by hand: fields, the game log, and written content (Markdown pages, notes).
+   Everything else, including monospace labels such as versions and addresses, is not selectable: it has a Copy button
+   where copying makes sense. */
 input,
 textarea,
-pre,
-code,
-.text-mono,
-.text-log,
 .cb-log,
+.text-log,
 .selectable {
+  -webkit-user-select: text;
   user-select: text;
 }
 
@@ -45,4 +47,26 @@ a {
   transition: none !important;
   animation: none !important;
   scroll-behavior: auto !important;
+}
+
+/* Side panels: their buttons line up on the right. A row made only of buttons ends on the right edge, a lone
+   button in a column panel does too, and two buttons side by side share the width, half each. Full-width buttons
+   (class "wide") are not touched. */
+aside :where(div, span, p):has(> :is(.cb-btn, .cb-iconbtn)):not(:has(> :not(.cb-btn, .cb-iconbtn))) {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+aside :where(div, span, p):has(> .cb-btn:first-child:nth-last-child(2)):not(:has(> :not(.cb-btn))) {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+aside :where(div, span, p):has(> .cb-btn:first-child:nth-last-child(2)):not(:has(> :not(.cb-btn))) > .cb-btn {
+  width: 100%;
+  justify-content: center;
+  white-space: nowrap;
+}
+aside > :is(.cb-btn, .cb-iconbtn):not(.wide) {
+  align-self: flex-end;
 }

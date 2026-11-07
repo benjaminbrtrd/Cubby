@@ -15,8 +15,8 @@
 >
   <img
     class="cb-logo__mark"
-    src="/branding/cubby-128.png"
-    srcset="/branding/cubby-32.png 32w, /branding/cubby-64.png 64w, /branding/cubby-128.png 128w, /branding/cubby-256.png 256w, /branding/cubby-512.png 512w, /branding/cubby-1024.png 1024w"
+    src="/branding/cubby-mark-128.png"
+    srcset="/branding/cubby-mark-32.png 32w, /branding/cubby-mark-64.png 64w, /branding/cubby-mark-128.png 128w, /branding/cubby-mark-256.png 256w, /branding/cubby-mark-512.png 512w"
     sizes={`${markSize}px`}
     width={markSize}
     height={markSize}

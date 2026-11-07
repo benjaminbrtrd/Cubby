@@ -10,7 +10,7 @@
   import { bytes, fold, num, timeOfDay } from '../../format'
   import { switchLanguage, t } from '../../i18n.svelte'
   import type { DataFolder, JavaInstall, Settings } from '../../types'
-  import { Button, Dialog, Icon, Logo, SegmentedControl, Slider, StatusTag, Switch, TextField } from '../../cubby'
+  import { Button, Dialog, Icon, IconButton, Logo, MetaChip, SegmentedControl, Slider, StatusTag, Switch, TextField } from '../../cubby'
 
   let { section }: { section: SettingsSection } = $props()
 
@@ -129,6 +129,15 @@
   /* Saving */
   const s = $derived(app.settings)
   const save = (patch: Partial<Settings>) => app.saveSettings(patch)
+  async function copyPath(path: string) {
+    try {
+      await navigator.clipboard.writeText(path)
+      app.toast(t('Path copied.'), 'success')
+    } catch {
+      app.toast(t('Couldn’t copy. Select the path and copy it by hand.'), 'error')
+    }
+  }
+
   const saveJava = (patch: Partial<Settings['java']>) => s && save({ java: { ...s.java, ...patch } })
   const saveGame = (patch: Partial<Settings['game']>) => s && save({ game: { ...s.game, ...patch } })
   const saveProxy = (patch: Partial<Settings['proxy']>) => s && save({ proxy: { ...s.proxy, ...patch } })
@@ -500,16 +509,21 @@
               {:else if javas.length === 0}
                 <p class="text-small muted">{t('No Java found. Cubby downloads the right one the first time you play.')}</p>
               {:else}
-                <ul class="list">
+                <ul class="list javas">
                   {#each javas as j (j.executable)}
-                    <li class="item">
-                      <Icon name="cube" size={18} />
-                      <div class="item__text">
-                        <p class="text-body-strong">Java {j.major}{#if j.vendor}<span class="muted text-body"> · {j.vendor}</span>{/if}</p>
-                        <p class="text-mono muted">{j.version} · {j.arch}</p>
-                        <p class="text-mono muted path">{j.executable}</p>
+                    <li class="java">
+                      <span class="java__major text-counter" aria-hidden="true">{j.major}</span>
+                      <div class="java__text">
+                        <div class="java__title">
+                          <span class="text-body-strong">Java {j.major}</span>
+                          {#if j.vendor}<span class="text-body muted">{j.vendor}</span>{/if}
+                          <MetaChip>{j.version}</MetaChip>
+                          <MetaChip>{j.arch}</MetaChip>
+                          {#if j.managed}<StatusTag state="ready">{t('Managed by Cubby')}</StatusTag>{/if}
+                        </div>
+                        <p class="text-mono text-small muted java__path" title={j.executable}>{j.executable}</p>
                       </div>
-                      {#if j.managed}<StatusTag state="ready">{t('Managed by Cubby')}</StatusTag>{/if}
+                      <IconButton icon="copy" size="sm" label={t('Copy the path of Java {major}', { major: j.major })} onclick={() => copyPath(j.executable)} />
                     </li>
                   {/each}
                 </ul>
@@ -986,6 +1000,47 @@
   }
   .path {
     overflow-wrap: anywhere;
+  }
+  .java {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    border-top: var(--border-hair) solid var(--line);
+  }
+  .java:first-child {
+    border-top: 0;
+  }
+  .java__major {
+    flex: none;
+    display: grid;
+    place-items: center;
+    box-sizing: border-box;
+    width: 44px;
+    height: 44px;
+    color: var(--ink);
+    background: var(--field);
+    border: var(--border-block) solid var(--edge);
+    box-shadow: var(--shadow-block-sm);
+  }
+  .java__text {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+  .java__title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-1) var(--space-2);
+  }
+  .java__path {
+    margin: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
   .size-text {
     flex: none;

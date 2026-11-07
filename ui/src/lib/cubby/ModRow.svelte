@@ -49,11 +49,13 @@
       </div>
     {/if}
   </div>
-  <div class="cb-mod__actions">
-    {#if actions}
-      <Content value={actions} />
-    {:else}
-      <IconButton icon="more" size="sm" label={moreLabel || t('Actions for ') + name} onclick={onMore} />
-    {/if}
-  </div>
+  {#if actions || onMore}
+    <div class="cb-mod__actions">
+      {#if actions}
+        <Content value={actions} />
+      {:else}
+        <IconButton icon="more" size="sm" label={moreLabel || t('Actions for ') + name} onclick={onMore} />
+      {/if}
+    </div>
+  {/if}
 </div>

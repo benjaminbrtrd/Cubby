@@ -79,10 +79,11 @@
 </script>
 
 <script lang="ts">
-  import { Button, Icon, IconButton, InstanceRow, ProgressBar, SegmentedControl, TextField } from '../../cubby'
+  import { Button, Icon, IconButton, InstanceRow, ProgressBar, SegmentedControl } from '../../cubby'
+  import { floating } from '../../cubby/floating'
   import { api } from '../../api'
   import { iconOf } from '../../icon'
-  import { fold, loaderFull, num, plural, session } from '../../format'
+  import { loaderFull, num, plural, session } from '../../format'
   import DeleteInstanceDialog from './DeleteInstanceDialog.svelte'
   import FirstGame from './FirstGame.svelte'
   import InstanceCard from './InstanceCard.svelte'
@@ -102,7 +103,6 @@
   const byName = new Intl.Collator('en-US', { sensitivity: 'base', numeric: true })
 
   let sort = $state<Sort>('played')
-  let filter = $state('')
   /** Rows view: instances picked with Ctrl click, Shift click or Space. */
   let marked = $state<string[]>([])
   let menu = $state<'sort' | 'group' | null>(null)
@@ -147,11 +147,9 @@
     }
   }
 
-  const query = $derived(fold(filter.trim()))
   const visible = $derived.by(() => {
     const inGroup = app.instances.filter((i) => app.groupFilter === 'all' || (i.group ?? '') === app.groupFilter)
-    const shown = query ? inGroup.filter((i) => [i.name, i.minecraft, loaderFull(i.loader), i.group ?? ''].some((t) => fold(t).includes(query))) : inGroup
-    return [...shown].sort(compare)
+    return [...inGroup].sort(compare)
   })
 
   const headed = $derived(isList && app.groupFilter === 'all' && app.groups.length > 0)
@@ -506,7 +504,7 @@
                   {t('Move to group')}
                 </Button>
                 {#if menu === 'group'}
-                  <div class="menu" role="menu" tabindex="-1" aria-label={t('Move to group')} onkeydown={(e) => menuKeys(e, groupAnchor)} {@attach focusFirst}>
+                  <div class="menu" role="menu" tabindex="-1" aria-label={t('Move to group')} onkeydown={(e) => menuKeys(e, groupAnchor)} {@attach floating} {@attach focusFirst}>
                     {#each groupNames as name (name)}
                       <button type="button" role="menuitem" class="menu__item text-body" onclick={() => moveTo(name)}>
                         <span class="menu__check"><Icon name="folder" size={18} /></span>{name}
@@ -534,15 +532,12 @@
             </div>
           {/if}
           <span class="grow"></span>
-          <div class="filter">
-            <TextField label={t('Filter instances')} hideLabel icon="search" placeholder={t('Filter')} size="sm" bind:value={filter} />
-          </div>
           <div class="anchor" bind:this={sortAnchor} onfocusout={leaveMenu}>
             <Button variant="ghost" size="sm" iconEnd="chevron-down" aria-haspopup="menu" aria-expanded={menu === 'sort'} onclick={() => toggleMenu('sort')}>
               <span class="text-body"><span class="muted">{t('Sort:')}</span> {t(SORTS.find((s) => s.id === sort)?.label ?? '')}</span>
             </Button>
             {#if menu === 'sort'}
-              <div class="menu menu--end" role="menu" tabindex="-1" aria-label={t('Sort by')} onkeydown={(e) => menuKeys(e, sortAnchor)} {@attach focusFirst}>
+              <div class="menu menu--end" role="menu" tabindex="-1" aria-label={t('Sort by')} onkeydown={(e) => menuKeys(e, sortAnchor)} {@attach floating} {@attach focusFirst}>
                 {#each SORTS as s (s.id)}
                   <button
                     type="button"
@@ -619,7 +614,7 @@
                 />
               </div>
             {/each}
-            {#if !query && app.groupFilter === 'all'}
+            {#if app.groupFilter === 'all'}
               <button type="button" class="new text-body-strong" onclick={() => app.navigate({ name: 'create' })}>
                 <span class="new__icon"><Icon name="plus" size={22} /></span>
                 {t('New instance')}
@@ -628,12 +623,7 @@
           {/if}
         </div>
 
-        {#if !order.length}
-          <div class="none">
-            <p class="text-body">{t('Nothing matches “{query}”.', { query: filter.trim() })}</p>
-            <Button size="sm" variant="ghost" icon="close" onclick={() => (filter = '')}>{t('Clear filter')}</Button>
-          </div>
-        {:else if isList}
+        {#if isList}
           <p class="foot text-small muted">
             {plural(order.length, 'instance', 'instances')}{#if totalSecs >= 60}{' · '}{t('{time} played', { time: playTime(totalSecs) })}{/if}
           </p>
@@ -698,10 +688,6 @@
   }
   .muted {
     color: var(--ink-muted);
-  }
-  .filter {
-    flex: 0 1 180px;
-    min-width: 140px;
   }
 
   .chips {
@@ -796,17 +782,8 @@
     background: var(--bg);
     border-bottom: var(--border-hair) solid var(--line);
   }
-  .none {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-3);
-  }
-  .none p,
   .foot {
     margin: 0;
-  }
-  .foot {
     text-align: end;
   }
 
