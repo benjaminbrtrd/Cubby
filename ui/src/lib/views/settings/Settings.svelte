@@ -454,7 +454,7 @@
           <section id="{uid}-language" class="block" aria-labelledby="{uid}-h-language">
             {@render heading('language', t('Language'))}
             <div class="row row--stack">
-              <SegmentedControl label={t('Language')} options={LANGUAGES} value={s.language === 'en' || s.language === 'fr' ? s.language : 'system'} onChange={(v) => void save({ language: v }).then(() => switchLanguage(v))} />
+              <SegmentedControl label={t('Language')} options={LANGUAGES} value={s.language === 'en' || s.language === 'fr' ? s.language : 'system'} onChange={(v) => void save({ language: v }).then((ok) => ok && switchLanguage(v))} />
             </div>
           </section>
         {/if}

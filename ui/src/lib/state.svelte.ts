@@ -329,15 +329,18 @@ class AppState {
     }
   }
 
-  async saveSettings(patch: Partial<Settings>) {
-    if (!this.settings) return
+  /** Resolves true once written to disk. */
+  async saveSettings(patch: Partial<Settings>): Promise<boolean> {
+    if (!this.settings) return false
     const next = { ...$state.snapshot(this.settings), ...patch } as Settings
     this.settings = next
     this.applyAppearance()
     try {
       this.settings = await api.saveSettings(next)
+      return true
     } catch (e) {
       this.error(e)
+      return false
     }
   }
 
