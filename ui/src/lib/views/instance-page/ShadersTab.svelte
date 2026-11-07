@@ -1,7 +1,7 @@
 <script lang="ts">
   import { t } from '../../i18n.svelte'
   import { api } from '../../api'
-  import { Banner, Button, Icon, InstanceIcon, Kbd, StatusTag } from '../../cubby'
+  import { Banner, Button, Dialog, Icon, InstanceIcon, StatusTag } from '../../cubby'
   import { bytes, relativeTime } from '../../format'
   import { projectArt } from '../../icon'
   import { app } from '../../state.svelte'
@@ -59,7 +59,6 @@
   })
 
   const irisUpdate = $derived(data.shaderMods.iris ? data.update(data.shaderMods.iris.fileName) : undefined)
-  const hasIris = $derived(!!data.shaderMods.iris?.enabled)
 
   async function use(fileName: string | null) {
     if (locked || saving) return
@@ -73,6 +72,34 @@
       app.error(e)
     } finally {
       saving = false
+    }
+  }
+
+  // Which pack the side panel shows: the one clicked, else the one in use. NONE is the "no shaders" card.
+  const NONE = '\u0000none'
+  let selected = $state<string | null>(null)
+  const shown = $derived(selected === NONE ? null : (packs?.find((p) => p.fileName === selected) ?? current))
+  const shownIsNone = $derived(selected === NONE || (!packs?.some((p) => p.fileName === selected) && !current))
+  const shownSource = $derived(shown ? data.source(shown.fileName) : undefined)
+  const shownUpdate = $derived(shown ? data.update(shown.fileName) : undefined)
+
+  let deleting = $state<Pack | null>(null)
+  let removing = $state(false)
+
+  async function remove() {
+    const p = deleting
+    if (!p || removing) return
+    removing = true
+    try {
+      await api.removePack(id, 'shader', p.fileName)
+      deleting = null
+      if (selected === p.fileName) selected = null
+      await data.loadPacks()
+      app.toast(t('{name} moved to the trash.', { name: data.source(p.fileName)?.title ?? p.name }), 'success')
+    } catch (e) {
+      app.error(e)
+    } finally {
+      removing = false
     }
   }
 
@@ -138,11 +165,12 @@
       <p class="muted text-body">{t('Reading the shader packs folder…')}</p>
     {:else}
       <div class="grid">
-        <div class={['card', !current && 'is-on']}>
+        <div class={['card', !current && 'is-on', shownIsNone && 'is-shown']}>
           <div class="card__head">
             <InstanceIcon motif="block" ground="sky" size={32} />
             <div class="card__title">
-              <p class="text-body-strong">{t('None')}</p>
+              <!-- A button stretched over the whole card: a click anywhere on it shows it in the panel. -->
+              <p class="text-body-strong"><button type="button" class="card__hit" aria-pressed={shownIsNone} onclick={() => (selected = NONE)}>{t('None')}</button></p>
               <p class="text-small muted">{t('Minecraft’s own look')}</p>
             </div>
           </div>
@@ -157,12 +185,12 @@
         </div>
         {#each packs as p (p.fileName)}
           {@const src = data.source(p.fileName)}
-          <div class={['card', p.enabled && 'is-on']}>
+          <div class={['card', p.enabled && 'is-on', shown?.fileName === p.fileName && 'is-shown']}>
             <div class="card__head">
               {@render art(p)}
               <div class="card__title">
-                <p class="text-body-strong wrap">{src?.title ?? p.name}</p>
-                <p class="text-small muted">{src ? t('From Modrinth · {versionNumber}', { versionNumber: src.versionNumber }) : describe(p)}</p>
+                <p class="text-body-strong wrap"><button type="button" class="card__hit" aria-pressed={shown?.fileName === p.fileName} onclick={() => (selected = p.fileName)}>{src?.title ?? p.name}</button></p>
+                <p class="text-small muted">{src ? src.versionNumber : describe(p)}</p>
               </div>
             </div>
             <p class="text-mono muted wrap">{p.fileName}</p>
@@ -184,51 +212,71 @@
         {/each}
       </div>
       {#if !packs.length}
-        <p class="text-body muted">{t('No shader packs yet. Find some on Modrinth, or drop .zip files in the folder.')}</p>
+        <p class="text-body muted">{t('No shader packs yet.')}</p>
       {/if}
     {/if}
   </section>
-
-  <div class="note">
-    <span class="info icon"><Icon name="info" size={18} /></span>
-    <p class="text-body">
-      {t('Shaders change how the game looks, never how it plays.')}{#if hasIris}{' '}{t('Press')} <Kbd keys="K" /> {t('in game to turn them on or off.')}{/if}
-    </p>
-  </div>
 </div>
 
-<aside class="ip-aside" aria-label={t('Shader pack in use')}>
+<aside class="ip-aside" aria-label={t('Shader pack details')}>
   <div class="ip-aside__inner">
     <div class="aside__title">
-      <p class="text-label muted">{t('In use')}</p>
-      <h2 class="text-heading wrap">{current ? (currentSource?.title ?? current.name) : t('No shader pack')}</h2>
+      <p class="text-label muted">{shown ? (shown.enabled ? t('In use') : t('Not in use')) : !current ? t('In use') : t('Not in use')}</p>
+      <h2 class="text-heading wrap">{shown ? (shownSource?.title ?? shown.name) : t('No shader pack')}</h2>
     </div>
-    {#if current}
+    {#if shown}
       <dl class="facts">
         <dt class="text-small muted">{t('Size')}</dt>
-        <dd class="text-body">{bytes(current.size)}</dd>
-        {#if current.modified}
+        <dd class="text-body">{bytes(shown.size)}</dd>
+        {#if shown.modified}
           <dt class="text-small muted">{t('Changed')}</dt>
-          <dd class="text-body">{relativeTime(current.modified)}</dd>
+          <dd class="text-body">{relativeTime(shown.modified)}</dd>
         {/if}
         <dt class="text-small muted">{t('Source')}</dt>
-        <dd class="text-body">{currentSource ? 'Modrinth' : t('Not found on Modrinth')}</dd>
-        {#if currentSource}
+        <dd class="text-body">{shownSource ? 'Modrinth' : t('Not found on Modrinth')}</dd>
+        {#if shownSource}
           <dt class="text-small muted">{t('Version')}</dt>
-          <dd class="text-mono">{currentSource.versionNumber}</dd>
+          <dd class="text-mono">{shownSource.versionNumber}</dd>
         {/if}
         <dt class="text-small muted full">{t('File')}</dt>
-        <dd class="text-mono full wrap">{current.fileName}</dd>
+        <dd class="text-mono full wrap">{shown.fileName}</dd>
       </dl>
-      {#if currentSource}
-        <div><Button size="sm" icon="globe" onclick={() => currentSource && data.project(currentSource.slug, 'shader')}>{t('Open page')}</Button></div>
-      {/if}
+      <div class="actions">
+        {#if shown.enabled}
+          <Button icon="close" disabled={locked || saving} onclick={() => use(null)}>{t('Use no shaders')}</Button>
+        {:else}
+          <Button variant="primary" icon="check" disabled={locked || saving} onclick={() => use(shown.fileName)}>{t('Use this pack')}</Button>
+        {/if}
+        {#if shownUpdate}
+          <Button icon="update" busy={updating} disabled={updating || locked} onclick={() => data.applyUpdates([shownUpdate.fileName])}>{t('Update to {latestVersion}', { latestVersion: shownUpdate.latestVersion })}</Button>
+        {/if}
+        {#if shownSource}
+          <Button icon="globe" onclick={() => shownSource && data.project(shownSource.slug, 'shader')}>{t('Open page')}</Button>
+        {/if}
+      </div>
       <p class="text-small muted">{t('Each pack has its own settings, like shadows and fog. Change them in game under Options › Video settings › Shader packs › Shader pack settings.')}</p>
+      <div class="danger">
+        <Button variant="danger" icon="trash" disabled={locked} onclick={() => (deleting = shown)}>{t('Delete')}</Button>
+      </div>
     {:else}
       <p class="text-body">{t('The game uses its normal look and runs at its fastest. Pick a pack to use it the next time you play.')}</p>
+      {#if current}
+        <div class="actions"><Button icon="close" disabled={locked || saving} onclick={() => use(null)}>{t('Use no shaders')}</Button></div>
+      {/if}
     {/if}
   </div>
 </aside>
+
+{#snippet deleteActions()}
+  <Button variant="ghost" onclick={() => (deleting = null)}>{t('Cancel')}</Button>
+  <Button variant="danger" icon="trash" busy={removing} disabled={removing} onclick={remove}>{t('Move to trash')}</Button>
+{/snippet}
+
+{#if deleting}
+  <Dialog title={t('Move {name} to the trash?', { name: data.source(deleting.fileName)?.title ?? deleting.name })} icon="trash" tone="warning" onClose={() => (deleting = null)} actions={deleteActions}>
+    <p>{deleting.enabled ? t('It is the shader pack in use: the game goes back to its normal look.') : t('The file moves to the trash folder of this instance.')}</p>
+  </Dialog>
+{/if}
 
 <style>
   p,
@@ -309,7 +357,7 @@
   }
   .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     gap: var(--space-4);
   }
   .card {
@@ -338,6 +386,43 @@
   .card__title {
     min-width: 0;
   }
+  .card__hit {
+    all: unset;
+    cursor: pointer;
+  }
+  .card__hit::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+  }
+  .card__hit:focus-visible::after {
+    box-shadow: var(--focus-ring);
+  }
+  .card:hover {
+    background: var(--surface-hover);
+  }
+  .card.is-shown:not(.is-on) {
+    border-color: var(--ink);
+  }
+  .card__foot,
+  .card__update {
+    position: relative;
+    z-index: 1;
+  }
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+  .danger {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+    padding-top: var(--space-4);
+    border-top: var(--border-hair) solid var(--line);
+    text-align: end;
+  }
   .card__foot {
     display: flex;
     margin-top: auto;
@@ -347,15 +432,6 @@
     flex-wrap: wrap;
     align-items: center;
     gap: var(--space-2);
-  }
-  .note {
-    display: flex;
-    align-items: flex-start;
-    gap: var(--space-3);
-    padding: var(--space-3) var(--space-4);
-    background: var(--surface);
-    border: var(--border-block) solid var(--edge);
-    box-shadow: var(--shadow-block-sm);
   }
   .aside__title {
     display: flex;

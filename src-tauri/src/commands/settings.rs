@@ -90,6 +90,49 @@ pub fn open_data_folder(app: AppHandle, core: State<'_, Core>, key: String) -> C
         .map_err(|e| e.to_string())
 }
 
+/// Deletes what is inside `dir` (the folder itself stays). A missing folder is fine.
+fn empty_dir(dir: &Path) -> Result<(), String> {
+    let rd = match std::fs::read_dir(dir) {
+        Ok(rd) => rd,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(e) => return Err(format!("Couldn't read {}: {e}", dir.display())),
+    };
+    for entry in rd.flatten() {
+        let path = entry.path();
+        let result = match entry.file_type() {
+            Ok(t) if t.is_dir() => std::fs::remove_dir_all(&path),
+            _ => std::fs::remove_file(&path),
+        };
+        if let Err(e) = result
+            && e.kind() != std::io::ErrorKind::NotFound
+        {
+            return Err(format!("Couldn't delete {}: {e}", path.display()));
+        }
+    }
+    Ok(())
+}
+
+/// Empties the trash for good: what was deleted from the launcher (instances) and what instances moved aside
+/// (mods and packs removed from their folders).
+#[tauri::command]
+pub async fn clear_trash(core: State<'_, Core>) -> CmdResult<()> {
+    let launcher_trash = core.paths.root().join("trash");
+    let instance_trash: Vec<PathBuf> = core
+        .store
+        .list()
+        .unwrap_or_default()
+        .iter()
+        .map(|i| core.store.game_dir(i).join(".trash"))
+        .collect();
+    blocking(move || {
+        for dir in std::iter::once(launcher_trash).chain(instance_trash) {
+            empty_dir(&dir)?;
+        }
+        Ok(())
+    })
+    .await
+}
+
 /// Deletes the metadata cache (version manifests, loader profiles); it is fetched again when needed.
 #[tauri::command]
 pub async fn clear_cache(core: State<'_, Core>) -> CmdResult<()> {
@@ -100,4 +143,22 @@ pub async fn clear_cache(core: State<'_, Core>) -> CmdResult<()> {
         Err(e) => Err(format!("Couldn't clear the cache: {e}")),
     })
     .await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn emptying_a_folder_keeps_the_folder() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join("old-instance/saves")).unwrap();
+        std::fs::write(dir.path().join("old-instance/saves/level.dat"), "x").unwrap();
+        std::fs::write(dir.path().join("a.jar-20261107"), "x").unwrap();
+        empty_dir(dir.path()).unwrap();
+        assert!(dir.path().is_dir());
+        assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 0);
+        // a folder that doesn't exist is fine
+        empty_dir(&dir.path().join("missing")).unwrap();
+    }
 }

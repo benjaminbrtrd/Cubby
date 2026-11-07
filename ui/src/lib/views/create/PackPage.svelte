@@ -388,13 +388,15 @@
   .page {
     flex: 1;
     min-height: 0;
-    overflow: auto;
+    overflow: hidden;
     display: flex;
-    align-items: flex-start;
+    align-items: stretch;
   }
   .main {
     flex: 1;
     min-width: 0;
+    min-height: 0;
+    overflow: auto;
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
@@ -404,7 +406,10 @@
     box-sizing: border-box;
     flex: none;
     width: var(--size-inspector);
+    /* fixed like the rail on the left: only .main scrolls, the panel keeps the height of the window */
     align-self: stretch;
+    min-height: 0;
+    overflow: auto;
     display: flex;
     flex-direction: column;
     gap: var(--space-4);

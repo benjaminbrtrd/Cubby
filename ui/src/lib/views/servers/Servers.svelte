@@ -17,7 +17,7 @@
     status: ServerStatus | undefined
   }
 
-  const OFFLINE: ServerStatus = { online: false, motd: '', playersOnline: 0, playersMax: 0, version: null, pingMs: null, iconUrl: null }
+  const OFFLINE: ServerStatus = { online: false, motd: '', playersOnline: 0, playersMax: 0, version: null, pingMs: null, iconUrl: null, compatible: null }
 
   let entries = $state<Entry[] | null>(null)
   let selectedKey = $state<string | null>(null)
@@ -42,7 +42,7 @@
     if (!entries.length) adding = true
     await Promise.all(
       entries.map((e) =>
-        api.pingServer(e.server.address).then(
+        api.pingServer(e.server.address, e.instanceId).then(
           (s) => {
             if (gen === generation) e.status = s
           },
@@ -120,7 +120,7 @@
     return a[0] - b[0] || (a[1] ?? 0) - (b[1] ?? 0)
   }
 
-  type Fit = 'match' | 'range' | 'mismatch' | 'unknown'
+  type Fit = 'match' | 'range' | 'accepted' | 'mismatch' | 'unknown'
 
   function fit(serverVersion: string | null, mc: string): Fit {
     const list = versionsIn(serverVersion)
@@ -146,10 +146,15 @@
 
   const check = $derived.by(() => {
     if (!selected || !selInstance || !selected.status) return null
-    const version = selected.status.online ? selected.status.version : null
-    const f = fit(version, selInstance.minecraft)
+    const st = selected.status
+    const version = st.online ? st.version : null
+    // The protocol answer is exact: the server says whether it takes this version. The text of the version
+    // ("Requires MC 1.8 / 1.21") is only a hint, used when the protocol is not known.
+    const exact = st.online && st.compatible != null
+    let f: Fit = fit(version, selInstance.minecraft)
+    if (exact) f = st.compatible ? (f === 'match' ? 'match' : 'accepted') : 'mismatch'
     const other = f === 'mismatch' ? fitting(version).find((i) => i.id !== selInstance.id) ?? null : null
-    return { fit: f, version, other }
+    return { fit: f, version, other, exact }
   })
 
   // Add a server
@@ -403,8 +408,8 @@
           {/if}
 
           <div class="actions">
-            <Button size="sm" icon="copy" onclick={() => copyAddress(selected)}>{t('Copy address')}</Button>
-            <Button size="sm" variant="ghost" icon="trash" onclick={() => (confirmRemove = selected)}>{t('Remove')}</Button>
+            <Button size="sm" icon="copy" aria-label={t('Copy address')} onclick={() => copyAddress(selected)}>{t('Copy')}</Button>
+            <Button size="sm" variant="danger" icon="trash" onclick={() => (confirmRemove = selected)}>{t('Remove')}</Button>
           </div>
 
           {#if s?.online && motdOf(s)}
@@ -449,15 +454,22 @@
                 {#if check.fit === 'match'}
                   <p class="text-body-strong">{t('{name} matches the server', { name: selInstance.name })}</p>
                   <p class="text-small muted">{t('Both use Minecraft')} <span class="text-mono">{selInstance.minecraft}</span>.</p>
+                {:else if check.fit === 'accepted'}
+                  <p class="text-body-strong">{t('{name} can join', { name: selInstance.name })}</p>
+                  <p class="text-small muted">{t('The server takes Minecraft')} <span class="text-mono">{selInstance.minecraft}</span>.</p>
                 {:else if check.fit === 'range'}
                   <p class="text-body-strong">{t('{name} should work', { name: selInstance.name })}</p>
                   <p class="text-small muted">{t('The server accepts')} <span class="text-mono">{check.version}</span>.</p>
                 {:else if check.fit === 'mismatch'}
                   <p class="text-body-strong">{t('{name} may not get in', { name: selInstance.name })}</p>
-                  <p class="text-small muted">
-                    {t('The server runs')} <span class="text-mono">{check.version}</span>{t(', and {name} uses', { name: selInstance.name })}
-                    <span class="text-mono">{selInstance.minecraft}</span>.
-                  </p>
+                  {#if check.exact}
+                    <p class="text-small muted">{t('The server doesn’t take Minecraft')} <span class="text-mono">{selInstance.minecraft}</span>.</p>
+                  {:else}
+                    <p class="text-small muted">
+                      {t('The server runs')} <span class="text-mono">{check.version}</span>{t(', and {name} uses', { name: selInstance.name })}
+                      <span class="text-mono">{selInstance.minecraft}</span>.
+                    </p>
+                  {/if}
                   {#if check.other}
                     {@const other = check.other}
                     <div class="fit-action">
@@ -493,15 +505,20 @@
   .screen {
     display: flex;
     flex-direction: column;
-    min-height: 100%;
+    height: 100%;
+    min-height: 0;
   }
   .layout {
     flex: 1;
+    min-height: 0;
+    overflow: hidden;
     display: flex;
   }
   .content {
     flex: 1;
     min-width: 0;
+    min-height: 0;
+    overflow: auto;
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
@@ -654,6 +671,8 @@
 
   .aside {
     flex: none;
+    min-height: 0;
+    overflow: auto;
     width: var(--size-inspector);
     background: var(--bg-chrome);
     border-inline-start: var(--border-chrome) solid var(--edge);

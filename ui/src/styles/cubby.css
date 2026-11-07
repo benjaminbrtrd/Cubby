@@ -27,7 +27,7 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f
 .cb-logo { display: inline-flex; align-items: center; gap: var(--cb-logo-gap, 10px); color: var(--ink); }
 .cb-logo__mark, .cb-logo__word { display: block; flex: none; }
 .cb-logo__mark { object-fit: contain; }
-.cb-logo__word { background: currentColor; mask: url('/branding/cubby-wordmark.svg') center / contain no-repeat; }
+.cb-logo__word { background: currentColor; mask: url('/branding/cubby-wordmark.svg') center / contain no-repeat; translate: 0 10%; } /* the lettering's caps sit above the middle of its box (room for the descender): bring them level with the mark */
 
 /* Kbd */
 .cb-kbd-group { display: inline-flex; align-items: center; gap: 3px; flex: none; }

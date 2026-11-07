@@ -14,7 +14,9 @@
   import { compactNum, instanceMeta, num, plural, relativeTime } from '../../format'
   import { projectArt } from '../../icon'
   import { app } from '../../state.svelte'
+  import { queue } from '../../queue.svelte'
   import type { PackSort, PackSummary, ProjectKind, ProjectQuery, ProjectSort, SearchResults } from '../../types'
+  import QueueTray from './QueueTray.svelte'
   import PackPage from '../create/PackPage.svelte'
   import ProviderMark from '../create/ProviderMark.svelte'
   import InstallPanel from './InstallPanel.svelte'
@@ -365,7 +367,7 @@
 
   interface CardState {
     fit: Fit
-    action: 'install' | 'other' | 'installed' | 'update' | 'busy' | 'curseforge' | 'pack'
+    action: 'install' | 'other' | 'installed' | 'update' | 'busy' | 'curseforge' | 'pack' | 'queued'
     version: string | null
   }
 
@@ -375,6 +377,10 @@
     if (h.kind === 'modpack' || !target) return { fit: hitFit(h, target), action: 'install', version: null }
     const busy = pending[h.id] === target.id && !!app.taskFor(`install:${target.id}`)
     if (busy) return { fit: { tone: 'busy', icon: 'download', word: t('Installing') }, action: 'busy', version: null }
+    const q = queue.has(h.id, target.id)
+    if (q?.state === 'staged') return { fit: { tone: 'busy', icon: 'download', word: t('In the queue') }, action: 'queued', version: null }
+    if (q?.state === 'running') return { fit: { tone: 'busy', icon: 'download', word: t('Installing') }, action: 'busy', version: null }
+    if (q?.state === 'done') return { fit: { tone: 'have', icon: 'check', word: t('In {name}', { name: target.name }) }, action: 'installed', version: q.versionNumber }
     const have = app.installedIn(target.id, h.id)
     if (have) {
       const update = app.updates[target.id]?.some((u) => u.projectId === h.id)
@@ -715,6 +721,8 @@
                       <Button size="sm" icon="download" disabled>{t('Installing')}</Button>
                     {:else if s.action === 'update'}
                       <Button size="sm" icon="update" onclick={() => (installing = h)} aria-label={t('Update {title}', { title: h.title })}>{t('Update')}</Button>
+                    {:else if s.action === 'queued'}
+                      <Button size="sm" icon="check" onclick={() => target && queue.remove(`${target.id}:${h.id}`)} aria-label={t('Remove {title} from the queue', { title: h.title })}>{t('In the queue')}</Button>
                     {:else if s.action === 'pack'}
                       <Button size="sm" icon="download" onclick={() => open(h)} aria-label={t('Install {title}', { title: h.title })}>{t('Install')}</Button>
                     {:else if s.action === 'curseforge'}
@@ -782,6 +790,7 @@
       {/if}
     </div>
   </div>
+  {#if target}<QueueTray instanceId={target.id} />{/if}
 </div>
 {/if}
 
@@ -792,7 +801,7 @@
     <Button onclick={() => (installing = null)}>{t('Close')}</Button>
   {/snippet}
   <Dialog wide title={t('Install {title}', { title: h.title })} onClose={() => (installing = null)} actions={dialogActions}>
-    <InstallPanel project={h} compact onLeave={() => (installing = null)} onInstall={(id) => (pending[h.id] = id)} />
+    <InstallPanel project={h} compact onLeave={() => (installing = null)} onInstall={(id) => (pending[h.id] = id)} onQueued={() => (installing = null)} />
   </Dialog>
 {/if}
 
@@ -1050,6 +1059,10 @@
     gap: 10px;
     min-width: 0;
   }
+  /* the last row (fit and action) sits at the bottom of the card, level with its neighbour's */
+  .card > .row.spread:last-child {
+    margin-top: auto;
+  }
   .row.spread {
     flex-wrap: wrap;
     justify-content: space-between;
@@ -1095,6 +1108,8 @@
   .summary-text {
     display: -webkit-box;
     margin-top: 2px;
+    /* always two lines tall, so cards side by side line up whatever the length of their description */
+    min-height: 2lh;
     overflow: hidden;
     -webkit-line-clamp: 2;
     line-clamp: 2;
@@ -1120,6 +1135,8 @@
   .act {
     position: relative;
     z-index: 1;
+    display: inline-flex;
+    gap: var(--space-2);
   }
   .fit {
     display: inline-flex;

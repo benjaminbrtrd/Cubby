@@ -193,7 +193,6 @@
     }
   }
 
-  const SKIN_PAGE = 'https://www.minecraft.net/msaprofile/mygames/editskin'
 </script>
 
 <!-- A skin's face (front of the head with its hat layer), cropped from the skin texture and drawn pixelated.
@@ -355,14 +354,7 @@
           </p>
         </div>
 
-        <a
-          class="link text-body-strong"
-          href={SKIN_PAGE}
-          onclick={(e) => {
-            e.preventDefault()
-            openUrl(SKIN_PAGE)
-          }}>{t('Change skin and cape on')} <span class="text-mono">minecraft.net</span></a
-        >
+        <div><Button icon="accounts" onclick={() => selected && app.navigate({ name: 'skins', accountId: selected.id })}>{t('Skin and cape')}</Button></div>
         <p class="secure text-small muted">
           <Icon name="key" size={18} />
           <span>
@@ -420,16 +412,21 @@
   .screen {
     display: flex;
     flex-direction: column;
-    min-height: 100%;
+    height: 100%;
+    min-height: 0;
   }
   .cols {
     flex: 1;
+    min-height: 0;
+    overflow: hidden;
     display: flex;
     align-items: stretch;
   }
   .content {
     flex: 1;
     min-width: 0;
+    min-height: 0;
+    overflow: auto;
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
@@ -554,6 +551,8 @@
   .aside {
     box-sizing: border-box;
     flex: none;
+    min-height: 0;
+    overflow: auto;
     width: var(--size-inspector);
     display: flex;
     flex-direction: column;
@@ -597,14 +596,6 @@
   }
   .note {
     margin-top: 6px;
-  }
-  .link {
-    align-self: flex-start;
-    color: var(--link);
-  }
-  .link:focus-visible {
-    outline: 2px solid transparent;
-    box-shadow: var(--focus-ring);
   }
   .secure {
     display: flex;

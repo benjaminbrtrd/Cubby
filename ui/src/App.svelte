@@ -16,6 +16,7 @@
   import Running from './lib/views/play/Running.svelte'
   import Crash from './lib/views/play/Crash.svelte'
   import Downloads from './lib/views/downloads/Downloads.svelte'
+  import Skins from './lib/views/skins/Skins.svelte'
   import Discover from './lib/views/discover/Discover.svelte'
   import ProjectPage from './lib/views/discover/ProjectPage.svelte'
   import Servers from './lib/views/servers/Servers.svelte'
@@ -172,6 +173,8 @@
         <Screenshots />
       {:else if app.route.name === 'accounts'}
         <Accounts />
+      {:else if app.route.name === 'skins'}
+        {#key app.route.accountId}<Skins accountId={app.route.accountId} />{/key}
       {:else if app.route.name === 'settings'}
         <Settings section={app.route.section} />
       {/if}

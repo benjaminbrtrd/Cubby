@@ -10,10 +10,12 @@ import { FR_5 } from './fr-5'
 import { FR_6 } from './fr-6'
 import { FR_7 } from './fr-7'
 import { FR_8 } from './fr-8'
+import { FR_9 } from './fr-9'
 
 export const FR: Record<string, Entry> = {
   ...FR_7,
   ...FR_8,
+  ...FR_9,
   ...FR_1,
   ...FR_2,
   ...FR_3,

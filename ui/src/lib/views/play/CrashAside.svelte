@@ -1,12 +1,12 @@
-<!-- Side of the crash screen: what Cubby checked, the crash report, the last log lines and Play again. -->
+<!-- Side of the crash screen: what Cubby checked, the crash report and Play again. -->
 <script lang="ts">
   import { t } from '../../i18n.svelte'
   import { api } from '../../api'
-  import { Button, Icon, LogViewer, PlayButton } from '../../cubby'
+  import { Button, Icon, PlayButton } from '../../cubby'
   import { plural } from '../../format'
   import { app } from '../../state.svelte'
   import type { Diagnosis } from './crash'
-  import type { ParsedLine, SessionFacts } from './log'
+  import type { SessionFacts } from './log'
   import { checksFor } from './crashText'
 
   let {
@@ -15,7 +15,6 @@
     d,
     facts,
     logLines,
-    excerpt,
     memoryMb,
     mods,
     enabledMods,
@@ -28,7 +27,6 @@
     facts: SessionFacts
     /** Lines in the log of the session that crashed. */
     logLines: number
-    excerpt: ParsedLine[]
     /** The memory the game had when it crashed. */
     memoryMb: number
     mods: number
@@ -97,13 +95,6 @@
     </div>
   </section>
 
-  {#if excerpt.length}
-    <section class="block" aria-labelledby="excerpt-title">
-      <h2 id="excerpt-title" class="text-label muted">{t('Last {n}', { n: plural(excerpt.length, 'log line', 'log lines') })}</h2>
-      <LogViewer lines={excerpt} height={184} label={t('Last lines of the game log')} />
-    </section>
-  {/if}
-
   <div class="play">
     {#if running}
       <Button icon="terminal" onclick={() => app.navigate({ name: 'running', id })}>{t('Show the running game')}</Button>
@@ -126,6 +117,8 @@
   }
   .aside {
     flex: none;
+    min-height: 0;
+    overflow: auto;
     width: var(--size-inspector);
     display: flex;
     flex-direction: column;

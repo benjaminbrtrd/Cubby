@@ -238,6 +238,7 @@
 <script lang="ts">
   import { tick, untrack } from 'svelte'
   import { Banner, Button, Icon, IconButton, InstanceIcon, MetaChip, PlayButton, Tabs, type IconName, type TabItem } from '../../cubby'
+  import { floating } from '../../cubby/floating'
   import { loaderFull, num, plural, playTime, relativeTime, session } from '../../format'
   import { iconOf } from '../../icon'
   import type { InstanceTab } from '../../state.svelte'
@@ -462,7 +463,7 @@
               onclick={() => (menuOpen ? closeMenu() : openMenu())}
             />
             {#if menuOpen}
-              <div class="menu" role="menu" id={menuId} aria-label={t('More actions')} tabindex="-1" bind:this={menuEl} onkeydown={menuKeys}>
+              <div class="menu" role="menu" id={menuId} aria-label={t('More actions')} tabindex="-1" bind:this={menuEl} onkeydown={menuKeys} {@attach floating}>
                 {#each menuItems as item (item.id)}
                   {#if item.danger}<div class="menu__sep" role="separator"></div>{/if}
                   <button type="button" role="menuitem" tabindex="-1" class={['menu__item text-body-strong', item.danger && 'is-danger']} disabled={item.disabled} onclick={() => pick(item)}>
@@ -530,13 +531,16 @@
   .page {
     display: flex;
     flex-direction: column;
-    min-height: 100%;
+    height: 100%;
+    min-height: 0;
   }
   .layout {
     flex: 1;
+    min-height: 0;
+    overflow: hidden;
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-rows: auto auto 1fr;
+    grid-template-rows: auto auto minmax(0, 1fr);
     grid-template-areas:
       'head aside'
       'tabs aside'
@@ -560,6 +564,8 @@
   .layout > :global(.ip-body) {
     grid-area: body;
     min-width: 0;
+    min-height: 0;
+    overflow: auto;
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
@@ -569,21 +575,27 @@
     grid-area: aside;
     width: var(--size-inspector);
     min-width: 0;
+    min-height: 0;
+    overflow: hidden;
     background: var(--bg-chrome);
     border-inline-start: var(--border-chrome) solid var(--edge);
   }
   .layout > :global(.ip-aside) > :global(.ip-aside__inner) {
-    position: sticky;
-    top: 0;
+    box-sizing: border-box;
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
-    max-height: calc(100vh - var(--size-titlebar));
+    height: 100%;
     overflow-y: auto;
     padding: var(--space-6) var(--space-5);
   }
   @media (max-width: 1099px) {
+    .page {
+      height: auto;
+      min-height: 100%;
+    }
     .layout {
+      overflow: visible;
       grid-template-columns: minmax(0, 1fr);
       grid-template-rows: auto auto auto auto;
       grid-template-areas: 'head' 'tabs' 'body' 'aside';
@@ -593,9 +605,13 @@
       border-inline-start: 0;
       border-top: var(--border-chrome) solid var(--edge);
     }
+    .layout > :global(.ip-body),
+    .layout > :global(.ip-aside) {
+      overflow: visible;
+    }
     .layout > :global(.ip-aside) > :global(.ip-aside__inner) {
-      position: static;
-      max-height: none;
+      height: auto;
+      overflow: visible;
     }
   }
 

@@ -1,0 +1,25 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.6.0.schema.json
+PackageIdentifier: Benjaminbrtrd.Cubby
+PackageVersion: 2026.11.0-alpha.2
+PackageLocale: en-US
+Publisher: Benjamin
+PublisherUrl: https://github.com/benjaminbrtrd
+PublisherSupportUrl: https://github.com/benjaminbrtrd/Cubby/issues
+PrivacyUrl: https://www.cubbylauncher.com/privacy
+PackageName: Cubby
+PackageUrl: https://www.cubbylauncher.com
+License: GPL-3.0
+LicenseUrl: https://github.com/benjaminbrtrd/Cubby/blob/main/LICENSE
+ShortDescription: The lightweight Minecraft launcher.
+Description: Cubby keeps each Minecraft world in its own instance, with its own version, loader, mods and settings. It installs mods, shader packs, resource packs and modpacks from Modrinth and CurseForge, and handles Java for you.
+Moniker: cubby
+Tags:
+- launcher
+- minecraft
+- mods
+- modpacks
+- fabric
+- forge
+ReleaseNotesUrl: https://github.com/benjaminbrtrd/Cubby/releases/tag/v2026.11.0-alpha.2
+ManifestType: defaultLocale
+ManifestVersion: 1.6.0

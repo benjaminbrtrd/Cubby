@@ -15,6 +15,8 @@
 | **macOS** 11 or later, Intel | `Cubby_{{VERSION}}_x64.dmg` | Same as above. |
 | **Linux** 64-bit | `Cubby_{{VERSION}}_amd64.AppImage` | Make it executable, then run it. Debian and Ubuntu can use `Cubby_{{VERSION}}_amd64.deb` instead. |
 
+**Check a download.** `SHA256SUMS.txt` lists the SHA-256 of every file (`shasum -a 256 <file>` on macOS and Linux, `Get-FileHash <file>` in PowerShell). To check that a file was built by this repository's workflow: `gh attestation verify <file> --repo benjaminbrtrd/Cubby`.
+
 ---
 
 <sub>Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft. Cubby is free software under the GPL-3.0.</sub>

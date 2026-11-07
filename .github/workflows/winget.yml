@@ -1,0 +1,28 @@
+name: Winget
+
+# Sends each published (non pre-release) version to the Windows Package Manager, as a pull request on
+# microsoft/winget-pkgs. It only runs once the package exists there and a token is set:
+#   1. submit the first version by hand (see packaging/winget/README.md);
+#   2. add the repository secret WINGET_TOKEN (a classic personal access token with the public_repo scope,
+#      from an account that has a fork of microsoft/winget-pkgs);
+#   3. add the repository variable WINGET_ENABLED = true.
+on:
+  release:
+    types: [released]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to publish, e.g. v2026.11.0'
+        required: true
+
+jobs:
+  winget:
+    if: ${{ vars.WINGET_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: vedantmgoyal9/winget-releaser@v2
+        with:
+          identifier: Benjaminbrtrd.Cubby
+          installers-regex: '_x64-setup\.exe$'
+          release-tag: ${{ inputs.tag || github.event.release.tag_name }}
+          token: ${{ secrets.WINGET_TOKEN }}

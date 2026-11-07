@@ -1,4 +1,4 @@
-import { api, onEvent } from './api'
+import { api, inTauri, onEvent } from './api'
 import type { Account, AppInfo, AppUpdate, ContentSource, ContentUpdate, Instance, LogLine, ProjectKind, PackProvider, ProjectSort, ProviderId, Settings, CubbyEvent } from './types'
 import { t } from './i18n.svelte'
 
@@ -26,6 +26,8 @@ export type Route =
   | { name: 'project'; idOrSlug: string; kind: ProjectKind }
   | { name: 'downloads' }
   | { name: 'accounts' }
+  /** Skin and cape of an account. */
+  | { name: 'skins'; accountId: string }
   | { name: 'servers' }
   | { name: 'captures' }
   | { name: 'settings'; section: SettingsSection }
@@ -36,6 +38,8 @@ export function sectionOf(route: Route): 'library' | 'discover' | 'servers' | 'c
     case 'discover':
     case 'project':
       return 'discover'
+    case 'skins':
+      return 'accounts'
     case 'servers':
     case 'captures':
     case 'downloads':
@@ -152,7 +156,9 @@ class AppState {
   updatedFrom = $state<string | null>(null)
   prismImportOpen = $state(false)
   /** New instance: the source shown (Custom, Import or a modpack provider). */
-  newSource = $state<'quick' | 'custom' | 'import' | ProviderId>('quick')
+  /** A cubby://pack/… link opened from outside (a web page): New instance › From a link reads it. */
+  pendingPackLink = $state<string | null>(null)
+  newSource = $state<'quick' | 'custom' | 'import' | 'link' | ProviderId>('quick')
   providers = $state<PackProvider[] | null>(null)
   providersError = $state<string | null>(null)
   /** Instance whose delete confirmation is open. */
@@ -245,9 +251,26 @@ class AppState {
       this.error(e)
     }
     this.loaded = true
+    this.listenForLinks()
     this.noticeNewVersion()
     this.startUpdateChecks()
     return unlisten
+  }
+
+  /** cubby://pack/<code> links (the "Open in Cubby" button of a shared pack's page) open New instance › From a link. */
+  private listenForLinks() {
+    if (!inTauri) return
+    const open = (urls: string[] | null | undefined) => {
+      const link = urls?.find((u) => u.toLowerCase().startsWith('cubby://pack/'))
+      if (!link) return
+      this.pendingPackLink = link
+      this.newSource = 'link'
+      this.navigate({ name: 'create' })
+    }
+    void import('@tauri-apps/plugin-deep-link').then(async (m) => {
+      open(await m.getCurrent().catch(() => null))
+      await m.onOpenUrl(open)
+    }).catch((e) => console.warn('deep links unavailable', e))
   }
 
   navigate(route: Route) {

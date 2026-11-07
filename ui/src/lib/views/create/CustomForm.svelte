@@ -2,6 +2,7 @@
   import { t } from '../../i18n.svelte'
   import { Banner, Button, Icon, IconPicker, SegmentedControl, TextField, pickIcon, rovingKeys, type Ground, type Motif } from '../../cubby'
   import { api } from '../../api'
+  import Picker from '../discover/Picker.svelte'
   import { app } from '../../state.svelte'
   import { encodeIcon } from '../../icon'
   import { locale, fold, loaderName } from '../../format'
@@ -51,8 +52,6 @@
   let loaderVersions = $state<LoaderVersion[] | null>(null)
   let loaderError = $state<string | null>(null)
   let loaderVersion = $state<string | null>(null)
-  let loaderMenu = $state(false)
-  let loaderAnchor: HTMLElement | undefined = $state()
   let loaderTry = $state(0)
 
   let busy = $state<'create' | 'play' | null>(null)
@@ -201,42 +200,12 @@
     const at = READY.findIndex((l) => l.kind === loader)
     rovingKeys(e, READY.length, Math.max(0, at), (to) => (loader = READY[to].kind))
   }
-
-  // loader version menu
-
-  function closeLoaderMenu(focusBack = false) {
-    loaderMenu = false
-    if (focusBack) loaderAnchor?.querySelector<HTMLElement>('button')?.focus()
-  }
-
-  function menuKeys(e: KeyboardEvent) {
-    const items = [...(e.currentTarget as HTMLElement).querySelectorAll<HTMLElement>('[role="menuitemradio"]')]
-    const i = items.indexOf(document.activeElement as HTMLElement)
-    let to: number | null = null
-    if (e.key === 'Escape') {
-      e.preventDefault()
-      e.stopPropagation()
-      closeLoaderMenu(true)
-    } else if (e.key === 'Tab') loaderMenu = false
-    else if (e.key === 'ArrowDown') to = (i + 1) % items.length
-    else if (e.key === 'ArrowUp') to = (i - 1 + items.length) % items.length
-    else if (e.key === 'Home') to = 0
-    else if (e.key === 'End') to = items.length - 1
-    if (to != null) {
-      e.preventDefault()
-      items[to]?.focus()
-    }
-  }
-
-  function leaveMenu(e: FocusEvent) {
-    const next = e.relatedTarget as Node | null
-    if (!next || !(e.currentTarget as HTMLElement).contains(next)) loaderMenu = false
-  }
-
-  function focusChecked(node: HTMLElement) {
-    ;(node.querySelector<HTMLElement>('[aria-checked="true"]') ?? node.querySelector<HTMLElement>('[role="menuitemradio"]'))?.focus()
-  }
 </script>
+
+{#snippet loaderOption(item: { id: string; lv: LoaderVersion }, selected: boolean)}
+  <span class="text-mono">{item.lv.version}</span>
+  {#if item.lv.version === recommended}<span class="text-small muted">{t('Recommended')}</span>{:else if !item.lv.stable}<span class="text-small muted">{t('Beta')}</span>{/if}
+{/snippet}
 
 <svelte:window onkeydown={onWindowKey} />
 
@@ -304,45 +273,27 @@
           <span class="grow"></span>
           {#if loader !== 'vanilla'}
             <span class="text-small muted" id="ni-loader-version">{t('Loader version')}</span>
-            <div class="anchor" bind:this={loaderAnchor} onfocusout={leaveMenu}>
-              <Button
-                size="sm"
-                iconEnd="chevron-down"
-                aria-haspopup="menu"
-                aria-expanded={loaderMenu}
-                aria-describedby="ni-loader-version"
-                disabled={!loaderVersions?.length}
-                onclick={() => (loaderMenu = !loaderMenu)}
-              >
+            <Picker
+              items={loaderVersions?.map((lv) => ({ id: lv.version, lv })) ?? []}
+              value={loaderVersion}
+              onSelect={(v) => (loaderVersion = v)}
+              label={t('{name} version', { name: loaderInfo.name })}
+              buttonLabel={t('Loader version')}
+              variant="block"
+              disabled={!loaderVersions?.length}
+              listWidth={240}
+              option={loaderOption}
+            >
+              {#snippet trigger()}
                 {#if loaderVersions === null}
                   {t('Loading…')}
                 {:else if loaderVersion}
-                  {loaderVersion}{loaderVersion === recommended ? t(' (recommended)') : ''}
+                  <span class="text-mono">{loaderVersion}</span>{loaderVersion === recommended ? t(' (recommended)') : ''}
                 {:else}
                   {t('None available')}
                 {/if}
-              </Button>
-              {#if loaderMenu && loaderVersions?.length}
-                <div class="menu" role="menu" tabindex="-1" aria-label={t('{name} version', { name: loaderInfo.name })} onkeydown={menuKeys} {@attach focusChecked}>
-                  {#each loaderVersions as lv (lv.version)}
-                    <button
-                      type="button"
-                      role="menuitemradio"
-                      aria-checked={lv.version === loaderVersion}
-                      class="menu__item"
-                      onclick={() => {
-                        loaderVersion = lv.version
-                        closeLoaderMenu(true)
-                      }}
-                    >
-                      <span class="menu__check">{#if lv.version === loaderVersion}<Icon name="check" size={18} />{/if}</span>
-                      <span class="text-mono">{lv.version}</span>
-                      {#if lv.version === recommended}<span class="text-small muted">{t('Recommended')}</span>{:else if !lv.stable}<span class="text-small muted">{t('Beta')}</span>{/if}
-                    </button>
-                  {/each}
-                </div>
-              {/if}
-            </div>
+              {/snippet}
+            </Picker>
           {/if}
         </div>
         <!-- svelte-ignore a11y_interactive_supports_focus -->
@@ -474,8 +425,9 @@
     gap: var(--space-4);
   }
   .identity {
-    flex: 1 1 460px;
-    max-width: 524px;
+    flex: 1 1 520px;
+    /* wide enough for five emblems per row (5 × 60px and four gaps, next to the preview) */
+    max-width: 590px;
     min-width: 0;
     display: flex;
     flex-direction: column;
@@ -623,48 +575,6 @@
     color: var(--gold-text);
   }
 
-  .anchor {
-    position: relative;
-  }
-  .menu {
-    position: absolute;
-    z-index: var(--layer-menu);
-    top: calc(100% + var(--space-1));
-    inset-inline-end: 0;
-    display: flex;
-    flex-direction: column;
-    min-width: 240px;
-    max-height: 320px;
-    overflow: auto;
-    padding: var(--space-1) 0;
-    background: var(--surface);
-    border: var(--border-block) solid var(--edge);
-    box-shadow: var(--shadow-float);
-  }
-  .menu__item {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    min-height: 32px;
-    padding: 0 var(--space-3) 0 var(--space-2);
-    color: var(--ink);
-    text-align: start;
-    background: transparent;
-    border: 0;
-    cursor: pointer;
-  }
-  .menu__item:hover {
-    background: var(--surface-hover);
-  }
-  .menu__item:focus-visible {
-    outline: 3px solid var(--focus);
-    outline-offset: -3px;
-  }
-  .menu__check {
-    display: inline-flex;
-    width: 18px;
-    color: var(--grass-text);
-  }
 
   .aside {
     box-sizing: border-box;

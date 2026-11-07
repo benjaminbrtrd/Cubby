@@ -165,7 +165,7 @@
           </ul>
           <p class="text-small muted">{t('New packs land here, turned off, until you turn them on.')}</p>
         {:else}
-          <p class="empty text-body">{packs.length ? t('Every installed pack is on.') : t('No resource packs yet. Find some on Modrinth, or drop .zip files in the folder.')}</p>
+          <p class="empty text-body">{packs.length ? t('Every installed pack is on.') : t('No resource packs yet.')}</p>
         {/if}
         <div class="actions">
           <Button variant="primary" icon="search" onclick={() => data.discover('resourcepack')}>{t('Find resource packs')}</Button>

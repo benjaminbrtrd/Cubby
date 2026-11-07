@@ -15,15 +15,18 @@
 
 <script lang="ts">
   import { Banner, Button, GROUNDS, Icon, IconButton, InstanceIcon, PlayButton } from '../../cubby'
+  import { floating } from '../../cubby/floating'
   import { api } from '../../api'
   import { app } from '../../state.svelte'
   import { iconOf } from '../../icon'
   import { loaderFull, num, playTime, plural, relativeTime, session } from '../../format'
   import type { Server, World } from '../../types'
   import { t } from '../../i18n.svelte'
+  import SharePackDialog from './SharePackDialog.svelte'
   import { liveState, playedLine, taskVerb } from './Library.svelte'
 
   let { id, cover }: { id: string; cover: string | null } = $props()
+  let sharing = $state(false)
 
   const instance = $derived(app.instance(id))
   const live = $derived(instance ? liveState(instance) : null)
@@ -256,11 +259,12 @@
           onclick={onPlay}
         />
         <Button size="lg" icon="settings" onclick={() => app.openInstance(id)}>{t('Mods and settings')}</Button>
+        <Button size="lg" icon="globe" onclick={() => (sharing = true)}>{t('Share')}</Button>
         <IconButton icon="folder" size="lg" variant="secondary" label={t('Open folder')} onclick={openFolder} />
         <div class="anchor" bind:this={moreAnchor} onfocusout={leaveMore}>
           <IconButton icon="more" size="lg" variant="secondary" label={t('More actions')} aria-haspopup="menu" aria-expanded={moreOpen} onclick={() => (moreOpen = !moreOpen)} />
           {#if moreOpen}
-            <div class="menu" role="menu" tabindex="-1" aria-label={t('More actions')} onkeydown={menuKeys} {@attach focusFirst}>
+            <div class="menu" role="menu" tabindex="-1" aria-label={t('More actions')} onkeydown={menuKeys} {@attach floating} {@attach focusFirst}>
               <button type="button" role="menuitem" class="menu__item text-body" disabled={busy} onclick={playOffline}><Icon name="offline" size={18} />{t('Play offline')}</button>
               <button type="button" role="menuitem" class="menu__item text-body" onclick={gameLog}><Icon name="terminal" size={18} />{t('Game log')}</button>
               <button type="button" role="menuitem" class="menu__item text-body" onclick={duplicate}><Icon name="copy" size={18} />{t('Duplicate')}</button>
@@ -303,6 +307,10 @@
       {/if}
     </aside>
   </section>
+{/if}
+
+{#if sharing}
+  <SharePackDialog {id} onClose={() => (sharing = false)} />
 {/if}
 
 <style>

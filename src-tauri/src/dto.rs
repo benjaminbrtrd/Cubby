@@ -443,6 +443,8 @@ pub struct ServerStatusDto {
     pub version: Option<String>,
     pub ping_ms: Option<u32>,
     pub icon_url: Option<String>,
+    /// Whether the server takes the Minecraft version of the instance pinged with; `None` when it cannot be known.
+    pub compatible: Option<bool>,
 }
 
 impl From<cubby_launch::ServerStatus> for ServerStatusDto {
@@ -455,6 +457,7 @@ impl From<cubby_launch::ServerStatus> for ServerStatusDto {
             version: s.version,
             ping_ms: s.ping_ms,
             icon_url: s.favicon,
+            compatible: None,
         }
     }
 }
@@ -933,5 +936,88 @@ impl From<cubby_instance::WorldBackup> for WorldBackupDto {
             created: b.created,
             size_bytes: b.size,
         }
+    }
+}
+
+/// `VersionBrief` in types.ts.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VersionBriefDto {
+    pub version_id: String,
+    pub project_id: String,
+    pub slug: String,
+    pub title: String,
+    pub icon_url: Option<String>,
+    pub version_number: String,
+    pub project_type: String,
+    pub size: u64,
+    pub game_versions: Vec<String>,
+    pub loaders: Vec<String>,
+}
+
+impl From<modrinth::VersionBrief> for VersionBriefDto {
+    fn from(v: modrinth::VersionBrief) -> Self {
+        Self {
+            version_id: v.version_id,
+            project_id: v.project_id,
+            slug: v.slug,
+            title: v.title,
+            icon_url: v.icon_url,
+            version_number: v.version_number,
+            project_type: v.project_type,
+            size: v.size,
+            game_versions: v.game_versions,
+            loaders: v.loaders,
+        }
+    }
+}
+
+/// `SkinProfile` in types.ts: the skin an account wears and the capes it owns.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SkinProfileDto {
+    pub skin_url: Option<String>,
+    /// "classic" or "slim".
+    pub variant: String,
+    pub capes: Vec<CapeDto>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CapeDto {
+    pub id: String,
+    pub name: String,
+    pub url: String,
+    pub active: bool,
+}
+
+impl From<cubby_auth::xbox::Profile> for SkinProfileDto {
+    fn from(p: cubby_auth::xbox::Profile) -> Self {
+        let active = p.skins.iter().find(|s| s.state.eq_ignore_ascii_case("ACTIVE"));
+        Self {
+            skin_url: active.map(|s| s.url.clone()),
+            variant: if active.is_some_and(|s| s.variant.eq_ignore_ascii_case("SLIM")) { "slim".into() } else { "classic".into() },
+            capes: p
+                .capes
+                .into_iter()
+                .map(|c| CapeDto { active: c.state.eq_ignore_ascii_case("ACTIVE"), name: if c.alias.is_empty() { c.id.clone() } else { c.alias }, id: c.id, url: c.url })
+                .collect(),
+        }
+    }
+}
+
+/// `DefaultSkin` in types.ts: a skin of the game, with the PNG of each arm model.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DefaultSkinDto {
+    pub id: String,
+    pub name: String,
+    pub wide: Vec<u8>,
+    pub slim: Vec<u8>,
+}
+
+impl From<cubby_instance::skins::DefaultSkin> for DefaultSkinDto {
+    fn from(s: cubby_instance::skins::DefaultSkin) -> Self {
+        Self { id: s.id, name: s.name, wide: s.wide, slim: s.slim }
     }
 }

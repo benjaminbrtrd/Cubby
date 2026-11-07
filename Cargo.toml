@@ -3,7 +3,7 @@ resolver = "2"
 members = ["crates/*", "src-tauri"]
 
 [workspace.package]
-version = "2026.11.0-alpha.2"
+version = "2026.11.0-beta.1"
 edition = "2021"
 license = "GPL-3.0-only"
 repository = "https://github.com/benjaminbrtrd/Cubby"
@@ -22,7 +22,7 @@ cubby-technic = { path = "crates/cubby-technic" }
 cubby-atlauncher = { path = "crates/cubby-atlauncher" }
 cubby-curseforge = { path = "crates/cubby-curseforge" }
 tokio = { version = "1", features = ["full"] }
-reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls", "gzip"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls", "gzip", "multipart"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"

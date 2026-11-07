@@ -9,6 +9,7 @@
   import { bytes, date, loaderName, plural, relativeTime } from '../../format'
   import { encodeIcon, projectArt } from '../../icon'
   import { app } from '../../state.svelte'
+  import { queue } from '../../queue.svelte'
   import type { InstallPlan, Instance, ProjectHit, ProjectVersion } from '../../types'
   import Picker from './Picker.svelte'
   import TargetPicker from './TargetPicker.svelte'
@@ -45,9 +46,11 @@
     onLeave?: () => void
     /** Called once an install into an instance has started. */
     onInstall?: (instanceId: string) => void
+    /** In a dialog: called once the version was put in the download queue. */
+    onQueued?: () => void
   }
 
-  let { project, versions: given, versionsError = null, versionId = $bindable(null), compact = false, onLeave, onInstall }: Props = $props()
+  let { project, versions: given, versionsError = null, versionId = $bindable(null), compact = false, onLeave, onInstall, onQueued }: Props = $props()
 
   const kind = $derived(project.kind)
   const words = $derived(KINDS[kind])
@@ -169,7 +172,7 @@
     const out: Check[] = []
     const range = mcRange(chosen.gameVersions)
     if (chosen.gameVersions.includes(target.minecraft)) {
-      out.push({ tone: 'ok', icon: 'check', title: 'Minecraft', mono: target.minecraft, word: t('Supported'), detail: t('This version runs on {range}.', { range }) })
+      out.push({ tone: 'ok', icon: 'check', title: 'Minecraft', mono: target.minecraft, word: t('Supported') })
     } else {
       out.push({
         tone: kind === 'mod' ? 'bad' : 'warn',
@@ -192,7 +195,7 @@
         out.push({ tone: 'bad', icon: 'error', title: t('Mod loader'), word: t('Missing'), detail: t('{name} is Vanilla. Mods need Fabric, Quilt, Forge or NeoForge: create an instance with one of them.', { name: target.name }) })
       } else if (chosen.loaders.some((l) => acceptedLoaders(target.loader.kind).includes(l))) {
         const others = names.filter((n) => n !== loaderName(target.loader))
-        out.push({ tone: 'ok', icon: 'check', title: loaderName(target.loader), word: t('Supported'), detail: others.length ? t('Also made for {others}.', { others: listWords(others) }) : undefined })
+        out.push({ tone: 'ok', icon: 'check', title: loaderName(target.loader), word: t('Supported') })
       } else {
         out.push({ tone: 'bad', icon: 'error', title: loaderName(target.loader), word: t('Not supported'), detail: names.length ? t('This version is for {loaders}.', { loaders: listWords(names, 'or') }) : undefined })
       }
@@ -204,7 +207,7 @@
       } else {
         for (const need of shaderMods(target)) {
           const have = sourceBySlug(sources, need.slug)
-          if (have) out.push({ tone: 'ok', icon: 'check', title: need.title, mono: have.versionNumber, word: t('Installed'), detail: need.why })
+          if (have) out.push({ tone: 'ok', icon: 'check', title: need.title, mono: have.versionNumber, word: t('Installed') })
           else out.push({ tone: 'warn', icon: 'warning', title: need.title, word: t('Not installed'), detail: t('{why} Install it too, or the pack won\'t show up.', { why: need.why }), action: { label: t('Open {title}', { title: need.title }), run: () => openMod(need.slug) } })
         }
       }
@@ -216,7 +219,7 @@
     for (const d of deps)
       out.push(
         d.installed
-          ? { tone: 'ok', icon: 'check', title: d.title, word: t('Already installed'), detail: t('Required') }
+          ? { tone: 'ok', icon: 'check', title: d.title, word: t('Already installed') }
           : { tone: 'busy', icon: 'download', title: d.title, mono: d.versionNumber, word: t('Will be installed'), detail: t('Required · {n}', { n: bytes(d.size) }) },
       )
     if (current) {
@@ -230,7 +233,7 @@
         })
       for (const c of current.conflicts)
         out.push({ tone: 'warn', icon: 'warning', title: c.title ?? c.fileName, word: t('Incompatible'), detail: t('It\'s in {name} as {fileName}. Turn it off or remove it in Mods first.', { name: target.name, fileName: c.fileName }) })
-      if (!current.conflicts.length && kind === 'mod') out.push({ tone: 'ok', icon: 'check', title: t('No known conflicts'), word: 'OK', detail: t('Checked against what\'s in {name}.', { name: target.name }) })
+      if (!current.conflicts.length && kind === 'mod') out.push({ tone: 'ok', icon: 'check', title: t('No known conflicts'), word: 'OK' })
     }
     return out
   })
@@ -325,6 +328,16 @@
     } finally {
       starting = false
     }
+  }
+
+  /** In the dialog, "Add to queue" replaces "Install": the player installs everything together from the queue. */
+  const queued = $derived(compact && target ? queue.has(project.id, target.id) : undefined)
+  const inQueue = $derived(queued?.state === 'staged')
+
+  function addToQueue() {
+    if (!target || !chosen || !current || !canInstall) return
+    queue.addPlanned(project, target.id, chosen, current)
+    onQueued?.()
   }
 
   const playState = $derived(target ? (app.running[target.id] ? 'running' : app.tasks[`launch:${target.id}`] ? 'installing' : 'ready') : 'ready')
@@ -578,16 +591,9 @@
         </ul>
       </section>
 
-      {#if current}
+      {#if current && current.downloadBytes > 0}
         <p class="text-small muted">
-          {#if current.downloadBytes > 0}
-            <span class="text-body-strong ink">{t('{n} to download', { n: bytes(current.downloadBytes) })}</span>{toDownload.length ? t(', with {n}.', { n: plural(toDownload.length, 'required mod', 'required mods') }) : '.'}
-          {:else}
-            <span class="text-body-strong ink">{t('Nothing to download.')}</span>
-          {/if}
-          {#if haveDeps.length && !toDownload.length}
-            {t(haveDeps.length === 1 ? '{mods} is already in {name}.' : '{mods} are already in {name}.', { mods: listWords(haveDeps.map((d) => d.title)), name: target.name })}
-          {/if}
+          <span class="text-body-strong ink">{t('{n} to download', { n: bytes(current.downloadBytes) })}</span>{toDownload.length ? t(', with {n}.', { n: plural(toDownload.length, 'required mod', 'required mods') }) : '.'}
         </p>
       {/if}
     {/if}
@@ -621,9 +627,19 @@
           hint={kind === 'shader' ? t('Used the next time you play') : t('On top of your other packs, so its textures win')}
         />
       {/if}
-      <Button variant="primary" size="lg" icon={otherVersion ? 'update' : 'download'} busy={starting} disabled={!canInstall} onclick={install} class="wide">
-        {#if otherVersion && chosen}{t(isUpdate ? 'Update to {version}' : 'Switch to {version}', { version: chosen.versionNumber })}{:else}{t('Install to {name}', { name: target.name })}{/if}
-      </Button>
+      {#if compact && kind !== 'modpack'}
+        {#if inQueue && queued}
+          <Button size="lg" icon="check" onclick={() => (queue.remove(queued.key), onQueued?.())} class="wide">{t('In the queue · remove')}</Button>
+        {:else}
+          <Button variant="primary" size="lg" icon="plus" disabled={!canInstall} onclick={addToQueue} class="wide">
+            {#if otherVersion && chosen}{t(isUpdate ? 'Add the update to the queue' : 'Add the switch to the queue')}{:else}{t('Add to the queue')}{/if}
+          </Button>
+        {/if}
+      {:else}
+        <Button variant="primary" size="lg" icon={otherVersion ? 'update' : 'download'} busy={starting} disabled={!canInstall} onclick={install} class="wide">
+          {#if otherVersion && chosen}{t(isUpdate ? 'Update to {version}' : 'Switch to {version}', { version: chosen.versionNumber })}{:else}{t('Install to {name}', { name: target.name })}{/if}
+        </Button>
+      {/if}
       {#if blocked}<p class="text-small muted line"><Icon name="info" size={18} />{blocked}</p>{/if}
     {/if}
 

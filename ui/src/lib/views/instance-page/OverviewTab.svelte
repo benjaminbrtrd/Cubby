@@ -183,7 +183,6 @@
             <button type="button" class="link text-body-strong" onclick={() => go('worlds')}>{data.worlds.length === 1 ? t('See the world') : t('All {n} worlds', { n: num(data.worlds.length) })}</button>
           {/if}
         </div>
-        {#if world}<p class="muted text-small note">{t('The game opens on its title screen. Pick {name} in Singleplayer.', { name: world.name })}</p>{/if}
       </div>
     </section>
 
@@ -300,14 +299,14 @@
       {#if updateTask}
         <ProgressBar tone="diamond" label={updateTask.label} value={updateTask.total ? (updateTask.done / updateTask.total) * 100 : undefined} />
       {:else if data.checkingUpdates}
-        <p class="muted text-small">{t('Checking Modrinth…')}</p>
+        <p class="muted text-small">{t('Checking for updates…')}</p>
       {:else if !updates}
         <div class="line">
           <span class="text-body grow">{t('Not checked yet.')}</span>
           <Button size="sm" icon="update" onclick={() => data.checkUpdates()}>{t('Check for updates')}</Button>
         </div>
       {:else if !updates.length}
-        <p class="line text-body"><span class="ok icon"><Icon name="check" size={18} /></span>{t('Everything Cubby found on Modrinth is up to date.')}</p>
+        <p class="line text-body"><span class="ok icon"><Icon name="check" size={18} /></span>{t('Everything is up to date.')}</p>
       {:else}
         {#each updates.slice(0, 6) as u (u.fileName)}
           {@const k = kindOf(u.fileName)}
@@ -509,9 +508,6 @@
     align-items: flex-start;
     gap: var(--space-1);
     min-width: 0;
-  }
-  .note {
-    margin-top: var(--space-1);
   }
 
   .checks {

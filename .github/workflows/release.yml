@@ -114,6 +114,42 @@ jobs:
           # The manifest job writes latest.json once every build is there (four jobs writing it at once lose entries).
           includeUpdaterJson: false
 
+  # SHA256SUMS.txt for every installer of the release, and a signed build attestation for each one: anyone can
+  # check that a file comes from this repository's workflow (gh attestation verify <file> --repo <owner>/<repo>).
+  # When Windows signing arrives, the installer is replaced before this job runs, so the sums describe the signed file.
+  checksums:
+    needs: [draft, build]
+    if: ${{ !cancelled() && needs.draft.result == 'success' && needs.build.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - name: Download the installers
+        run: |
+          mkdir dist && cd dist
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" \
+            --pattern '*.exe' --pattern '*.dmg' --pattern '*.AppImage' --pattern '*.deb' --pattern '*.app.tar.gz'
+          ls -l
+
+      - name: Write SHA256SUMS.txt
+        run: |
+          cd dist
+          sha256sum * | sort -k2 > ../SHA256SUMS.txt
+          cat ../SHA256SUMS.txt
+
+      - name: Attest where the files come from
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: dist/*
+
+      - name: Add SHA256SUMS.txt to the release
+        run: gh release upload "$TAG" SHA256SUMS.txt --repo "$GITHUB_REPOSITORY" --clobber
+
   # latest.json lists the update archive of every platform, for the in-app updater.
   manifest:
     needs: [draft, build]

@@ -65,11 +65,29 @@ pub async fn list_screenshots(core: State<'_, Core>, id: String) -> CmdResult<Ve
 
 // Servers
 
+/// Pings a server. With `instance_id`, the ping asks with the protocol of that instance's Minecraft version, so the
+/// answer says whether the server takes it (`compatible`); without it, or when the version's protocol is unknown
+/// (before 1.14), `compatible` stays empty.
 #[tauri::command]
-pub async fn ping_server(address: String) -> ServerStatusDto {
-    cubby_launch::ping(&address, std::time::Duration::from_secs(5))
-        .await
-        .into()
+pub async fn ping_server(
+    core: State<'_, Core>,
+    address: String,
+    instance_id: Option<String>,
+) -> CmdResult<ServerStatusDto> {
+    let protocol = instance_id.and_then(|id| {
+        let mc = core.store.get(&id).ok()?.minecraft;
+        cubby_launch::client_protocol(&core.paths.versions().join(&mc).join(format!("{mc}.jar")))
+    });
+    let timeout = std::time::Duration::from_secs(5);
+    let status = match protocol {
+        Some(p) => cubby_launch::ping_with(&address, timeout, p).await,
+        None => cubby_launch::ping(&address, timeout).await,
+    };
+    let mut dto = ServerStatusDto::from(status.clone());
+    if status.online && protocol.is_some() {
+        dto.compatible = status.protocol.map(|p| p == status.asked_protocol);
+    }
+    Ok(dto)
 }
 
 #[tauri::command]
@@ -122,6 +140,18 @@ pub fn set_resource_packs(
     enabled: Vec<String>,
 ) -> CmdResult<()> {
     cubby_instance::set_resource_packs(&game_dir(&core, &id)?, &enabled).msg()
+}
+
+/// Moves a resource pack or shader pack to the instance's trash (kind: "resource" or "shader").
+#[tauri::command]
+pub fn remove_pack(
+    core: State<'_, Core>,
+    id: String,
+    kind: String,
+    file_name: String,
+) -> CmdResult<()> {
+    cubby_instance::remove_pack(&game_dir(&core, &id)?, pack_kind(&kind)?, &file_name).msg()?;
+    Ok(())
 }
 
 #[tauri::command]

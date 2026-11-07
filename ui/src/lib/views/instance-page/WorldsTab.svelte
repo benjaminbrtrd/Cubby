@@ -38,7 +38,7 @@
     return (data.backups ?? []).filter((b) => b.world === w.folder)
   }
 
-  async function details(w: World) {
+  async function select(w: World) {
     selected = w.folder
     await tick()
     asideTitle?.focus()
@@ -131,13 +131,14 @@
     <div class="grid">
       {#each worlds as w (w.folder)}
         {@const n = backupsOf(w).length}
-        <!-- Click a card to show it in the panel; its ⋯ button does the same from the keyboard. -->
-        <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
-        <article class={['world', sel?.folder === w.folder && 'is-selected']} aria-label={w.name} onclick={() => (selected = w.folder)}>
+        <article class={['world', sel?.folder === w.folder && 'is-selected']} aria-label={w.name}>
           <div class="world__top">
             {@render thumb(w)}
             <div class="world__text">
-              <h3 class="text-heading clip" title={w.name}>{w.name}</h3>
+              <!-- The title is a button stretched over the whole card: a click anywhere on it shows the world in the panel. -->
+              <h3 class="text-heading clip" title={w.name}>
+                <button type="button" class="world__hit" aria-pressed={sel?.folder === w.folder} onclick={() => select(w)}>{w.name}</button>
+              </h3>
               <p class="text-small muted">{w.lastPlayed ? relativeTime(w.lastPlayed) : t('Not played yet')} · {bytes(w.sizeBytes)}</p>
               <p class="text-small muted">{n ? plural(n, 'backup', 'backups') : t('No backups')}</p>
             </div>
@@ -145,8 +146,6 @@
           <div class="world__actions">
             <PlayButton size="sm" state={playState} onclick={() => play(w.folder)} />
             <Button icon="copy" busy={backingUp === w.folder} disabled={!!backingUp} onclick={() => backUp(w)}>{t('Back up')}</Button>
-            <span class="grow"></span>
-            <IconButton icon="more" label={t('Details for {name}', { name: w.name })} onclick={() => details(w)} />
           </div>
         </article>
       {/each}
@@ -279,6 +278,9 @@
     border: var(--border-block) solid var(--edge);
     box-shadow: var(--shadow-block);
   }
+  .world:hover {
+    background: var(--surface-hover);
+  }
   .world.is-selected {
     background: var(--surface-hover);
     border-color: var(--ink);
@@ -296,10 +298,36 @@
     gap: var(--space-1);
   }
   .world__actions {
+    position: relative;
+    z-index: 1;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: var(--space-2);
+  }
+  /* Play and Back up: the same height, so the two buttons read as a pair */
+  .world__actions :global(.cb-btn),
+  .world__actions :global(.cb-play) {
+    box-sizing: border-box;
+    height: var(--size-control);
+    min-height: var(--size-control);
+  }
+  /* ...and the same shadow at rest (Play's is deeper than a Button's by default) */
+  .world__actions :global(.cb-btn:not(:hover):not(:active):not(:focus-visible)),
+  .world__actions :global(.cb-play:not(:hover):not(:active):not(:focus-visible)) {
+    box-shadow: var(--shadow-block-sm);
+  }
+  .world__hit {
+    all: unset;
+    cursor: pointer;
+  }
+  .world__hit::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+  }
+  .world__hit:focus-visible::after {
+    box-shadow: var(--focus-ring);
   }
   .thumb {
     display: block;
@@ -354,11 +382,12 @@
   .danger {
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
+    align-items: flex-end;
     gap: 6px;
     margin-top: var(--space-2);
     padding-top: var(--space-4);
     border-top: var(--border-hair) solid var(--line);
+    text-align: end;
   }
   h2[tabindex='-1'] {
     outline: none;

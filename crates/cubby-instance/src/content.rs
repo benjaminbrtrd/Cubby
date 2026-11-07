@@ -121,6 +121,36 @@ pub fn remove_mod(game_dir: &Path, file_name: &str) -> Result<PathBuf> {
     move_to_trash(&src, &game_dir.join(".trash").join("mods"), file_name)
 }
 
+/// Moves a resource pack or shader pack (zip or folder) to `<game_dir>/.trash/<folder>/`, never a hard delete.
+/// A pack the game has selected is taken out of its options first, so the game doesn't look for a file that is gone.
+/// Returns the new location.
+pub fn remove_pack(game_dir: &Path, kind: PackKind, file_name: &str) -> Result<PathBuf> {
+    check_plain_name(file_name)?;
+    let folder = match kind {
+        PackKind::Resource => "resourcepacks",
+        PackKind::Shader => "shaderpacks",
+    };
+    let src = game_dir.join(folder).join(file_name);
+    if !src.exists() {
+        return Err(Error::NotFound(format!("pack {file_name}")));
+    }
+    match kind {
+        PackKind::Shader => {
+            if selected_shader_pack(game_dir).as_deref() == Some(file_name) {
+                set_shader_pack(game_dir, None)?;
+            }
+        }
+        PackKind::Resource => {
+            let enabled = enabled_resource_packs(game_dir);
+            if enabled.iter().any(|n| n == file_name) {
+                let rest: Vec<String> = enabled.into_iter().filter(|n| n != file_name).collect();
+                set_resource_packs(game_dir, &rest)?;
+            }
+        }
+    }
+    move_to_trash(&src, &game_dir.join(".trash").join(folder), file_name)
+}
+
 fn read_entry(zip: &mut zip::ZipArchive<fs::File>, name: &str) -> Option<String> {
     let entry = zip.by_name(name).ok()?;
     if entry.size() > MAX_META_BYTES {
@@ -629,6 +659,34 @@ mod tests {
         let s = list_packs(&game, PackKind::Shader);
         assert_eq!(s.iter().map(|p| (p.name.as_str(), p.enabled)).collect::<Vec<_>>(), [("BSL", true), ("Comp", false)]);
         assert!(list_packs(&temp_dir("packs-empty"), PackKind::Resource).is_empty());
+    }
+
+    #[test]
+    fn removing_packs_deselects_them() {
+        let game = temp_dir("remove-packs");
+        let sp = game.join("shaderpacks");
+        fs::create_dir_all(&sp).unwrap();
+        fs::write(sp.join("BSL.zip"), "zip").unwrap();
+        fs::write(sp.join("Comp.zip"), "zip").unwrap();
+        fs::write(game.join("optionsshaders.txt"), "shaderPack=BSL.zip\n").unwrap();
+        let rp = game.join("resourcepacks");
+        fs::create_dir_all(rp.join("Folder Pack")).unwrap();
+        fs::write(rp.join("Faithful.zip"), "zip").unwrap();
+        fs::write(game.join("options.txt"), "lang:fr_fr\nresourcePacks:[\"vanilla\",\"file/Faithful.zip\"]\n").unwrap();
+
+        // the selected shader pack goes to the trash and is deselected
+        let moved = remove_pack(&game, PackKind::Shader, "BSL.zip").unwrap();
+        assert!(moved.exists() && !sp.join("BSL.zip").exists());
+        assert!(list_packs(&game, PackKind::Shader).iter().all(|p| !p.enabled));
+        assert!(sp.join("Comp.zip").exists());
+        // an active resource pack leaves the list; a folder pack moves whole
+        remove_pack(&game, PackKind::Resource, "Faithful.zip").unwrap();
+        // built-in entries such as "vanilla" stay
+        assert!(!enabled_resource_packs(&game).iter().any(|n| n == "Faithful.zip"));
+        assert!(remove_pack(&game, PackKind::Resource, "Folder Pack").unwrap().is_dir());
+        // nothing else: missing files and names with a path are refused
+        assert!(remove_pack(&game, PackKind::Shader, "BSL.zip").is_err());
+        assert!(remove_pack(&game, PackKind::Shader, "../options.txt").is_err());
     }
 
     #[test]

@@ -4,8 +4,8 @@
   import { t } from '../../i18n.svelte'
   import { untrack } from 'svelte'
   import { api } from '../../api'
-  import { Banner, Button, Dialog, Icon, PlayButton, Switch } from '../../cubby'
-  import { loaderFull, timeOfDay } from '../../format'
+  import { Banner, Button, Dialog, Icon, LogViewer, PlayButton, Switch } from '../../cubby'
+  import { loaderFull, plural, timeOfDay } from '../../format'
   import { app } from '../../state.svelte'
   import type { Instance, ModFile, World } from '../../types'
   import CrashAside from './CrashAside.svelte'
@@ -377,6 +377,13 @@
             {/each}
           </ol>
         </section>
+
+        {#if parsed.length}
+          <section class="excerpt" aria-labelledby="excerpt-title">
+            <h2 id="excerpt-title" class="text-label muted">{t('Last {n}', { n: plural(Math.min(8, parsed.length), 'log line', 'log lines') })}</h2>
+            <LogViewer lines={parsed.slice(-8)} height={240} label={t('Last lines of the game log')} />
+          </section>
+        {/if}
       </div>
 
       <CrashAside
@@ -385,7 +392,6 @@
         {d}
         {facts}
         logLines={parsed.length}
-        excerpt={parsed.slice(-8)}
         memoryMb={checkedMemoryMb}
         mods={mods.length}
         {enabledMods}
@@ -413,15 +419,20 @@
   .screen {
     display: flex;
     flex-direction: column;
-    min-height: 100%;
+    height: 100%;
+    min-height: 0;
   }
   .layout {
     flex: 1;
+    min-height: 0;
+    overflow: hidden;
     display: flex;
   }
   .content {
     flex: 1;
     min-width: 0;
+    min-height: 0;
+    overflow: auto;
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
@@ -495,6 +506,11 @@
     color: var(--redstone-text);
   }
 
+  .excerpt {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
   .fixes {
     display: flex;
     flex-direction: column;

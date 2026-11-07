@@ -19,7 +19,7 @@
   let statuses = $state<Record<string, ServerStatus>>({})
   let pending = $state<Record<string, boolean>>({})
   let generation = 0
-  const OFFLINE: ServerStatus = { online: false, motd: '', playersOnline: 0, playersMax: 0, version: null, pingMs: null, iconUrl: null }
+  const OFFLINE: ServerStatus = { online: false, motd: '', playersOnline: 0, playersMax: 0, version: null, pingMs: null, iconUrl: null, compatible: null }
   const anyPending = $derived(Object.values(pending).some(Boolean))
 
   async function ping(address: string) {
@@ -27,7 +27,7 @@
     pending[address] = true
     let s: ServerStatus
     try {
-      s = await api.pingServer(address)
+      s = await api.pingServer(address, id)
     } catch {
       s = OFFLINE
     }
@@ -178,14 +178,13 @@
   }
 
   const textures = $derived(sel?.acceptTextures === true ? 'accept' : sel?.acceptTextures === false ? 'refuse' : 'ask')
-  const versionDiffers = $derived(!!selStatus?.version && !selStatus.version.includes(instance.minecraft))
+  const versionDiffers = $derived(selStatus?.compatible != null ? selStatus.compatible === false : !!selStatus?.version && !selStatus.version.includes(instance.minecraft))
 </script>
 
 <div class="ip-body" role="tabpanel" id="instance-panel" aria-label={t('Servers')}>
   <div class="toolbar">
     <div class="toolbar__title">
       <h2 class="text-heading">{data.servers ? plural(servers.length, 'server', 'servers') : t('Servers')}</h2>
-      <p class="text-small muted">{t('The Multiplayer list of this instance.')}</p>
     </div>
     <Button icon="update" busy={anyPending} disabled={!servers.length} onclick={refresh}>{t('Refresh')}</Button>
   </div>
@@ -218,10 +217,10 @@
       </div>
       {#each servers as s, i (i + s.address)}
         {@const st = statuses[s.address]}
-        <!-- Click a row to show it in the panel; its ⋯ button does the same from the keyboard. -->
-        <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-        <div class={['srow', i === selIndex && 'is-selected']} onclick={() => (selected = i)}>
+        <div class={['srow', i === selIndex && 'is-selected']}>
           <div class="srow__main">
+            <!-- Stretched over the whole row: a click anywhere on it, apart from Join, shows the server in the panel. -->
+            <button type="button" class="srow__hit" aria-pressed={i === selIndex} aria-label={t('Details for {name}', { name: s.name })} onclick={() => details(i)}></button>
             {#if st}
               <ServerRow
                 name={s.name}
@@ -251,7 +250,6 @@
               </div>
             {/if}
           </div>
-          <IconButton icon="more" label={t('Details for {name}', { name: s.name })} onclick={() => details(i)} />
         </div>
       {/each}
     </section>
@@ -292,11 +290,13 @@
           detail={running ? t('The game is running') : t('Join {name} with {name2}', { name: sel.name, name2: instance.name })}
           onclick={onPlay}
         />
-        <div class="row">
-          <Button size="sm" icon="copy" onclick={() => sel && copy(sel.address)}>{t('Copy address')}</Button>
+        <div class="row row--actions">
+          <Button size="sm" icon="copy" aria-label={t('Copy address')} onclick={() => sel && copy(sel.address)}>{t('Copy')}</Button>
           <Button size="sm" icon="wrench" onclick={startEdit}>{t('Edit')}</Button>
-          <IconButton size="sm" icon="update" label={t('Move {name} up', { name: sel.name })} disabled={selIndex === 0} onclick={() => move(selIndex, selIndex - 1)} />
-          <IconButton size="sm" icon="download" label={t('Move {name} down', { name: sel.name })} disabled={selIndex === servers.length - 1} onclick={() => move(selIndex, selIndex + 1)} />
+          <span class="move">
+            <IconButton size="sm" icon="update" label={t('Move {name} up', { name: sel.name })} disabled={selIndex === 0} onclick={() => move(selIndex, selIndex - 1)} />
+            <IconButton size="sm" icon="download" label={t('Move {name} down', { name: sel.name })} disabled={selIndex === servers.length - 1} onclick={() => move(selIndex, selIndex + 1)} />
+          </span>
         </div>
       {/if}
 
@@ -347,7 +347,6 @@
 
       <div class="danger">
         <Button size="sm" variant="danger" icon="trash" onclick={() => (removing = selIndex)}>{t('Remove')}</Button>
-        <span class="text-small muted">{t('Takes it off this list only.')}</span>
       </div>
     {:else}
       <p class="text-label muted">{t('Server details')}</p>
@@ -459,6 +458,40 @@
     flex: 1;
     min-width: 0;
   }
+  .srow__hit {
+    all: unset;
+    position: absolute;
+    inset: 0;
+    cursor: pointer;
+  }
+  .srow__hit:focus-visible {
+    box-shadow: var(--focus-ring);
+  }
+  /* the row's content sits above the stretched button, and only its own buttons take clicks */
+  .srow__main > :global(.cb-server),
+  .srow__main > :global(div.cb-server) {
+    position: relative;
+    pointer-events: none;
+  }
+  .srow__main :global(.cb-server button) {
+    pointer-events: auto;
+  }
+  .srow__main:hover :global(.cb-server) {
+    background: var(--surface-hover);
+  }
+  /* one line: Copy, Edit and the two move buttons stay together whatever the width of the panel */
+  .row.row--actions {
+    flex-wrap: nowrap;
+  }
+  .row--actions > :global(.cb-btn) {
+    flex: 1;
+  }
+  .move {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+  }
   .srow.is-selected .srow__main::after {
     content: '';
     position: absolute;
@@ -550,9 +583,10 @@
   .danger {
     display: flex;
     flex-wrap: wrap;
-    align-items: center;
+    align-items: flex-end;
     gap: var(--space-2) var(--space-3);
     padding-top: var(--space-4);
     border-top: var(--border-hair) solid var(--line);
+    text-align: end;
   }
 </style>

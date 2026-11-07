@@ -25,7 +25,7 @@
 
 <!-- The whole bar is a Tauri drag region; its buttons stay clickable. -->
 <header class={['cb-titlebar', isMac && 'cb-titlebar--mac', className]} data-tauri-drag-region="">
-  <div class="cb-titlebar__brand" data-tauri-drag-region=""><Logo size={32} /></div>
+  <div class="cb-titlebar__brand" data-tauri-drag-region=""><Logo size={28} /></div>
   <button type="button" class="cb-titlebar__search text-body" onclick={onSearch}>
     <Icon name="search" size={18} />
     <span class="cb-titlebar__search-text">{searchLabel || t('Search or launch…')}</span>

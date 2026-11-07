@@ -173,6 +173,76 @@ pub async fn install_version(
     .await
 }
 
+/// Names, versions and sizes for Modrinth version ids (shared pack codes list only ids). At most 400 ids.
+#[tauri::command]
+pub async fn describe_versions(
+    core: State<'_, Core>,
+    version_ids: Vec<String>,
+) -> CmdResult<Vec<VersionBriefDto>> {
+    if version_ids.len() > 400 {
+        return Err("That pack lists too many files.".into());
+    }
+    let ids: Vec<String> = version_ids.iter().map(|v| v.trim().to_string()).collect();
+    Ok(core
+        .modrinth
+        .describe_versions(&ids)
+        .await
+        .msg()?
+        .into_iter()
+        .map(Into::into)
+        .collect())
+}
+
+/// Plans every version together, then downloads everything missing in one go (task `install:<id>`):
+/// the download queue. A version that is already in the instance is skipped; returns when done.
+#[tauri::command]
+pub async fn install_versions(
+    app: AppHandle,
+    core: State<'_, Core>,
+    instance_id: String,
+    version_ids: Vec<String>,
+) -> CmdResult<()> {
+    let version_ids: Vec<String> = version_ids
+        .into_iter()
+        .map(|v| v.trim().to_string())
+        .filter(|v| !v.is_empty())
+        .collect();
+    if version_ids.is_empty() {
+        return Err("Nothing to install.".into());
+    }
+    let inst = core.store.get(&instance_id).msg()?;
+    ensure_stopped(&core, &inst.id)?;
+    run_task(
+        &app,
+        format!("install:{}", inst.id),
+        move |app, task| async move {
+            let core = app.state::<Core>();
+            let game_dir = core.store.game_dir(&inst);
+            core.sink.progress(&task, "Checking dependencies", 0, 1);
+            let plan = core
+                .modrinth
+                .plan_install_many(&version_ids, &target_of(&inst), &game_dir)
+                .await
+                .msg()?;
+            let selection = PackSelection::capture(&game_dir);
+            let applied = core
+                .modrinth
+                .install(
+                    &plan,
+                    &game_dir,
+                    download_concurrency(&core),
+                    core.sink.as_ref(),
+                    &task,
+                )
+                .await
+                .msg()?;
+            selection.follow(&game_dir, &applied.renamed);
+            applied.into_result().msg().map(|_| ())
+        },
+    )
+    .await
+}
+
 /// Copies an image (any https address, at most 8 MiB) into the instance folder as `icon.<ext>`; `None` for other URLs or on failure.
 pub(crate) async fn download_icon(core: &Core, id: &str, url: &str) -> Option<String> {
     if !url.starts_with("https://") {
