@@ -1,0 +1,15 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.6.0.schema.json
+PackageIdentifier: Benjaminbrtrd.Cubby
+PackageVersion: 2026.11.0-alpha.2
+InstallerType: nullsoft
+Scope: user
+InstallModes:
+- interactive
+- silent
+UpgradeBehavior: install
+Installers:
+- Architecture: x64
+  InstallerUrl: https://github.com/benjaminbrtrd/Cubby/releases/download/v2026.11.0-alpha.2/Cubby_2026.11.0-alpha.2_x64-setup.exe
+  InstallerSha256: 9E51D2678ECF5BD01146514FDBBE16BFCACC8CF074CC03842D9D7C5BA7A6E3F4
+ManifestType: installer
+ManifestVersion: 1.6.0
