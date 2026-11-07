@@ -265,6 +265,47 @@ impl Modrinth {
         let installed = self.installed(game_dir).await?;
         resolve(self, version_id, target, &installed).await
     }
+
+    /// Plans installing several versions at once into the same instance: one plan with every project once
+    /// (a version asked for by name wins over the same project pulled in as a dependency), so everything
+    /// downloads together. Nothing is changed.
+    pub async fn plan_install_many(&self, version_ids: &[String], target: &Target, game_dir: &std::path::Path) -> Result<InstallPlan> {
+        let mut plans = Vec::with_capacity(version_ids.len());
+        for version_id in version_ids {
+            plans.push(self.plan_install(version_id, target, game_dir).await?);
+        }
+        Ok(merge_plans(plans))
+    }
+}
+
+/// One plan out of several: every project once, a requested version winning over the same project pulled
+/// in as a dependency; missing dependencies and conflicts listed once.
+pub(crate) fn merge_plans(plans: Vec<InstallPlan>) -> InstallPlan {
+    let mut merged = InstallPlan { items: Vec::new(), missing: Vec::new(), conflicts: Vec::new(), download_bytes: 0 };
+    for plan in plans {
+        for item in plan.items {
+            match merged.items.iter_mut().find(|m| m.project_id == item.project_id) {
+                Some(have) => {
+                    if item.reason == Reason::Requested && have.reason != Reason::Requested {
+                        *have = item;
+                    }
+                }
+                None => merged.items.push(item),
+            }
+        }
+        for m in plan.missing {
+            if !merged.missing.iter().any(|x| x.project_id == m.project_id) {
+                merged.missing.push(m);
+            }
+        }
+        for c in plan.conflicts {
+            if !merged.conflicts.iter().any(|x| x.project_id == c.project_id) {
+                merged.conflicts.push(c);
+            }
+        }
+    }
+    merged.download_bytes = merged.items.iter().filter(|i| i.download).map(|i| i.size).sum();
+    merged
 }
 
 #[cfg(test)]
@@ -470,5 +511,45 @@ mod tests {
         assert!(pick_version(&versions[2..3], &target, ProjectKind::Mod).is_none());
         assert_eq!(pick_version(&[v("rp", "release", "2024-01-01T00:00:00Z", &["minecraft"])], &target, ProjectKind::ResourcePack).unwrap().id, "rp");
         assert!(!plain_file_name("../a.jar") && !plain_file_name("a/b.jar") && plain_file_name("a.jar"));
+    }
+
+    fn item(project: &str, version: &str, reason: Reason, size: u64) -> PlanItem {
+        PlanItem {
+            project_id: project.to_string(),
+            version_id: version.to_string(),
+            title: project.to_string(),
+            version_number: version.to_string(),
+            file_name: format!("{version}.jar"),
+            size,
+            url: format!("https://cdn.example/{version}.jar"),
+            sha1: "a".repeat(40),
+            reason,
+            installed: false,
+            folder: Folder::Mods,
+            download: true,
+            replaces: None,
+        }
+    }
+
+    #[test]
+    fn merging_plans_keeps_each_project_once() {
+        let a = InstallPlan {
+            items: vec![item("a", "a-1", Reason::Requested, 10), item("lib", "lib-1", Reason::Dependency, 5)],
+            missing: vec![MissingDependency { project_id: s("ghost"), title: None }],
+            conflicts: vec![],
+            download_bytes: 15,
+        };
+        let b = InstallPlan {
+            // "lib" is also asked for by name here, and "ghost" is missing again
+            items: vec![item("b", "b-1", Reason::Requested, 20), item("lib", "lib-2", Reason::Requested, 7)],
+            missing: vec![MissingDependency { project_id: s("ghost"), title: None }],
+            conflicts: vec![],
+            download_bytes: 27,
+        };
+        let merged = merge_plans(vec![a, b]);
+        let ids: Vec<_> = merged.items.iter().map(|i| (i.project_id.as_str(), i.version_id.as_str(), i.reason)).collect();
+        assert_eq!(ids, [("a", "a-1", Reason::Requested), ("lib", "lib-2", Reason::Requested), ("b", "b-1", Reason::Requested)]);
+        assert_eq!(merged.missing.len(), 1);
+        assert_eq!(merged.download_bytes, 10 + 7 + 20);
     }
 }

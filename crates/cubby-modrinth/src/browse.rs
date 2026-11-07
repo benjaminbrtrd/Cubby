@@ -204,6 +204,32 @@ impl Modrinth {
         })
     }
 
+    /// Names for version ids, in the order asked. Ids Modrinth doesn't know are left out.
+    pub async fn describe_versions(&self, version_ids: &[String]) -> Result<Vec<VersionBrief>> {
+        let versions = self.versions_raw(version_ids).await?;
+        let project_ids: Vec<String> = versions.iter().map(|v| v.project_id.clone()).collect();
+        let projects: HashMap<String, api::Project> = self.projects_raw(&project_ids).await?.into_iter().map(|p| (p.id.clone(), p)).collect();
+        let mut by_id: HashMap<String, api::Version> = versions.into_iter().map(|v| (v.id.clone(), v)).collect();
+        let mut out = Vec::new();
+        for id in version_ids {
+            let Some(v) = by_id.remove(id) else { continue };
+            let project = projects.get(&v.project_id);
+            out.push(VersionBrief {
+                version_id: v.id.clone(),
+                project_id: v.project_id.clone(),
+                slug: project.map(|p| p.slug.clone()).unwrap_or_default(),
+                title: project.map(|p| p.title.clone()).filter(|t| !t.is_empty()).unwrap_or_else(|| v.name.clone()),
+                icon_url: project.and_then(|p| p.icon_url.clone()),
+                version_number: v.version_number.clone(),
+                project_type: project.map(|p| p.project_type.clone()).unwrap_or_default(),
+                size: v.primary_file().map(|f| f.size).unwrap_or(0),
+                game_versions: v.game_versions.clone(),
+                loaders: v.loaders.clone(),
+            });
+        }
+        Ok(out)
+    }
+
     /// A project page; the author is the team owner, else its first member.
     pub async fn project(&self, id_or_slug: &str) -> Result<Project> {
         let (project, members) = futures::join!(self.project_raw(id_or_slug), self.members_raw(id_or_slug));

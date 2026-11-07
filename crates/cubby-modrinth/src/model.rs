@@ -412,3 +412,19 @@ pub struct Modpack {
     /// The downloaded `.mrpack` file.
     pub archive: PathBuf,
 }
+
+/// What a version id stands for: a shared pack lists only ids, this gives them names.
+#[derive(Debug, Clone, PartialEq)]
+pub struct VersionBrief {
+    pub version_id: String,
+    pub project_id: String,
+    pub slug: String,
+    pub title: String,
+    pub icon_url: Option<String>,
+    pub version_number: String,
+    /// "mod", "shader", "resourcepack", "modpack"...
+    pub project_type: String,
+    pub size: u64,
+    pub game_versions: Vec<String>,
+    pub loaders: Vec<String>,
+}
