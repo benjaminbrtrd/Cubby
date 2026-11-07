@@ -88,3 +88,87 @@ pub async fn set_default_account(core: State<'_, Core>, id: String) -> CmdResult
     accounts.set_default(&id).msg()?;
     accounts.save().msg()
 }
+
+// Skin and cape
+
+/// The Minecraft token of the account, renewed when it is about to expire (and saved).
+async fn minecraft_token(core: &Core, id: &str) -> CmdResult<String> {
+    let mut accounts = core.accounts.lock().await;
+    let mut account = accounts.get(id).cloned().ok_or("That account is gone.")?;
+    if account.needs_refresh() {
+        let client_id = core
+            .msa_client_id()
+            .ok_or("Your Microsoft session expired, and no Azure application ID is set to renew it. Add one in Settings › Accounts.")?;
+        cubby_auth::refresh(&core.http, &client_id, &mut account).await.msg()?;
+        accounts.add_or_update(account.clone());
+        accounts.save().msg()?;
+    }
+    let cubby_auth::AccountKind::Microsoft { mc_access_token, .. } = &account.kind;
+    Ok(mc_access_token.clone())
+}
+
+/// Remembers the active skin of the account, so its face is up to date in the title bar and in Accounts.
+async fn remember_skin(core: &Core, id: &str, url: Option<String>) {
+    let mut accounts = core.accounts.lock().await;
+    if let Some(mut account) = accounts.get(id).cloned() {
+        let cubby_auth::AccountKind::Microsoft { skin_url, .. } = &mut account.kind;
+        *skin_url = url;
+        accounts.add_or_update(account);
+        if let Err(e) = accounts.save() {
+            log::warn!("could not save the skin of {id}: {e}");
+        }
+    }
+}
+
+/// The skin an account wears and the capes it owns, from the Minecraft services.
+#[tauri::command]
+pub async fn skin_profile(core: State<'_, Core>, account_id: String) -> CmdResult<SkinProfileDto> {
+    let token = minecraft_token(&core, &account_id).await?;
+    let profile = cubby_auth::skins::fetch_profile(&core.http, &token).await.msg()?;
+    let dto = SkinProfileDto::from(profile);
+    remember_skin(&core, &account_id, dto.skin_url.clone()).await;
+    Ok(dto)
+}
+
+/// Shows the cape with this id, or hides the cape (`cape_id` empty).
+#[tauri::command]
+pub async fn set_active_cape(
+    core: State<'_, Core>,
+    account_id: String,
+    cape_id: Option<String>,
+) -> CmdResult<SkinProfileDto> {
+    let token = minecraft_token(&core, &account_id).await?;
+    cubby_auth::skins::set_active_cape(&core.http, &token, cape_id.as_deref())
+        .await
+        .msg()?;
+    let profile = cubby_auth::skins::fetch_profile(&core.http, &token).await.msg()?;
+    Ok(SkinProfileDto::from(profile))
+}
+
+/// Makes the PNG the active skin, with `variant` "classic" or "slim" arms.
+#[tauri::command]
+pub async fn set_skin(
+    core: State<'_, Core>,
+    account_id: String,
+    variant: String,
+    png: Vec<u8>,
+) -> CmdResult<SkinProfileDto> {
+    let token = minecraft_token(&core, &account_id).await?;
+    cubby_auth::skins::set_skin(&core.http, &token, &variant, png).await.msg()?;
+    let profile = cubby_auth::skins::fetch_profile(&core.http, &token).await.msg()?;
+    let dto = SkinProfileDto::from(profile);
+    remember_skin(&core, &account_id, dto.skin_url.clone()).await;
+    Ok(dto)
+}
+
+/// The default skins of the game, read from a client jar Cubby downloaded.
+#[tauri::command]
+pub async fn default_skins(core: State<'_, Core>) -> CmdResult<Vec<DefaultSkinDto>> {
+    let versions = core.paths.versions();
+    blocking(move || {
+        cubby_instance::skins::default_skins(&versions)
+            .map(|skins| skins.into_iter().map(Into::into).collect())
+            .map_err(dto::message)
+    })
+    .await
+}

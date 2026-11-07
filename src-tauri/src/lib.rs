@@ -12,7 +12,17 @@ use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default();
+    // A second launch (a cubby:// link opened while Cubby is running) hands its link to the running one.
+    #[cfg(any(target_os = "windows", target_os = "linux"))]
+    let builder = builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+        if let Some(window) = app.get_webview_window("main") {
+            let _ = window.unminimize();
+            let _ = window.set_focus();
+        }
+    }));
+    builder
+        .plugin(tauri_plugin_deep_link::init())
         .plugin(
             tauri_plugin_log::Builder::default()
                 .level(if cfg!(debug_assertions) {
@@ -27,6 +37,8 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(update::PendingState::default())
         .setup(|app| {
+            #[cfg(all(target_os = "macos", debug_assertions))]
+            set_dock_icon();
             let core = state::Core::new(app.handle().clone())?;
             // Lets the webview load instance icons, world icons and screenshots, wherever the data lives.
             app.asset_protocol_scope()
@@ -48,6 +60,7 @@ pub fn run() {
             commands::content::list_mods,
             commands::content::set_mod_enabled,
             commands::content::remove_mod,
+            commands::content::remove_pack,
             commands::content::list_worlds,
             commands::content::list_screenshots,
             commands::launch::running_games,
@@ -60,6 +73,10 @@ pub fn run() {
             commands::accounts::cancel_microsoft_login,
             commands::accounts::remove_account,
             commands::accounts::set_default_account,
+            commands::accounts::skin_profile,
+            commands::accounts::set_active_cape,
+            commands::accounts::set_skin,
+            commands::accounts::default_skins,
             commands::settings::get_settings,
             commands::settings::save_settings,
             commands::settings::list_java,
@@ -76,11 +93,14 @@ pub fn run() {
             commands::settings::data_folders,
             commands::settings::open_data_folder,
             commands::settings::clear_cache,
+            commands::settings::clear_trash,
             commands::discover::search_projects,
             commands::discover::get_project,
             commands::discover::list_project_versions,
             commands::discover::plan_install,
             commands::discover::install_version,
+            commands::discover::install_versions,
+            commands::discover::describe_versions,
             commands::discover::install_modpack,
             commands::discover::content_sources,
             commands::discover::check_updates,
@@ -115,4 +135,19 @@ pub fn run() {
                 update::install_on_exit(app);
             }
         });
+}
+
+/// `tauri dev` runs the bare binary, so macOS shows a generic Dock icon: give it the app icon, with its tile like
+/// other macOS apps. Installed builds get it from the bundle's `icon.icns`.
+#[cfg(all(target_os = "macos", debug_assertions))]
+fn set_dock_icon() {
+    use objc2::{AllocAnyThread, MainThreadMarker};
+    use objc2_app_kit::{NSApplication, NSImage};
+    use objc2_foundation::NSData;
+
+    let Some(mtm) = MainThreadMarker::new() else { return };
+    let data = NSData::with_bytes(include_bytes!("../icons/dock.png"));
+    let Some(image) = NSImage::initWithData(NSImage::alloc(), &data) else { return };
+    // SAFETY: called on the main thread (the setup closure), with a valid image.
+    unsafe { NSApplication::sharedApplication(mtm).setApplicationIconImage(Some(&image)) };
 }
