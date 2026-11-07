@@ -4,6 +4,7 @@
   import { app } from '../../state.svelte'
   import { t } from '../../i18n.svelte'
   import CustomForm from './CustomForm.svelte'
+  import LinkSource from './LinkSource.svelte'
   import ImportSource from './ImportSource.svelte'
   import ProviderBrowser from './ProviderBrowser.svelte'
   import ProviderMark from './ProviderMark.svelte'
@@ -19,13 +20,14 @@
 
   // a source that doesn't exist (any more) falls back to Quick start
   $effect(() => {
-    if (providers && source !== 'quick' && source !== 'custom' && source !== 'import' && !provider) app.newSource = 'quick'
+    if (providers && source !== 'quick' && source !== 'custom' && source !== 'import' && source !== 'link' && !provider) app.newSource = 'quick'
   })
 
-  const fixed: { id: 'quick' | 'custom' | 'import'; label: string; icon: IconName }[] = [
+  const fixed: { id: 'quick' | 'custom' | 'import' | 'link'; label: string; icon: IconName }[] = [
     { id: 'quick', label: 'Quick start', icon: 'play' },
     { id: 'custom', label: 'Custom', icon: 'cube' },
     { id: 'import', label: 'Import', icon: 'import' },
+    { id: 'link', label: 'From a link', icon: 'globe' },
   ]
 </script>
 
@@ -82,6 +84,8 @@
       <CustomForm />
     {:else if source === 'import'}
       <ImportSource />
+    {:else if source === 'link'}
+      <LinkSource />
     {:else if provider}
       {#key provider.id}
         <ProviderBrowser {provider} />

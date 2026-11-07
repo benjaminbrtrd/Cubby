@@ -52,6 +52,29 @@ export interface Account {
   skinUrl: string | null
 }
 
+/** The skin an account wears and the capes it owns (from the Minecraft services). */
+export interface SkinProfile {
+  skinUrl: string | null
+  variant: 'classic' | 'slim'
+  capes: CapeInfo[]
+}
+
+export interface CapeInfo {
+  id: string
+  name: string
+  url: string
+  /** The cape being worn. */
+  active: boolean
+}
+
+/** A skin of the game, with the PNG of each arm model (bytes). */
+export interface DefaultSkin {
+  id: string
+  name: string
+  wide: number[]
+  slim: number[]
+}
+
 export interface DeviceCode {
   userCode: string
   verificationUri: string
@@ -216,6 +239,8 @@ export interface ServerStatus {
   version: string | null
   pingMs: number | null
   iconUrl: string | null
+  /** Whether the server takes the Minecraft version of the instance it was pinged for; null when unknown. */
+  compatible?: boolean | null
 }
 
 // Discover (Modrinth)
@@ -334,6 +359,21 @@ export interface InstallPlan {
   conflicts: { projectId: string; title: string | null; fileName: string }[]
   /** Total bytes to download (items that are not already installed). */
   downloadBytes: number
+}
+
+/** What a Modrinth version id stands for. */
+export interface VersionBrief {
+  versionId: string
+  projectId: string
+  slug: string
+  title: string
+  iconUrl: string | null
+  versionNumber: string
+  /** "mod", "shader", "resourcepack"... */
+  projectType: string
+  size: number
+  gameVersions: string[]
+  loaders: string[]
 }
 
 export interface InstallItem {

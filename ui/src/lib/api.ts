@@ -9,6 +9,9 @@ import type {
   ContentUpdate,
   DataFolder,
   InstallPlan,
+  SkinProfile,
+  DefaultSkin,
+  VersionBrief,
   Project,
   ProjectQuery,
   ProjectVersion,
@@ -84,6 +87,8 @@ export const api = {
   listMods: (id: string) => call<ModFile[]>('list_mods', { id }),
   setModEnabled: (id: string, fileName: string, enabled: boolean) => call<void>('set_mod_enabled', { id, fileName, enabled }),
   removeMod: (id: string, fileName: string) => call<void>('remove_mod', { id, fileName }),
+  /** Moves a resource pack or shader pack to the instance's trash. A pack the game has selected is deselected first. */
+  removePack: (id: string, kind: 'resource' | 'shader', fileName: string) => call<void>('remove_pack', { id, kind, fileName }),
   listWorlds: (id: string) => call<World[]>('list_worlds', { id }),
   listScreenshots: (id: string) => call<Screenshot[]>('list_screenshots', { id }),
   deleteScreenshot: (id: string, fileName: string) => call<void>('delete_screenshot', { id, fileName }),
@@ -97,12 +102,15 @@ export const api = {
   listServers: (id: string) => call<Server[]>('list_servers', { id }),
   /** Replaces the whole servers.dat list, in this order. */
   saveServers: (id: string, servers: Server[]) => call<void>('save_servers', { id, servers }),
-  pingServer: (address: string) => call<ServerStatus>('ping_server', { address }),
+  /** `instanceId`: ask with that instance's Minecraft protocol, so `compatible` says whether the server takes it. */
+  pingServer: (address: string, instanceId?: string) => call<ServerStatus>('ping_server', { address, instanceId: instanceId ?? null }),
 
   dataFolders: () => call<DataFolder[]>('data_folders'),
   openDataFolder: (key: DataFolder['key']) => call<void>('open_data_folder', { key }),
   /** Deletes cached metadata (version manifests, loader profiles). Instances are untouched. */
   clearCache: () => call<void>('clear_cache'),
+  /** Empties the trash for good: deleted instances, and mods and packs instances moved aside. */
+  clearTrash: () => call<void>('clear_trash'),
 
   listAccounts: () => call<Account[]>('list_accounts'),
   startMicrosoftLogin: () => call<DeviceCode>('start_microsoft_login'),
@@ -110,6 +118,14 @@ export const api = {
   cancelMicrosoftLogin: () => call<void>('cancel_microsoft_login'),
   removeAccount: (id: string) => call<void>('remove_account', { id }),
   setDefaultAccount: (id: string) => call<void>('set_default_account', { id }),
+  /** The skin an account wears and the capes it owns. */
+  skinProfile: (accountId: string) => call<SkinProfile>('skin_profile', { accountId }),
+  /** Shows a cape, or hides it (null). Returns the new profile. */
+  setActiveCape: (accountId: string, capeId: string | null) => call<SkinProfile>('set_active_cape', { accountId, capeId }),
+  /** Makes a 64×64 or 64×32 PNG the skin, with classic or slim arms. Returns the new profile. */
+  setSkin: (accountId: string, variant: 'classic' | 'slim', png: number[]) => call<SkinProfile>('set_skin', { accountId, variant, png }),
+  /** The default skins of the game, read from a client jar Cubby downloaded. */
+  defaultSkins: () => call<DefaultSkin[]>('default_skins'),
 
   getSettings: () => call<Settings>('get_settings'),
   saveSettings: (settings: Settings) => call<Settings>('save_settings', { settings }),
@@ -129,6 +145,10 @@ export const api = {
   planInstall: (instanceId: string, versionId: string) => call<InstallPlan>('plan_install', { instanceId, versionId }),
   /** Downloads the plan's items that are not installed yet (task `install:<instanceId>`). Replaces older versions of the same projects. */
   installVersion: (instanceId: string, versionId: string) => call<void>('install_version', { instanceId, versionId }),
+  /** Plans all the versions together and downloads what is missing in one go (task `install:<instanceId>`): the download queue. */
+  installVersions: (instanceId: string, versionIds: string[]) => call<void>('install_versions', { instanceId, versionIds }),
+  /** Names, versions and sizes for Modrinth version ids (at most 400), in the order asked; unknown ids are left out. */
+  describeVersions: (versionIds: string[]) => call<VersionBrief[]>('describe_versions', { versionIds }),
   /** Creates a new instance from a Modrinth modpack version (.mrpack), task `modpack:<instanceId>`. Returns the new instance right away. */
   installModpack: (versionId: string, name: string, group: string | null, icon: string | null) =>
     call<Instance>('install_modpack', { versionId, name, group, icon }),

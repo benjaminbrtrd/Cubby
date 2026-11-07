@@ -538,6 +538,8 @@ function packSummary(provider: ProviderId, d: MockPackDef): PackSummary {
 }
 
 // command handler
+const capeState = { active: 'cape-migrator' as string | null }
+
 export async function handle(command: string, args: Record<string, any>): Promise<unknown> {
   await sleep(60)
   switch (command) {
@@ -618,6 +620,13 @@ export async function handle(command: string, args: Record<string, any>): Promis
     case 'set_resource_packs':
       resourceOrder[args.id] = args.enabled
       return
+    case 'remove_pack': {
+      const list = packsOf(args.id)[args.kind as 'resource' | 'shader']
+      const i = list.findIndex((p) => p.fileName === args.fileName)
+      if (i < 0) throw `pack ${args.fileName} not found`
+      list.splice(i, 1)
+      return
+    }
     case 'set_shader_pack':
       for (const p of packsOf(args.id).shader) p.enabled = p.fileName === args.fileName
       return
@@ -650,6 +659,39 @@ export async function handle(command: string, args: Record<string, any>): Promis
     case 'open_data_folder':
     case 'clear_cache':
       return
+    case 'clear_trash':
+      return
+    case 'skin_profile': {
+      const url = (h: string) => `https://textures.minecraft.net/texture/${h}`
+      return {
+        skinUrl: `https://minotar.net/skin/MHF_Steve`,
+        variant: 'classic',
+        capes: [
+          { id: 'cape-migrator', name: 'Migrator Cape', url: url('2340c0e03dd24a11b15a8b33c2a7e9e32abb2051b2481d0ba7defd635ca7a933'), active: capeState.active === 'cape-migrator' },
+          { id: 'cape-vanilla', name: 'Vanilla Cape', url: url('f9a76537647989f9a0b6d001e320dac591c359e9e61a31f4ce11c88f207f0ad4'), active: capeState.active === 'cape-vanilla' },
+          { id: 'cape-mojang', name: 'Mojang Studios Cape', url: url('9e507afc56359978a3eb3e32367042b853cddd0995d17d0da995662913fb00f7'), active: capeState.active === 'cape-mojang' },
+        ],
+      }
+    }
+    case 'set_active_cape':
+      capeState.active = args.capeId
+      return handle('skin_profile', args)
+    case 'set_skin':
+      return handle('skin_profile', args)
+    case 'default_skins': {
+      // dev only: the textures are read from ui/dev-skins when they were extracted there (never committed)
+      const ids = ['steve', 'alex', 'sunny', 'noor', 'makena', 'kai', 'efe', 'zuri', 'ari']
+      const bytes = async (path: string) => {
+        const r = await fetch(path)
+        if (!r.ok || !(r.headers.get('content-type') ?? '').includes('image/png')) throw new Error('missing')
+        return [...new Uint8Array(await r.arrayBuffer())]
+      }
+      try {
+        return await Promise.all(ids.map(async (id) => ({ id, name: id[0].toUpperCase() + id.slice(1), wide: await bytes(`/dev-skins/${id}-wide.png`), slim: await bytes(`/dev-skins/${id}-slim.png`) })))
+      } catch {
+        throw 'Cubby reads the default skins from the game files. Create an instance and start it once, then come back.'
+      }
+    }
     case 'list_accounts':
       return structuredClone(accounts)
     case 'start_microsoft_login':
@@ -816,6 +858,30 @@ export async function handle(command: string, args: Record<string, any>): Promis
       }
       if (!FILE_PROJECT.some(([re]) => re.test(f))) FILE_PROJECT.push([new RegExp(`^${p.slug}`), p.slug])
       return
+    }
+    case 'install_versions': {
+      const ids: string[] = args.versionIds
+      const found = ids.map((id) => {
+        const p = catalog.find((c) => c.versions.some((v) => v.id === id))
+        return p ? { p, v: p.versions.find((x) => x.id === id)! } : null
+      }).filter((x): x is NonNullable<typeof x> => !!x)
+      void runTask(`install:${args.instanceId}`, [['Resolving dependencies', 3], ['Downloading content', Math.max(3, found.reduce((n, { v }) => n + Math.round(v.files[0].size / 100_000), 0))]], 60)
+      for (const { p, v } of found) {
+        const f = v.files[0].fileName
+        if (p.kind === 'mod') {
+          const list = modsOf(args.instanceId)
+          if (!list.some((m) => m.fileName === f)) list.push({ fileName: f, enabled: true, size: v.files[0].size, name: p.title, version: v.versionNumber, description: p.summary, authors: [p.author] })
+        }
+        if (!FILE_PROJECT.some(([re]) => re.test(f))) FILE_PROJECT.push([new RegExp(`^${p.slug}`), p.slug])
+      }
+      return
+    }
+    case 'describe_versions': {
+      return (args.versionIds as string[]).flatMap((id) => {
+        const p = catalog.find((c) => c.versions.some((v) => v.id === id))
+        const v = p?.versions.find((x) => x.id === id)
+        return p && v ? [{ versionId: v.id, projectId: p.id, slug: p.slug, title: p.title, iconUrl: p.iconUrl, versionNumber: v.versionNumber, projectType: p.kind, size: v.files[0].size, gameVersions: v.gameVersions, loaders: v.loaders }] : []
+      })
     }
     case 'install_modpack': {
       const p = catalog.find((c) => c.versions.some((v) => v.id === args.versionId))!

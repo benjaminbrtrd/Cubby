@@ -4,7 +4,8 @@
   import { api } from '../../api'
   import { Button, Dialog, Icon, IconButton, InstanceIcon, ProgressBar, Slider, StatusTag } from '../../cubby'
   import { bytes, num, timeOfDay } from '../../format'
-  import { iconOf } from '../../icon'
+  import { iconOf, projectArt } from '../../icon'
+  import { queue } from '../../queue.svelte'
   import { app, taskKind, type FinishedTask, type InstanceTab } from '../../state.svelte'
   import type { DataFolder } from '../../types'
 
@@ -54,6 +55,9 @@
     const timer = setInterval(() => (now = Date.now()), 1000)
     return () => clearInterval(timer)
   })
+
+  const queued = $derived(queue.items.filter((i) => i.state !== 'staged'))
+  const QSTATE: Record<string, string> = { running: t('Downloading'), done: t('Done'), failed: t('Failed') }
 
   const finished = $derived(app.finished.filter((f) => !HIDDEN.has(taskKind(f.id))))
   const failed = $derived(finished.filter((f) => f.error))
@@ -114,6 +118,9 @@
   let foldersFailed = $state(false)
   let confirmClean = $state(false)
   let cleaning = $state(false)
+  let confirmTrash = $state(false)
+  let emptying = $state(false)
+  const trash = $derived(folders?.find((f) => f.key === 'trash') ?? null)
 
   async function loadFolders() {
     try {
@@ -152,6 +159,20 @@
     }
   }
 
+  async function emptyTrash() {
+    emptying = true
+    try {
+      await api.clearTrash()
+      confirmTrash = false
+      app.toast(t('Trash emptied.'), 'success')
+      await loadFolders()
+    } catch (e) {
+      app.error(e)
+    } finally {
+      emptying = false
+    }
+  }
+
   // Parallel downloads, saved shortly after the slider stops moving
   let draft = $state<number | null>(null)
   let saveTimer: ReturnType<typeof setTimeout> | undefined
@@ -169,6 +190,11 @@
   $effect(() => () => clearTimeout(saveTimer))
 </script>
 
+{#snippet trashActions()}
+  <Button variant="ghost" onclick={() => (confirmTrash = false)}>{t('Cancel')}</Button>
+  <Button variant="danger" icon="trash" busy={emptying} disabled={emptying} onclick={emptyTrash}>{t('Empty trash')}</Button>
+{/snippet}
+
 {#snippet cleanActions()}
   <Button variant="ghost" onclick={() => (confirmClean = false)}>{t('Cancel')}</Button>
   <Button variant="danger" icon="trash" busy={cleaning} disabled={cleaning} onclick={clean}>{t('Clean up cache')}</Button>
@@ -178,6 +204,31 @@
   <div class="layout">
     <div class="content">
       <h1 class="text-title">{t('Downloads')}</h1>
+
+      {#if queued.length}
+        <section class="section" aria-labelledby="queue-title">
+          <div class="sec-head">
+            <h2 id="queue-title" class="text-label muted grow">{t('Queue')}</h2>
+            <Button size="sm" variant="ghost" icon="close" onclick={() => queue.clearFinished()}>{t('Clear')}</Button>
+          </div>
+          <ul class="card list">
+            {#each queued as i (i.key)}
+              <li class="qrow">
+                <InstanceIcon {...(i.iconUrl ? { src: i.iconUrl } : projectArt(i.title))} size={24} />
+                <div class="qname">
+                  <span class="text-body-strong">{i.title}</span>
+                  <span class="text-small muted">{nameOf(i.instanceId)}{i.neededBy ? ' · ' + t('needed by {name}', { name: i.neededBy }) : ''}{i.bytes ? ' · ' + bytes(i.bytes) : ''}</span>
+                  {#if i.state === 'failed'}<span class="text-small is-bad">{i.error}</span>{/if}
+                </div>
+                <StatusTag state={i.state === 'done' ? 'ready' : i.state === 'failed' ? 'crashed' : 'installing'}>{QSTATE[i.state]}</StatusTag>
+                {#if i.state === 'failed'}
+                  <Button size="sm" icon="update" onclick={() => void queue.startAll(i.instanceId)}>{t('Retry')}</Button>
+                {/if}
+              </li>
+            {/each}
+          </ul>
+        </section>
+      {/if}
 
       <section class="section" aria-labelledby="active-title">
         <h2 id="active-title" class="text-label muted">{t('Downloading now')}</h2>
@@ -318,6 +369,12 @@
           <Button size="sm" icon="trash" onclick={() => (confirmClean = true)}>{t('Clean up cache')}</Button>
           <span class="text-small muted">{cache ? t('Frees {n}. ', { n: bytes(cache.sizeBytes) }) : ''}{t('Your instances stay as they are.')}</span>
         </div>
+        {#if trash && trash.sizeBytes > 0}
+          <div class="clean">
+            <Button size="sm" variant="danger" icon="trash" onclick={() => (confirmTrash = true)}>{t('Empty trash')}</Button>
+            <span class="text-small muted">{t('Frees {n} for good.', { n: bytes(trash.sizeBytes) })}</span>
+          </div>
+        {/if}
       {/if}
 
       <div class="settings">
@@ -329,16 +386,21 @@
           value={Math.min(16, concurrency)}
           valueText={t('{n} at a time', { n: concurrency })}
           marks={['1', '16']}
-          hint={t('For mods and modpacks. Applies to the next download.')}
           onChange={setConcurrency}
         />
-        <div>
-          <Button size="sm" variant="ghost" iconEnd="chevron-right" onclick={() => app.navigate({ name: 'settings', section: 'downloads' })}>{t('All download settings')}</Button>
+        <div class="settings__more">
+          <Button size="sm" iconEnd="chevron-right" onclick={() => app.navigate({ name: 'settings', section: 'downloads' })}>{t('All download settings')}</Button>
         </div>
       </div>
     </aside>
   </div>
 </div>
+
+{#if confirmTrash}
+  <Dialog title={t('Empty the trash?')} icon="trash" tone="danger" onClose={() => (confirmTrash = false)} actions={trashActions}>
+    <p>{t('Permanently deletes what you removed: {size}. This can’t be undone.', { size: bytes(trash?.sizeBytes ?? 0) })}</p>
+  </Dialog>
+{/if}
 
 {#if confirmClean}
   <Dialog title={t('Clean up the cache?')} icon="trash" tone="warning" onClose={() => (confirmClean = false)} actions={cleanActions}>
@@ -353,15 +415,20 @@
   .screen {
     display: flex;
     flex-direction: column;
-    min-height: 100%;
+    height: 100%;
+    min-height: 0;
   }
   .layout {
     flex: 1;
+    min-height: 0;
+    overflow: hidden;
     display: flex;
   }
   .content {
     flex: 1;
     min-width: 0;
+    min-height: 0;
+    overflow: auto;
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
@@ -401,6 +468,18 @@
     min-height: var(--size-control-sm);
   }
 
+  .qrow {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-height: var(--size-control);
+  }
+  .qname {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+  }
   .tasks {
     display: flex;
     flex-direction: column;
@@ -514,6 +593,8 @@
 
   .aside {
     flex: none;
+    min-height: 0;
+    overflow: auto;
     width: var(--size-inspector);
     display: flex;
     flex-direction: column;
@@ -582,8 +663,9 @@
   .clean {
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
+    align-items: flex-end;
     gap: 6px;
+    text-align: end;
   }
   .settings {
     display: flex;
@@ -591,6 +673,10 @@
     gap: var(--space-3);
     padding-top: var(--space-4);
     border-top: var(--border-block) solid var(--line);
+  }
+  .settings__more {
+    display: flex;
+    justify-content: flex-end;
   }
   .settings :global(.cb-slider) {
     min-width: 0;
