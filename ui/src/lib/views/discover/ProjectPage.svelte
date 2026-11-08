@@ -62,7 +62,8 @@
     }
   })
 
-  const kind = $derived(project?.kind ?? routeKind)
+  // Modrinth calls most datapacks "mod" projects: a page opened as a datapack stays one.
+  const kind = $derived(routeKind === 'datapack' ? 'datapack' : (project?.kind ?? routeKind))
   const words = $derived(KINDS[kind])
   const target = $derived(kind === 'modpack' ? undefined : app.target)
 

@@ -3,7 +3,7 @@
 // that appear as installed. Add `?onboarding` to the URL to see the first-launch assistant.
 
 import { pixelArt, svgUrl } from './pixelart'
-import { handleExtra, NOT_HANDLED } from './mockExtra'
+import { handleDatapackProject, handleExtra, NOT_HANDLED } from './mockExtra'
 import { OPTIONAL_MODS, PACKS, PACK_DESCRIPTION, PACK_MARKDOWN, PROVIDERS, SORTERS, morePacks, type MockPackDef } from './mockPacks'
 import type {
   Account,
@@ -544,6 +544,8 @@ function packSummary(provider: ProviderId, d: MockPackDef): PackSummary {
 const capeState = { active: 'cape-migrator' as string | null }
 
 export async function handle(command: string, args: Record<string, any>): Promise<unknown> {
+  const datapack = handleDatapackProject(command, args)
+  if (datapack !== NOT_HANDLED) return datapack
   await sleep(60)
   switch (command) {
     case 'app_info':

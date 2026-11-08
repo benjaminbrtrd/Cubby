@@ -66,24 +66,8 @@ pub async fn add_datapack_files(
     blocking(move || cubby_instance::import_datapacks(&dir, &world, &paths).msg()).await
 }
 
-/// Modrinth datapacks made for the instance's Minecraft version.
-#[tauri::command]
-pub async fn search_datapacks(
-    core: State<'_, Core>,
-    id: String,
-    query: String,
-    offset: u32,
-) -> CmdResult<SearchResultsDto> {
-    let inst = core.store.get(&id).msg()?;
-    Ok(core
-        .modrinth
-        .search_datapacks(&query, &inst.minecraft, offset)
-        .await
-        .msg()?
-        .into())
-}
-
-/// Downloads the newest version of a Modrinth datapack for the instance's Minecraft version into the world.
+/// Downloads a version of a Modrinth datapack into the world: `version_id`, else the newest one for the
+/// instance's Minecraft version.
 /// Returns the file name.
 #[tauri::command]
 pub async fn install_datapack(
@@ -91,12 +75,13 @@ pub async fn install_datapack(
     id: String,
     world: String,
     project_id: String,
+    version_id: Option<String>,
 ) -> CmdResult<String> {
     let inst = core.store.get(&id).msg()?;
     let game = core.store.game_dir(&inst);
     let file = core
         .modrinth
-        .datapack_file(project_id.trim(), &inst.minecraft)
+        .datapack_file(project_id.trim(), version_id.as_deref().map(str::trim).filter(|v| !v.is_empty()), &inst.minecraft)
         .await
         .msg()?;
     let path = cubby_instance::datapack_path(&game, &world, &file.file_name).msg()?;

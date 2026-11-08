@@ -1,6 +1,6 @@
 // Browser dev mode: sample answers for the commands added with datapacks, update undo, exports, launcher
 // imports, shared options, shortcuts, world maps and Discord. See mock.ts.
-import type { Datapack, ProjectHit, UpdateBackup } from '../types'
+import type { Datapack, Project, ProjectHit, ProjectVersion, UpdateBackup } from '../types'
 
 export const NOT_HANDLED = Symbol('not handled')
 
@@ -24,7 +24,6 @@ const DATAPACK_HITS: ProjectHit[] = [
 ].map(([slug, title, author, summary, downloads]) => ({
   id: `dp-${slug}`,
   slug: slug as string,
-  kind: 'mod',
   title: title as string,
   author: author as string,
   summary: summary as string,
@@ -36,9 +35,45 @@ const DATAPACK_HITS: ProjectHit[] = [
   published: '2023-05-01T10:00:00Z',
   gameVersions: ['1.21.1'],
   loaders: ['datapack'],
+  kind: 'datapack',
   clientSide: 'unsupported',
   serverSide: 'required',
+  license: 'MIT',
+  featuredImage: null,
 })) as unknown as ProjectHit[]
+
+const datapackHit = (idOrSlug: string) => DATAPACK_HITS.find((h) => h.id === idOrSlug || h.slug === idOrSlug)
+
+function datapackVersions(h: ProjectHit): ProjectVersion[] {
+  return ['1.21.1', '1.20.1'].map((mc, i) => ({
+    id: `${h.id}-v${i}`,
+    projectId: h.id,
+    name: `${h.title} ${mc}`,
+    versionNumber: `2.${5 - i}.0`,
+    channel: 'release',
+    gameVersions: [mc],
+    loaders: ['datapack'],
+    published: new Date(Date.now() - (i + 1) * 9 * 86400e3).toISOString(),
+    downloads: 1000,
+    changelog: '- New structures\n- Fixes',
+    files: [{ url: 'https://cdn.example/x.zip', fileName: `${h.slug}-${mc}.zip`, size: 2_100_000, primary: true, sha1: 'a'.repeat(40) }],
+    dependencies: [],
+  }))
+}
+
+/** Discover › Datapacks in the browser: searches, project pages and versions of the sample datapacks. */
+export function handleDatapackProject(command: string, args: Record<string, any>): unknown {
+  if (command === 'search_projects' && args.query?.kind === 'datapack') {
+    const q = String(args.query.query ?? '').trim().toLowerCase()
+    const hits = DATAPACK_HITS.filter((h) => !q || `${h.title} ${h.summary}`.toLowerCase().includes(q))
+    return Promise.resolve({ hits: structuredClone(hits), total: hits.length, offset: 0, limit: 20 })
+  }
+  const hit = (command === 'get_project' || command === 'list_project_versions') && datapackHit(args.idOrSlug)
+  if (!hit) return NOT_HANDLED
+  if (command === 'list_project_versions') return Promise.resolve(datapackVersions(hit))
+  const project: Project = { ...structuredClone(hit), body: hit.summary, gallery: [], links: { source: null, issues: null, wiki: null, discord: null, donation: [] }, versionCount: 2 }
+  return Promise.resolve(project)
+}
 
 let updateBackups: UpdateBackup[] = [
   {
@@ -68,12 +103,6 @@ export async function handleExtra(command: string, args: Record<string, any>): P
     }
     case 'add_datapack_files':
       return []
-    case 'search_datapacks': {
-      await sleep(300)
-      const q = String(args.query ?? '').trim().toLowerCase()
-      const hits = DATAPACK_HITS.filter((h) => !q || `${h.title} ${h.summary}`.toLowerCase().includes(q))
-      return { hits, total: hits.length, offset: 0, limit: 20 }
-    }
     case 'install_datapack': {
       await sleep(800)
       const hit = DATAPACK_HITS.find((h) => h.id === args.projectId)

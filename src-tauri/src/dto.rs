@@ -539,6 +539,7 @@ fn project_kind(kind: &str) -> Result<modrinth::ProjectKind, String> {
         "modpack" => Ok(modrinth::ProjectKind::Modpack),
         "shader" => Ok(modrinth::ProjectKind::Shader),
         "resourcepack" => Ok(modrinth::ProjectKind::ResourcePack),
+        "datapack" => Ok(modrinth::ProjectKind::Datapack),
         other => Err(format!("Unknown project type: {other}.")),
     }
 }

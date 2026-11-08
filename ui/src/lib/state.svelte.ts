@@ -222,8 +222,22 @@ class AppState {
   }
 
   setTarget(id: string) {
+    if (id !== this.targetId) this.targetWorld = null
     this.targetId = id
     store('targetId', id)
+  }
+
+  /** The world of the target instance datapacks go into (its folder in saves/); null = the most recent one. */
+  targetWorld = $state<string | null>(null)
+
+  /** Discover › Datapacks, installing into this world of this instance. */
+  openDatapacks(instanceId: string, world: string) {
+    this.setTarget(instanceId)
+    this.targetWorld = world
+    this.discover.kind = 'datapack'
+    this.discover.categories = []
+    this.discover.page = 0
+    this.navigate({ name: 'discover' })
   }
 
   setLibraryView(view: 'grid' | 'list') {

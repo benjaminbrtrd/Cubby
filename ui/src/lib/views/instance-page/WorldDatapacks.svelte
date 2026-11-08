@@ -1,13 +1,12 @@
-<!-- The datapacks of one world, in the Worlds tab's side panel: turn them on and off, add .zip files or
-     find them on Modrinth. -->
+<!-- The datapacks of one world, in the Worlds tab's side panel: turn them on and off, add .zip files, or
+     open Discover › Datapacks set to install into this world. -->
 <script lang="ts">
   import { t } from '../../i18n.svelte'
   import { api } from '../../api'
-  import { Button, Dialog, IconButton, InstanceIcon, Switch, TextField } from '../../cubby'
-  import { bytes, compactNum, plural } from '../../format'
-  import { projectArt } from '../../icon'
+  import { Button, IconButton, Switch } from '../../cubby'
+  import { bytes, plural } from '../../format'
   import { app } from '../../state.svelte'
-  import type { Datapack, Instance, ProjectHit, World } from '../../types'
+  import type { Datapack, Instance, World } from '../../types'
 
   let { instance, world }: { instance: Instance; world: World } = $props()
 
@@ -66,56 +65,6 @@
       adding = false
     }
   }
-
-  // Finding datapacks on Modrinth
-  let finding = $state(false)
-  let query = $state('')
-  let hits = $state<ProjectHit[] | null>(null)
-  let searchError = $state<string | null>(null)
-  let installing = $state<string | null>(null)
-  let installed = $state<string[]>([])
-  let searchTimer: ReturnType<typeof setTimeout> | undefined
-  let asked = 0
-
-  async function search() {
-    const n = ++asked
-    searchError = null
-    try {
-      const results = await api.searchDatapacks(id, query, 0)
-      if (n === asked) hits = results.hits
-    } catch (e) {
-      if (n === asked) {
-        hits = []
-        searchError = String(e)
-      }
-    }
-  }
-
-  function openFinder() {
-    finding = true
-    installed = []
-    if (!hits) void search()
-  }
-
-  function typed() {
-    clearTimeout(searchTimer)
-    searchTimer = setTimeout(search, 300)
-  }
-
-  async function install(h: ProjectHit) {
-    installing = h.id
-    try {
-      const file = await api.installDatapack(id, world.folder, h.id)
-      installed = [...installed, h.id]
-      app.toast(t('{title} is in {world}.', { title: h.title, world: world.name }), 'success')
-      void file
-      await load()
-    } catch (e) {
-      app.error(e)
-    } finally {
-      installing = null
-    }
-  }
 </script>
 
 <section class="part" aria-labelledby="w-datapacks">
@@ -139,53 +88,13 @@
     </ul>
   {/if}
   <div class="actions">
-    <Button size="sm" icon="discover" disabled={running} onclick={openFinder}>{t('Find on Modrinth')}</Button>
+    <Button size="sm" icon="discover" disabled={running} onclick={() => app.openDatapacks(id, world.folder)}>{t('Find on Modrinth')}</Button>
     <Button size="sm" icon="plus" busy={adding} disabled={adding || running} onclick={addFiles}>{t('Add from file')}</Button>
   </div>
   {#if running}
     <p class="text-small muted">{t('Close the game to change datapacks. They load when the world opens.')}</p>
   {/if}
 </section>
-
-{#if finding}
-  {#snippet findActions()}
-    <Button variant="primary" onclick={() => (finding = false)}>{t('Done')}</Button>
-  {/snippet}
-  <Dialog wide icon="discover" title={t('Datapacks for {world}', { world: world.name })} onClose={() => (finding = false)} actions={findActions}>
-    <div class="finder">
-      <TextField label={t('Search datapacks')} hideLabel icon="search" placeholder={t('Search datapacks for {minecraft}', { minecraft: instance.minecraft })} bind:value={query} oninput={typed} />
-      {#if hits === null}
-        <p class="text-small muted">{t('Searching Modrinth…')}</p>
-      {:else if searchError}
-        <p class="text-small warn">{searchError}</p>
-      {:else if !hits.length}
-        <p class="text-small muted">{t('No datapacks for Minecraft {minecraft} match.', { minecraft: instance.minecraft })}</p>
-      {:else}
-        <ul class="hits">
-          {#each hits as h (h.id)}
-            <li class="hit">
-              {#if h.iconUrl}
-                <InstanceIcon src={h.iconUrl} size={40} />
-              {:else}
-                <InstanceIcon {...projectArt(h.slug)} size={40} />
-              {/if}
-              <div class="hit__text">
-                <span class="text-body-strong clip">{h.title}</span>
-                <span class="text-small muted clip" title={h.summary}>{h.summary}</span>
-                <span class="text-small muted">{t('{author} · {downloads} downloads', { author: h.author, downloads: compactNum(h.downloads) })}</span>
-              </div>
-              {#if installed.includes(h.id)}
-                <Button size="sm" variant="ghost" icon="check" disabled>{t('Added')}</Button>
-              {:else}
-                <Button size="sm" icon="download" busy={installing === h.id} disabled={!!installing} onclick={() => install(h)}>{t('Add')}</Button>
-              {/if}
-            </li>
-          {/each}
-        </ul>
-      {/if}
-    </div>
-  </Dialog>
-{/if}
 
 <style>
   p,
@@ -199,9 +108,6 @@
   }
   .muted {
     color: var(--ink-muted);
-  }
-  .warn {
-    color: var(--danger, var(--ink));
   }
   .clip {
     overflow: hidden;
@@ -218,14 +124,12 @@
     flex-direction: column;
     gap: var(--space-2);
   }
-  .pack,
-  .hit {
+  .pack {
     display: flex;
     align-items: center;
     gap: var(--space-2);
   }
-  .pack__text,
-  .hit__text {
+  .pack__text {
     flex: 1;
     min-width: 0;
     display: flex;
@@ -238,18 +142,5 @@
     flex-wrap: wrap;
     justify-content: flex-end;
     gap: var(--space-2);
-  }
-  .finder {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-    min-width: min(560px, 80vw);
-  }
-  .hits {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-    max-height: 50vh;
-    overflow-y: auto;
   }
 </style>

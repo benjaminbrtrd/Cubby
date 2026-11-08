@@ -139,7 +139,6 @@ pub fn run() {
             commands::datapacks::set_datapack_enabled,
             commands::datapacks::remove_datapack,
             commands::datapacks::add_datapack_files,
-            commands::datapacks::search_datapacks,
             commands::datapacks::install_datapack,
             commands::datapacks::render_world_map,
         ])

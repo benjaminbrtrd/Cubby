@@ -156,4 +156,29 @@ export const FR_10: Record<string, Entry> = {
   'Puts back the {n} the last update replaced, so you play as before.': 'Remet les {n} remplacés par la dernière mise à jour : vous jouez comme avant.',
   'Update again from Mods': 'Remettez à jour depuis Mods',
   'Back as before': 'Revenu comme avant',
+
+  // Discover › Datapacks
+  Datapacks: 'Datapacks',
+  datapacks: 'datapacks',
+  'Datapacks add structures, biomes, recipes or rules to one world, without mods: they work in Vanilla too. Cubby puts them in the world you pick.':
+    'Les datapacks ajoutent des structures, des biomes, des recettes ou des règles à un monde, sans mods : ils marchent aussi en Vanilla. Cubby les met dans le monde que vous choisissez.',
+  'Into world': 'Dans le monde',
+  'Into {world}. Change world': 'Dans {world}. Changer de monde',
+  '{name} has no world yet. Play it once and create one.': '{name} n’a pas encore de monde. Lancez-la et créez-en un.',
+  World: 'Monde',
+  'Couldn’t load the versions': 'Impossible de charger les versions',
+  'Loading versions…': 'Chargement des versions…',
+  '{title} has no datapack version: it only comes as a mod.': '{title} n’a pas de version datapack : il n’existe qu’en mod.',
+  'This version isn’t made for Minecraft {mc}. The world may not load it.': 'Cette version n’est pas faite pour Minecraft {mc}. Le monde risque de ne pas la charger.',
+  'In the world': 'Dans le monde',
+  'See its datapacks': 'Voir ses datapacks',
+  'Install · {size}': 'Installer · {size}',
+  'Close the game first: the world reads its datapacks when it opens.': 'Fermez d’abord le jeu : le monde lit ses datapacks à l’ouverture.',
+  'This version has no .zip to put in a world.': 'Cette version n’a pas de .zip à mettre dans un monde.',
+  '{title} is in the world. It loads the next time you open it.': '{title} est dans le monde. Il se charge à la prochaine ouverture.',
+  'Only the world you put it in. New chunks may look different, and its changes stay in that world. Back the world up first.':
+    'Seulement le monde où vous le mettez. Les nouveaux chunks peuvent changer, et ses effets restent dans ce monde. Sauvegardez le monde avant.',
+  'Does it need mods?': 'Faut-il des mods ?',
+  'No. Datapacks work in Vanilla too. On a server, the server puts them in its own world.': 'Non. Les datapacks marchent aussi en Vanilla. Sur un serveur, c’est le serveur qui les met dans son monde.',
+  'In the instance\'s Worlds tab, under the world. It loads the next time you open the world.': 'Dans l’onglet Mondes de l’instance, sous le monde. Il se charge à la prochaine ouverture du monde.',
 }

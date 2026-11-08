@@ -9,6 +9,8 @@ pub enum ProjectKind {
     Modpack,
     Shader,
     ResourcePack,
+    /// Goes into a world (`saves/<world>/datapacks`), not into the instance: see `install_datapack`.
+    Datapack,
 }
 
 impl ProjectKind {
@@ -19,6 +21,7 @@ impl ProjectKind {
             ProjectKind::Modpack => "modpack",
             ProjectKind::Shader => "shader",
             ProjectKind::ResourcePack => "resourcepack",
+            ProjectKind::Datapack => "datapack",
         }
     }
 
@@ -27,6 +30,7 @@ impl ProjectKind {
             "modpack" => ProjectKind::Modpack,
             "shader" => ProjectKind::Shader,
             "resourcepack" => ProjectKind::ResourcePack,
+            "datapack" => ProjectKind::Datapack,
             _ => ProjectKind::Mod,
         }
     }
@@ -37,7 +41,7 @@ impl ProjectKind {
             ProjectKind::Mod => Some(Folder::Mods),
             ProjectKind::ResourcePack => Some(Folder::ResourcePacks),
             ProjectKind::Shader => Some(Folder::ShaderPacks),
-            ProjectKind::Modpack => None,
+            ProjectKind::Modpack | ProjectKind::Datapack => None,
         }
     }
 }

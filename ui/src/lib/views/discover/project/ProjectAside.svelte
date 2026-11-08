@@ -6,6 +6,7 @@
   import { date, num } from '../../../format'
   import type { Project, ProjectKind, ProjectVersion } from '../../../types'
   import InstallPanel from '../InstallPanel.svelte'
+  import DatapackInstall from '../DatapackInstall.svelte'
   import { loaderLabel, mcRange, modLoadersOf, modrinthUrl, sideText } from '../discover'
   import { follow } from './shared'
 
@@ -30,7 +31,11 @@
   })
 </script>
 
-<InstallPanel {project} {versions} {versionsError} bind:versionId />
+{#if kind === 'datapack'}
+  <DatapackInstall {project} {versions} {versionsError} />
+{:else}
+  <InstallPanel {project} {versions} {versionsError} bind:versionId />
+{/if}
 
 {#if links.length}
   <section class="aside-section" aria-labelledby="pp-links">

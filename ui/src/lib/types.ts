@@ -251,7 +251,7 @@ export interface ServerStatus {
 }
 
 // Discover (Modrinth)
-export type ProjectKind = 'mod' | 'modpack' | 'shader' | 'resourcepack'
+export type ProjectKind = 'mod' | 'modpack' | 'shader' | 'resourcepack' | 'datapack'
 export type ProjectSort = 'relevance' | 'downloads' | 'follows' | 'newest' | 'updated'
 /** Where a project runs, from Modrinth's client_side / server_side. */
 export type SideSupport = 'required' | 'optional' | 'unsupported' | 'unknown'

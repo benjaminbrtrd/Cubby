@@ -18,7 +18,7 @@ export interface KindText {
   /** Folder of the instance it goes to */
   folder: string
   /** Instance tab where the player manages it */
-  tab: 'mods' | 'shaders' | 'resourcepacks' | null
+  tab: 'mods' | 'shaders' | 'resourcepacks' | 'worlds' | null
   /** Short sentence for "New to …?" */
   help: string
 }
@@ -56,9 +56,17 @@ export const KINDS: Record<ProjectKind, KindText> = {
     tab: 'resourcepacks',
     help: t('Resource packs change how blocks, items, mobs and menus look, and sometimes how they sound. They add nothing new, so they are safe in any world.'),
   },
+  datapack: {
+    label: t('Datapacks'),
+    one: t('datapack'),
+    many: t('datapacks'),
+    folder: 'datapacks',
+    tab: 'worlds',
+    help: t('Datapacks add structures, biomes, recipes or rules to one world, without mods: they work in Vanilla too. Cubby puts them in the world you pick.'),
+  },
 }
 
-export const KIND_ORDER: ProjectKind[] = ['mod', 'modpack', 'shader', 'resourcepack']
+export const KIND_ORDER: ProjectKind[] = ['mod', 'modpack', 'shader', 'resourcepack', 'datapack']
 
 /** Path segment of a project on modrinth.com. */
 export function modrinthUrl(kind: ProjectKind, slug: string): string {
@@ -116,6 +124,12 @@ export const CATEGORIES: Record<ProjectKind, CategoryGroup[]> = {
     },
     { label: t('Changes'), items: ['blocks', 'items', 'entities', 'gui', 'fonts', 'audio', 'environment', 'equipment', 'models', 'core-shaders', 'locale'] },
     { label: t('Resolution'), items: ['8x-', '16x', '32x', '48x', '64x', '128x', '256x', '512x+'] },
+  ],
+  datapack: [
+    {
+      label: t('Categories'),
+      items: ['adventure', 'decoration', 'equipment', 'food', 'game-mechanics', 'magic', 'mobs', 'optimization', 'technology', 'transportation', 'utility', 'worldgen'],
+    },
   ],
 }
 
@@ -327,6 +341,7 @@ export function fits(v: Supported, kind: ProjectKind, target: Instance | undefin
   if (!gameFits(v.gameVersions, target)) return false
   if (kind === 'mod') return loaderFits(v.loaders, target)
   if (kind === 'shader') return target.loader.kind !== 'vanilla'
+  if (kind === 'datapack') return v.loaders.length === 0 || v.loaders.includes('datapack')
   return true
 }
 

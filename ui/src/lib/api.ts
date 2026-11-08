@@ -227,10 +227,8 @@ export const api = {
   removeDatapack: (id: string, world: string, fileName: string) => call<void>('remove_datapack', { id, world, fileName }),
   /** Asks for .zip files and copies them into the world; returns the names added (empty when cancelled). */
   addDatapackFiles: (id: string, world: string) => call<string[]>('add_datapack_files', { id, world }),
-  /** Modrinth datapacks for the instance's Minecraft version, 20 per page. */
-  searchDatapacks: (id: string, query: string, offset: number) => call<SearchResults>('search_datapacks', { id, query, offset }),
-  /** Downloads the newest version for the instance's Minecraft version into the world; returns its file name. */
-  installDatapack: (id: string, world: string, projectId: string) => call<string>('install_datapack', { id, world, projectId }),
+  /** Downloads a version (else the newest for the instance's Minecraft version) into the world; returns its file name. */
+  installDatapack: (id: string, world: string, projectId: string, versionId: string | null = null) => call<string>('install_datapack', { id, world, projectId, versionId }),
 
   listPrismInstances: () => call<PrismInstance[]>('list_prism_instances'),
   importPrism: (paths: string[]) => call<Instance[]>('import_prism', { paths }),
