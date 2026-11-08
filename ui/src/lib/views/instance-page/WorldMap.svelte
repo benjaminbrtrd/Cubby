@@ -2,7 +2,7 @@
 <script lang="ts">
   import { t } from '../../i18n.svelte'
   import { api } from '../../api'
-  import { Button, Dialog, ProgressBar } from '../../cubby'
+  import { Button, Dialog, InspectorSection, ProgressBar } from '../../cubby'
   import { num } from '../../format'
   import { app } from '../../state.svelte'
   import type { Instance, World, WorldMapImage } from '../../types'
@@ -29,25 +29,24 @@
   }
 </script>
 
-<section class="part" aria-labelledby="w-map">
-  <h3 id="w-map" class="text-label muted">{t('Map')}</h3>
+{#snippet drawAction()}
+  <Button size="sm" variant="ghost" icon={map ? 'update' : 'globe'} busy={!!task} disabled={!!task} onclick={draw}>{map ? t('Draw again') : t('Draw the map')}</Button>
+{/snippet}
+<InspectorSection title={t('Map')} action={drawAction}>
   {#if map}
     <button type="button" class="map" onclick={() => (big = true)} aria-label={t('Show the map of {name} bigger', { name: world.name })}>
       <img src={map.url} alt={t('Map of {name} around its spawn', { name: world.name })} />
       <span class="spawn" aria-hidden="true"></span>
     </button>
-    <p class="text-small muted">{t('{n} blocks around the spawn · {chunks} chunks explored', { n: num(map.size / 2), chunks: num(map.chunks) })}</p>
+    <p class="cb-ins-hint">{t('{n} blocks around the spawn · {chunks} chunks explored', { n: num(map.size / 2), chunks: num(map.chunks) })}</p>
   {:else if task}
     <ProgressBar tone="grass" label={t('Drawing the map')} value={task.total ? (task.done / task.total) * 100 : undefined} />
   {:else if failed[key]}
-    <p class="text-small muted">{failed[key]}</p>
+    <p class="cb-ins-hint">{failed[key]}</p>
   {:else}
-    <p class="text-small muted">{t('See the land around the spawn from above.')}</p>
+    <p class="cb-ins-hint">{t('See the land around the spawn from above.')}</p>
   {/if}
-  <div>
-    <Button size="sm" icon="globe" busy={!!task} disabled={!!task} onclick={draw}>{map ? t('Draw again') : t('Draw the map')}</Button>
-  </div>
-</section>
+</InspectorSection>
 
 {#if big && map}
   <Dialog wide icon="globe" title={world.name} onClose={() => (big = false)}>
@@ -60,17 +59,11 @@
 {/if}
 
 <style>
-  p,
-  h3 {
+  p {
     margin: 0;
   }
   .muted {
     color: var(--ink-muted);
-  }
-  .part {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
   }
   .map {
     position: relative;

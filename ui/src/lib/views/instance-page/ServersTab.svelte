@@ -2,7 +2,7 @@
   import { t } from '../../i18n.svelte'
   import { tick, untrack } from 'svelte'
   import { api } from '../../api'
-  import { Button, Dialog, Icon, IconButton, MetaChip, PlayButton, SegmentedControl, ServerRow, StatusTag, TextField } from '../../cubby'
+  import { Button, Dialog, Icon, IconButton, Inspector, InspectorHead, InspectorNotice, InspectorSection, InspectorStatus, MetaChip, PlayButton, SegmentedControl, ServerRow, StatusTag, TextField } from '../../cubby'
   import { num, plural } from '../../format'
   import { app } from '../../state.svelte'
   import type { Instance, Server, ServerStatus } from '../../types'
@@ -257,102 +257,91 @@
 </div>
 
 <aside class="ip-aside" aria-label={t('Server details')}>
-  <div class="ip-aside__inner">
+  <Inspector class="ip-aside__inner" danger={sel && !editing ? { label: t('Remove'), hint: t('Takes it off this instance’s server list.'), onclick: () => (removing = selIndex) } : null}>
     {#if sel}
       {@const icon = selStatus?.iconUrl ?? sel.iconUrl}
+      {#snippet serverMedia()}
+        {#if icon}
+          <span class="cb-ins-media"><img src={icon} alt="" /></span>
+        {:else}
+          <span class="cb-ins-media"><Icon name="servers" size={27} /></span>
+        {/if}
+      {/snippet}
+      {#snippet serverMeta()}
+        {#if !selStatus}
+          <InspectorStatus tone="off">{t('Checking…')}</InspectorStatus>
+        {:else if selStatus.online}
+          <InspectorStatus tone="ok">{t('Online')}</InspectorStatus>
+          <MetaChip>{num(selStatus.playersOnline)} / {num(selStatus.playersMax)}</MetaChip>
+          {#if selStatus.pingMs != null}<MetaChip>{num(selStatus.pingMs)} ms</MetaChip>{/if}
+        {:else}
+          <InspectorStatus tone="bad">{t('Can’t reach server')}</InspectorStatus>
+        {/if}
+      {/snippet}
       {#if editing}
+        <InspectorHead eyebrow={t('Edit server')} title={sel.name} sub={sel.address} mono media={serverMedia} />
         <form class="edit" onsubmit={saveEdit} novalidate>
-          <h2 class="text-heading">{t('Edit server')}</h2>
           <TextField label={t('Name')} bind:value={editName} autocomplete="off" />
           <TextField label={t('Server address')} mono icon="globe" bind:value={editAddress} error={editError || undefined} autocomplete="off" spellcheck={false} />
-          <div class="row">
-            <Button variant="ghost" onclick={() => (editing = false)}>{t('Cancel')}</Button>
-            <Button type="submit" icon="check">{t('Save')}</Button>
+          <div class="cb-ins-acts">
+            <Button type="submit" variant="primary" icon="check">{t('Save')}</Button>
+            <Button onclick={() => (editing = false)}>{t('Cancel')}</Button>
           </div>
         </form>
       {:else}
-        <div class="who">
-          {#if icon}
-            <img class="who__icon" src={icon} alt="" width="64" height="64" />
-          {:else}
-            <span class="who__icon who__icon--empty" aria-hidden="true"><Icon name="servers" size={27} /></span>
-          {/if}
-          <div class="who__text">
-            <h2 class="text-heading wrap" tabindex="-1" bind:this={asideTitle}>{sel.name}</h2>
-            <p class="text-mono muted wrap">{sel.address}</p>
-          </div>
+        <InspectorHead eyebrow={t('Server')} title={sel.name} sub={sel.address} mono media={serverMedia} meta={serverMeta} bind:titleEl={asideTitle} />
+        <div class="cb-ins-acts">
+          <PlayButton
+            state={running ? 'running' : preparing ? 'installing' : 'ready'}
+            label={running ? undefined : preparing ? undefined : t('Join')}
+            detail={running ? t('The game is running') : t('With {name}', { name: instance.name })}
+            aria-label={t('Join {name} with {name2}', { name: sel.name, name2: instance.name })}
+            onclick={onPlay}
+          />
+          <Button icon="copy" aria-label={t('Copy address')} onclick={() => sel && copy(sel.address)}>{t('Copy')}</Button>
+          <Button icon="wrench" onclick={startEdit}>{t('Edit')}</Button>
         </div>
-        <PlayButton
-          size="lg"
-          class="wide"
-          state={running ? 'running' : preparing ? 'installing' : 'ready'}
-          label={running ? undefined : preparing ? undefined : t('Join')}
-          detail={running ? t('The game is running') : t('Join {name} with {name2}', { name: sel.name, name2: instance.name })}
-          onclick={onPlay}
-        />
-        <div class="row row--actions">
-          <Button size="sm" icon="copy" aria-label={t('Copy address')} onclick={() => sel && copy(sel.address)}>{t('Copy')}</Button>
-          <Button size="sm" icon="wrench" onclick={startEdit}>{t('Edit')}</Button>
-          <span class="move">
-            <IconButton size="sm" icon="update" label={t('Move {name} up', { name: sel.name })} disabled={selIndex === 0} onclick={() => move(selIndex, selIndex - 1)} />
-            <IconButton size="sm" icon="download" label={t('Move {name} down', { name: sel.name })} disabled={selIndex === servers.length - 1} onclick={() => move(selIndex, selIndex + 1)} />
-          </span>
-        </div>
-      {/if}
-
-      {#if selStatus?.online && selStatus.motd}
-        <div>
-          <p class="text-label muted label">{t('Message of the day')}</p>
-          <p class="text-mono motd">{selStatus.motd}</p>
-        </div>
-      {/if}
-
-      <dl class="facts">
-        <dt class="text-small muted">{t('Status')}</dt>
-        <dd class="inline">
-          {#if !selStatus}
-            <span class="text-body muted">{t('Checking…')}</span>
-          {:else}
-            <StatusTag state={selStatus.online ? 'online' : 'offline'}>{selStatus.online ? t('Online') : t('Can’t reach server')}</StatusTag>
-            {#if selStatus.online && selStatus.pingMs != null}<span class="text-mono">{num(selStatus.pingMs)} ms</span>{/if}
-          {/if}
-        </dd>
-        {#if selStatus?.online}
-          <dt class="text-small muted">{t('Players')}</dt>
-          <dd class="text-body">{t('{n} of {n2}', { n: num(selStatus.playersOnline), n2: num(selStatus.playersMax) })}</dd>
+        {#if versionDiffers}
+          <InspectorNotice>
+            <strong>{t('{name} may not get in.', { name: instance.name })}</strong> {t('The server runs {version}, and this instance uses {minecraft}.', { version: selStatus?.version ?? '?', minecraft: instance.minecraft })}
+          </InspectorNotice>
         {/if}
-        {#if selStatus?.version}
-          <dt class="text-small muted">{t('Version')}</dt>
-          <dd class="inline"><MetaChip>{selStatus.version}</MetaChip></dd>
+        {#if selStatus?.online && selStatus.motd}
+          <InspectorSection title={t('Message of the day')}>
+            <p class="motd text-mono">{selStatus.motd}</p>
+          </InspectorSection>
         {/if}
-      </dl>
-      {#if versionDiffers}
-        <p class="text-small flag"><span class="warn icon"><Icon name="warning" size={18} label={t('Warning')} /></span><span>{t('This instance runs')} <span class="text-mono">{instance.minecraft}</span>{t('. Check that the server accepts it.')}</span></p>
+        <InspectorSection title={t('Server resource packs')}>
+          <SegmentedControl
+            label={t('Server resource packs')}
+            options={[
+              { value: 'ask', label: t('Ask') },
+              { value: 'accept', label: t('Accept') },
+              { value: 'refuse', label: t('Refuse') },
+            ]}
+            value={textures}
+            onChange={setTextures}
+          />
+          <p class="cb-ins-hint">{t('What the game does when this server sends its own resource pack.')}</p>
+        </InspectorSection>
+        <InspectorSection title={t('Details')}>
+          <dl class="cb-ins-facts">
+            {#if selStatus?.version}<dt>{t('Version')}</dt><dd><MetaChip>{selStatus.version}</MetaChip>{#if !versionDiffers && selStatus.online}<InspectorStatus tone="ok">{t('Fits')}</InspectorStatus>{/if}</dd>{/if}
+            <dt>{t('Position')}</dt>
+            <dd>
+              <span>{t('{n} of {n2}', { n: num(selIndex + 1), n2: num(servers.length) })}</span>
+              <IconButton size="sm" icon="update" label={t('Move {name} up', { name: sel.name })} disabled={selIndex === 0} onclick={() => move(selIndex, selIndex - 1)} />
+              <IconButton size="sm" icon="download" label={t('Move {name} down', { name: sel.name })} disabled={selIndex === servers.length - 1} onclick={() => move(selIndex, selIndex + 1)} />
+            </dd>
+          </dl>
+        </InspectorSection>
       {/if}
-
-      <div class="part">
-        <span class="text-body-strong" aria-hidden="true">{t('Server resource packs')}</span>
-        <SegmentedControl
-          label={t('Server resource packs')}
-          options={[
-            { value: 'ask', label: t('Ask') },
-            { value: 'accept', label: t('Accept') },
-            { value: 'refuse', label: t('Refuse') },
-          ]}
-          value={textures}
-          onChange={setTextures}
-        />
-        <p class="text-small muted">{t('What the game does when this server sends its own resource pack.')}</p>
-      </div>
-
-      <div class="danger">
-        <Button size="sm" variant="danger" icon="trash" onclick={() => (removing = selIndex)}>{t('Remove')}</Button>
-      </div>
     {:else}
-      <p class="text-label muted">{t('Server details')}</p>
-      <p class="text-body muted">{t('Add a server to see who’s online and join in one click.')}</p>
+      {#snippet noServerMedia()}<span class="cb-ins-media cb-ins-media--empty"><Icon name="servers" size={27} /></span>{/snippet}
+      <InspectorHead eyebrow={t('Server')} title={t('No servers yet')} sub={instance.name} media={noServerMedia} empty />
+      <p class="cb-ins-hint">{t('Add a server to see who’s online and join it in one click.')}</p>
     {/if}
-  </div>
+  </Inspector>
 </aside>
 
 {#if removing !== null && servers[removing]}
@@ -376,16 +365,6 @@
   }
   .muted {
     color: var(--ink-muted);
-  }
-  .warn {
-    color: var(--gold-text);
-  }
-  .icon {
-    display: inline-flex;
-    flex: none;
-  }
-  .wrap {
-    overflow-wrap: anywhere;
   }
   .toolbar {
     display: flex;
@@ -479,19 +458,6 @@
   .srow__main:hover :global(.cb-server) {
     background: var(--surface-hover);
   }
-  /* one line: Copy, Edit and the two move buttons stay together whatever the width of the panel */
-  .row.row--actions {
-    flex-wrap: nowrap;
-  }
-  .row--actions > :global(.cb-btn) {
-    flex: 1;
-  }
-  .move {
-    flex: none;
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-1);
-  }
   .srow.is-selected .srow__main::after {
     content: '';
     position: absolute;
@@ -499,53 +465,10 @@
     border: var(--border-block) solid var(--ink);
     pointer-events: none;
   }
-  .who {
-    display: flex;
-    align-items: center;
-    gap: var(--space-4);
-  }
-  .who__icon {
-    display: block;
-    flex: none;
-    box-sizing: border-box;
-    width: 64px;
-    height: 64px;
-    image-rendering: pixelated;
-    border: var(--border-block) solid var(--edge);
-    box-shadow: var(--shadow-block-sm);
-  }
-  .who__icon--empty {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--ink-muted);
-    background: var(--surface);
-  }
-  .who__text {
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-  }
-  .who__text h2 {
-    outline: none;
-  }
-  .ip-aside__inner :global(.wide) {
-    width: 100%;
-  }
-  .row {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-2);
-  }
   .edit {
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
-  }
-  .label {
-    margin-bottom: 6px;
   }
   .motd {
     padding: var(--space-2) var(--space-3);
@@ -554,39 +477,5 @@
     background: var(--field);
     border: var(--border-block) solid var(--outline);
     box-shadow: var(--shadow-well);
-  }
-  .facts {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    align-items: center;
-    gap: var(--space-2) var(--space-4);
-    padding: var(--space-3) var(--space-4);
-    background: var(--surface);
-    border: var(--border-block) solid var(--edge);
-  }
-  .inline {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-2);
-  }
-  .flag {
-    display: flex;
-    align-items: flex-start;
-    gap: var(--space-2);
-  }
-  .part {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-  .danger {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-end;
-    gap: var(--space-2) var(--space-3);
-    padding-top: var(--space-4);
-    border-top: var(--border-hair) solid var(--line);
-    text-align: end;
   }
 </style>

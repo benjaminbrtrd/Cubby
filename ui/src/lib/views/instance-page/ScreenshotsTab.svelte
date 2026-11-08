@@ -2,7 +2,7 @@
   import { t } from '../../i18n.svelte'
   import { tick } from 'svelte'
   import { api } from '../../api'
-  import { Button, Dialog } from '../../cubby'
+  import { Button, Dialog, Icon, Inspector, InspectorHead, InspectorPath, InspectorSection, MetaChip } from '../../cubby'
   import { locale, num, plural, timeOfDay } from '../../format'
   import { app } from '../../state.svelte'
   import type { Instance, Screenshot } from '../../types'
@@ -193,39 +193,38 @@
 </div>
 
 <aside class="ip-aside" aria-label={t('Screenshot details')}>
-  <div class="ip-aside__inner">
+  <Inspector class="ip-aside__inner" danger={cur ? { label: t('Delete'), hint: t('Deletes the file for good.'), onclick: () => (deleting = cur) } : null}>
     {#if cur}
-      <button type="button" class="preview" aria-label={t('View full size')} onclick={() => (viewing = cur)}>
-        <img src={cur.url} alt={t('Screenshot from {true}', { true: when(cur.taken, true) })} onload={(e) => measured(e, cur.fileName)} />
-      </button>
-      <div class="pager">
-        <Button size="sm" variant="ghost" disabled={index === 0} onclick={() => focusAt(index - 1)}>{t('Newer')}</Button>
-        <span class="text-counter muted pager__pos">{t('{n} of {n2}', { n: num(index + 1), n2: num(shots.length) })}</span>
-        <Button size="sm" variant="ghost" disabled={index === shots.length - 1} onclick={() => focusAt(index + 1)}>{t('Older')}</Button>
+      {#snippet shotMedia()}
+        <button type="button" class="cb-ins-media cb-ins-media--wide" aria-label={t('View full size')} onclick={() => (viewing = cur)}>
+          <img src={cur.url} alt={t('Screenshot from {true}', { true: when(cur.taken, true) })} onload={(e) => measured(e, cur.fileName)} />
+        </button>
+      {/snippet}
+      {#snippet shotMeta()}
+        {#if dims && dims.file === cur.fileName}<MetaChip>{num(dims.w)} × {num(dims.h)}</MetaChip>{/if}
+        <span class="text-counter muted">{t('{n} of {n2}', { n: num(index + 1), n2: num(shots.length) })}</span>
+      {/snippet}
+      <InspectorHead eyebrow={t('Screenshot')} title={when(cur.taken)} sub={cur.fileName} mono media={shotMedia} wide meta={shotMeta} />
+      <div class="cb-ins-acts">
+        <Button variant="primary" class="wide" icon="copy" onclick={() => cur && copyImage(cur)}>{t('Copy image')}</Button>
+        <Button disabled={index === 0} onclick={() => focusAt(index - 1)}>{t('Newer')}</Button>
+        <Button iconEnd="chevron-right" disabled={index === shots.length - 1} onclick={() => focusAt(index + 1)}>{t('Older')}</Button>
       </div>
-      <div class="title">
-        <h2 class="text-mono wrap">{cur.fileName}</h2>
-        <p class="text-small muted">{when(cur.taken)}</p>
-      </div>
-      {#if dims && dims.file === cur.fileName}
-        <dl class="facts">
-          <dt class="text-small muted">{t('Resolution')}</dt>
-          <dd class="text-body">{num(dims.w)} × {num(dims.h)}</dd>
+      <InspectorSection title={t('Details')}>
+        <dl class="cb-ins-facts">
+          <dt>{t('Taken')}</dt><dd><span>{when(cur.taken, true)}</span></dd>
+          <InspectorPath path={`screenshots/${cur.fileName}`} openLabel={t('Open folder')} onopen={() => data.openFolder('screenshots')} />
         </dl>
-      {/if}
-      <Button variant="primary" icon="copy" class="wide" onclick={() => cur && copyImage(cur)}>{t('Copy image')}</Button>
-      <div class="row">
-        <Button size="sm" icon="folder" onclick={() => data.openFolder('screenshots')}>{t('Open folder')}</Button>
-      </div>
-      <div class="danger">
-        <Button size="sm" variant="danger" icon="trash" onclick={() => (deleting = cur)}>{t('Delete')}</Button>
-        <span class="text-small muted">{t('Deletes the file for good.')}</span>
-      </div>
+      </InspectorSection>
     {:else}
-      <p class="text-label muted">{t('Screenshot details')}</p>
-      <p class="text-body muted">{t('Pick a screenshot to see it larger, copy it or delete it.')}</p>
+      {#snippet noShotMedia()}<span class="cb-ins-media cb-ins-media--wide cb-ins-media--empty"><Icon name="captures" size={36} /></span>{/snippet}
+      <InspectorHead eyebrow={t('Screenshot')} title={t('No screenshots yet')} sub={t('Press F2 in game to take one')} media={noShotMedia} wide empty />
+      <p class="cb-ins-hint">{t('Screenshots you take while playing show up here. Pick one to see it larger, copy it or delete it.')}</p>
+      <div class="cb-ins-acts">
+        <Button icon="folder" class="wide" onclick={() => data.openFolder('screenshots')}>{t('Open folder')}</Button>
+      </div>
     {/if}
-  </div>
+  </Inspector>
 </aside>
 
 {#if viewing}
@@ -261,9 +260,6 @@
   }
   .muted {
     color: var(--ink-muted);
-  }
-  .wrap {
-    overflow-wrap: anywhere;
   }
   .toolbar {
     display: flex;
@@ -347,68 +343,6 @@
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
-  }
-
-  .preview {
-    display: block;
-    width: 100%;
-    padding: 0;
-    background: var(--field);
-    border: var(--border-block) solid var(--edge);
-    box-shadow: var(--shadow-block);
-    cursor: zoom-in;
-  }
-  .preview:focus-visible {
-    outline: none;
-    box-shadow: var(--focus-ring), var(--shadow-block);
-  }
-  .preview img {
-    display: block;
-    width: 100%;
-    aspect-ratio: 16 / 9;
-    object-fit: cover;
-    image-rendering: pixelated;
-  }
-  .pager {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-  }
-  .pager__pos {
-    flex: 1;
-    text-align: center;
-  }
-  .title {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-  }
-  .facts {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    align-items: center;
-    gap: var(--space-2) var(--space-4);
-    padding: var(--space-3) var(--space-4);
-    background: var(--surface);
-    border: var(--border-block) solid var(--edge);
-  }
-  .row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-  }
-  .ip-aside__inner :global(.wide) {
-    width: 100%;
-  }
-  .danger {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 6px;
-    margin-top: auto;
-    padding-top: var(--space-4);
-    border-top: var(--border-hair) solid var(--line);
-    text-align: end;
   }
   .full {
     display: block;
