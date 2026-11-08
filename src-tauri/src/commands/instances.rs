@@ -23,7 +23,40 @@ pub(crate) fn to_dto(core: &Core, inst: &Instance) -> InstanceDto {
     let installed = std::fs::read_to_string(dir.join(INSTALLED_MARKER))
         .is_ok_and(|k| k.trim() == version_key(inst));
     let blocked = cubby_packinstall::install::count_missing(&dir, &core.store.game_dir(inst));
-    InstanceDto::new(inst, &dir, installed, blocked)
+    let mut dto = InstanceDto::new(inst, &dir, installed, blocked);
+    dto.recommended_memory_mb = recommended_memory(core, inst);
+    dto
+}
+
+/// The computer's memory in MB (0 when it can't be read).
+pub(crate) fn total_memory_mb() -> u64 {
+    let mut sys = sysinfo::System::new();
+    sys.refresh_memory();
+    sys.total_memory() / (1024 * 1024)
+}
+
+/// What "Set memory automatically" gives this instance, from its mods and the computer's memory.
+pub(crate) fn recommended_memory(core: &Core, inst: &Instance) -> u32 {
+    let mods = cubby_instance::count_enabled_mods(&core.store.game_dir(inst));
+    cubby_instance::recommended_memory_mb(core.total_memory_mb, mods)
+}
+
+/// Minimum and maximum heap for a launch: the instance's own values, else the automatic amount when the
+/// global settings ask for it, else the global values.
+pub(crate) fn memory_for(core: &Core, inst: &Instance, settings: &Settings) -> (u32, u32) {
+    let max = inst.java.max_memory_mb.unwrap_or_else(|| {
+        if settings.java.auto_memory {
+            recommended_memory(core, inst)
+        } else {
+            settings.java.max_memory_mb
+        }
+    });
+    let min = inst
+        .java
+        .min_memory_mb
+        .unwrap_or(settings.java.min_memory_mb)
+        .min(max);
+    (min, max)
 }
 
 #[tauri::command]

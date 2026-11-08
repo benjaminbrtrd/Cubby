@@ -153,18 +153,13 @@ pub async fn launch_instance(
         .window
         .map(|w| (w.width, w.height))
         .unwrap_or((settings.game.width, settings.game.height));
+    let (min_memory_mb, max_memory_mb) = memory_for(&core, &inst, &settings);
     let opts = LaunchOptions {
         instance_id: inst.id.clone(),
         game_dir,
         java,
-        min_memory_mb: inst
-            .java
-            .min_memory_mb
-            .unwrap_or(settings.java.min_memory_mb),
-        max_memory_mb: inst
-            .java
-            .max_memory_mb
-            .unwrap_or(settings.java.max_memory_mb),
+        min_memory_mb,
+        max_memory_mb,
         extra_jvm_args: jvm_args.split_whitespace().map(str::to_owned).collect(),
         window: Some(window),
         fullscreen: settings.game.fullscreen,

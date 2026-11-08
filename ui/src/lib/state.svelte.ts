@@ -200,6 +200,14 @@ class AppState {
     return [...counts.entries()].map(([name, count]) => ({ name, count }))
   }
 
+  /** The maximum memory the game gets when this instance starts (MB): its own value, else the automatic or global one. */
+  memoryOf(instance: Instance): number {
+    const java = this.settings?.java
+    if (instance.javaOverrides.maxMemoryMb != null) return instance.javaOverrides.maxMemoryMb
+    if ((java?.autoMemory ?? true) && instance.recommendedMemoryMb) return instance.recommendedMemoryMb
+    return java?.maxMemoryMb ?? 4096
+  }
+
   get recent(): Instance[] {
     return [...this.instances].sort((a, b) => (b.lastPlayed ?? '').localeCompare(a.lastPlayed ?? '') || a.name.localeCompare(b.name))
   }

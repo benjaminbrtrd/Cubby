@@ -118,6 +118,7 @@ const inst = (p: Partial<Instance> & Pick<Instance, 'id' | 'name' | 'icon' | 'mi
   notes: null,
   modpack: null,
   blockedFiles: 0,
+  recommendedMemoryMb: 3072,
   ...p,
 })
 
@@ -168,7 +169,7 @@ let settings: Settings = {
   accent: '#8bd450',
   frameMode: 'none',
   frameColor: '#1e1b18',
-  java: { auto: true, minMemoryMb: 1024, maxMemoryMb: 4096, jvmArgs: '' },
+  java: { auto: true, autoMemory: true, minMemoryMb: 1024, maxMemoryMb: 4096, jvmArgs: '' },
   game: { width: 1280, height: 720, fullscreen: false },
   onLaunch: 'minimize',
   downloadConcurrency: 4,

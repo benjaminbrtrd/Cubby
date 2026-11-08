@@ -471,6 +471,16 @@
               s.java.auto,
               (v) => saveJava({ auto: v }),
             )}
+            {@render switchRow(
+              'java-memory',
+              t('Set memory automatically'),
+              s.java.autoMemory
+                ? t('Each instance gets what its mods need: 2 GB for Vanilla, up to 8 GB for big modpacks, never more than half of your {total}.', { total: totalMb ? gb(totalMb) : t('memory') })
+                : t('Every instance that doesn’t set its own gets the memory below.'),
+              s.java.autoMemory,
+              (v) => saveJava({ autoMemory: v }),
+            )}
+            {#if !s.java.autoMemory}
             <div class="row row--stack">
               <Slider
                 label={t('Default memory')}
@@ -487,6 +497,7 @@
                 }}
               />
             </div>
+            {/if}
             <div class="row row--stack">
               <TextField
                 label={t('Default JVM arguments')}

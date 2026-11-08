@@ -27,6 +27,8 @@ export interface Instance {
   modpack: { projectId: string; versionId: string; title: string; versionNumber: string } | null
   /** Files of a modpack still to download by hand (0 normally). */
   blockedFiles: number
+  /** The memory "Set memory automatically" gives this instance (MB), from its mods and the computer's memory. */
+  recommendedMemoryMb: number
 }
 
 export interface JavaOverrides {
@@ -156,7 +158,8 @@ export interface Settings {
   accent: string
   frameMode: 'instance' | 'fixed' | 'none'
   frameColor: string
-  java: { auto: boolean; minMemoryMb: number; maxMemoryMb: number; jvmArgs: string }
+  /** autoMemory: each instance gets `recommendedMemoryMb` instead of `maxMemoryMb`. */
+  java: { auto: boolean; autoMemory: boolean; minMemoryMb: number; maxMemoryMb: number; jvmArgs: string }
   game: { width: number; height: number; fullscreen: boolean }
   onLaunch: 'minimize' | 'keep' | 'close'
   downloadConcurrency: number

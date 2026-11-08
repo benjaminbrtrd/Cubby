@@ -33,6 +33,8 @@ pub enum OnLaunch {
 pub struct JavaSettings {
     /// Pick or download a suitable runtime automatically.
     pub auto: bool,
+    /// Give each instance the memory its mods need (see [`crate::recommended_memory_mb`]) instead of `max_memory_mb`.
+    pub auto_memory: bool,
     pub min_memory_mb: u32,
     pub max_memory_mb: u32,
     pub jvm_args: String,
@@ -40,7 +42,7 @@ pub struct JavaSettings {
 
 impl Default for JavaSettings {
     fn default() -> Self {
-        Self { auto: true, min_memory_mb: 1024, max_memory_mb: 4096, jvm_args: String::new() }
+        Self { auto: true, auto_memory: true, min_memory_mb: 1024, max_memory_mb: 4096, jvm_args: String::new() }
     }
 }
 

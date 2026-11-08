@@ -1,6 +1,7 @@
 //! Instances and their content, world backups, Prism Launcher import and launcher settings.
 
 mod backups;
+pub mod memory;
 pub mod content;
 mod model;
 mod nbt;
@@ -17,6 +18,7 @@ pub use content::{
 };
 pub use servers::{read_servers, write_servers, ServerEntry};
 pub use backups::{backup_stamp, WorldBackup};
+pub use memory::{count_enabled_mods, recommended_memory_mb};
 pub use model::{Instance, JavaOverrides, Loader, ModpackInfo, NewInstance, WindowSize};
 pub use prism::{import_prism, list_prism_instances, PrismInstanceInfo};
 pub use settings::{FrameMode, GameSettings, JavaSettings, OnLaunch, ProxyMode, ProxySettings, Settings, UpdateChannel, UpdateMode, UpdateSettings};

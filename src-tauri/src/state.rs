@@ -37,6 +37,8 @@ pub struct Core {
     pub atlauncher: AtLauncherClient,
     /// Ids of the background tasks running (`install:<id>`, `modpack:<id>`...), one of each at a time.
     pub tasks: Mutex<HashSet<String>>,
+    /// The computer's memory in MB, read once at start (0 when unknown).
+    pub total_memory_mb: u64,
 }
 
 impl Core {
@@ -69,6 +71,7 @@ impl Core {
             games: GameManager::new(),
             login: Mutex::new(None),
             tasks: Mutex::new(HashSet::new()),
+            total_memory_mb: crate::commands::total_memory_mb(),
             paths,
         })
     }

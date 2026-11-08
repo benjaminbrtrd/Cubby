@@ -67,7 +67,7 @@
   const lastWorld = $derived([...worlds].sort((a, b) => (b.lastPlayed ?? '').localeCompare(a.lastPlayed ?? ''))[0] ?? null)
 
   // Memory
-  const currentMb = $derived(instance?.javaOverrides.maxMemoryMb ?? app.settings?.java.maxMemoryMb ?? 4096)
+  const currentMb = $derived(instance ? app.memoryOf(instance) : (app.settings?.java.maxMemoryMb ?? 4096))
   const totalMb = $derived(app.info?.totalMemoryMb ?? 0)
   /** 2 GB more, keeping 2 GB for Windows and the other programs. */
   const raisedMb = $derived.by(() => {

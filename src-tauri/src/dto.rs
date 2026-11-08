@@ -171,6 +171,9 @@ pub struct InstanceDto {
     /// Files of the modpack the player still has to download by hand (0 normally).
     #[serde(default)]
     pub blocked_files: u32,
+    /// The memory Cubby would pick for this instance (MB), from its mods and the computer's memory.
+    #[serde(default)]
+    pub recommended_memory_mb: u32,
 }
 
 impl InstanceDto {
@@ -198,6 +201,7 @@ impl InstanceDto {
             notes: inst.notes.clone(),
             modpack: inst.modpack.as_ref().map(Into::into),
             blocked_files,
+            recommended_memory_mb: 0,
         }
     }
 }
