@@ -132,4 +132,8 @@ export const FR_10: Record<string, Entry> = {
   'Show on Discord': 'Afficher sur Discord',
   'Your Discord profile says which instance you’re playing, while you play. Discord has to be open on this computer.':
     'Votre profil Discord indique à quelle instance vous jouez, pendant la partie. Discord doit être ouvert sur cet ordinateur.',
+
+  // Import footer
+  'Coming from Prism, CurseForge, the Modrinth App or another launcher?': 'Vous venez de Prism, CurseForge, Modrinth App ou d’un autre launcher ?',
+  'Import its instances': 'Importer ses instances',
 }
