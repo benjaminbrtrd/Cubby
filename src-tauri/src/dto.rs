@@ -286,8 +286,16 @@ impl AccountDto {
             username: a.username.clone(),
             kind: "microsoft",
             is_default,
-            skin_url: skin_url.clone(),
+            skin_url: skin_url.as_deref().map(https),
         }
+    }
+}
+
+/// Mojang hands out `http://textures.minecraft.net/...`; the app only lets images in over https.
+pub fn https(url: &str) -> String {
+    match url.strip_prefix("http://") {
+        Some(rest) => format!("https://{rest}"),
+        None => url.to_string(),
     }
 }
 
@@ -1005,12 +1013,12 @@ impl From<cubby_auth::xbox::Profile> for SkinProfileDto {
     fn from(p: cubby_auth::xbox::Profile) -> Self {
         let active = p.skins.iter().find(|s| s.state.eq_ignore_ascii_case("ACTIVE"));
         Self {
-            skin_url: active.map(|s| s.url.clone()),
+            skin_url: active.map(|s| https(&s.url)),
             variant: if active.is_some_and(|s| s.variant.eq_ignore_ascii_case("SLIM")) { "slim".into() } else { "classic".into() },
             capes: p
                 .capes
                 .into_iter()
-                .map(|c| CapeDto { active: c.state.eq_ignore_ascii_case("ACTIVE"), name: if c.alias.is_empty() { c.id.clone() } else { c.alias }, id: c.id, url: c.url })
+                .map(|c| CapeDto { active: c.state.eq_ignore_ascii_case("ACTIVE"), name: if c.alias.is_empty() { c.id.clone() } else { c.alias }, id: c.id, url: https(&c.url) })
                 .collect(),
         }
     }

@@ -44,8 +44,13 @@
     app.applyAppearance()
   })
 
+  // Only the language read at start: a change from Settings switches after it is saved (saveSettings updates
+  // app.settings before writing, so following it here would reload before the new choice reaches the disk).
+  let languageRead = false
   $effect(() => {
-    if (app.settings) setLanguage(app.settings.language ?? 'system')
+    if (!app.settings || languageRead) return
+    languageRead = true
+    setLanguage(app.settings.language ?? 'system')
   })
 
   const activeTasks = $derived(Object.keys(app.tasks).length)
