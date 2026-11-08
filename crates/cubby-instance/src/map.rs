@@ -207,7 +207,8 @@ fn chunk_surface(chunk: &Tag) -> Result<Vec<Option<(String, i32)>>> {
             let (x, z, ly) = (i % 16, i / 16, y.rem_euclid(16) as usize);
             decoded.as_ref().and_then(|d| d.get(ly * 256 + z * 16 + x)).copied().unwrap_or(0) as usize
         };
-        let name = palette.get(index).and_then(|p| p.get("Name")).and_then(Tag::as_str).unwrap_or("minecraft:air");
+        // A palette entry is `{Name, Properties}`, or since Minecraft 26.1 just the name when the block has no properties.
+        let name = palette.get(index).and_then(|p| p.as_str().or_else(|| p.get("Name").and_then(Tag::as_str))).unwrap_or("minecraft:air");
         out.push((!name.ends_with(":air") && !name.ends_with("cave_air")).then(|| (name.to_string(), y)));
     }
     Ok(out)
@@ -244,18 +245,29 @@ fn read_chunk(file: &mut fs::File, cx: usize, cz: usize) -> Option<Tag> {
     nbt::parse_root(&data)
 }
 
-/// The spawn point of a world, from `level.dat` (0, 0 when it can't be read).
+/// The spawn point of a world, from `level.dat` (0, 0 when it can't be read): `Data.spawn.pos` since Minecraft 26.1,
+/// `Data.SpawnX` / `SpawnZ` before.
 fn spawn_of(world: &Path) -> (i32, i32) {
     let data = nbt::read_file(&world.join("level.dat")).and_then(|r| r.get("Data").cloned());
+    if let Some([x, _, z]) = data.as_ref().and_then(|d| d.get("spawn")?.get("pos")?.as_ints()).and_then(|p| <&[i32; 3]>::try_from(p).ok()) {
+        return (*x, *z);
+    }
     let get = |k: &str| data.as_ref().and_then(|d| d.get(k)).and_then(Tag::as_i64).unwrap_or(0) as i32;
     (get("SpawnX"), get("SpawnZ"))
 }
 
+/// The overworld's region folder: `dimensions/minecraft/overworld/region` since Minecraft 26.1, `region` before.
+fn region_dir(world: &Path) -> PathBuf {
+    let new = world.join("dimensions").join("minecraft").join("overworld").join("region");
+    if new.is_dir() { new } else { world.join("region") }
+}
+
 fn region_files(world: &Path, min: (i32, i32), max: (i32, i32)) -> Vec<(i32, i32, PathBuf)> {
     let mut out = Vec::new();
+    let dir = region_dir(world);
     for rz in min.1.div_euclid(512)..=max.1.div_euclid(512) {
         for rx in min.0.div_euclid(512)..=max.0.div_euclid(512) {
-            let path = world.join("region").join(format!("r.{rx}.{rz}.mca"));
+            let path = dir.join(format!("r.{rx}.{rz}.mca"));
             if path.is_file() {
                 out.push((rx, rz, path));
             }
@@ -434,6 +446,31 @@ mod tests {
     }
 
     #[test]
+    fn palette_of_plain_names() {
+        // Minecraft 26.1 writes a block without properties as its bare name.
+        fn names_only(tag: &mut Tag) {
+            match tag {
+                Tag::Compound(items) => items.iter_mut().for_each(|(k, v)| {
+                    if k == "palette" {
+                        if let Tag::List(entries) = v {
+                            entries.iter_mut().for_each(|e| *e = Tag::String(e.get("Name").and_then(Tag::as_str).unwrap_or_default().to_string()));
+                        }
+                    } else {
+                        names_only(v);
+                    }
+                }),
+                Tag::List(items) => items.iter_mut().for_each(names_only),
+                _ => {}
+            }
+        }
+        let mut c = chunk();
+        names_only(&mut c);
+        let surface = chunk_surface(&c).unwrap();
+        assert_eq!(surface[0], Some(("minecraft:grass_block".to_string(), 64)));
+        assert_eq!(surface[17], Some(("minecraft:water".to_string(), 62)));
+    }
+
+    #[test]
     fn unpacks_both_ways() {
         let values: Vec<u32> = (0..256).map(|i| i % 300).collect();
         assert_eq!(unpack(&pack(&values, 9), 9, 256, false).unwrap(), values);
@@ -448,6 +485,23 @@ mod tests {
         }
         let longs: Vec<i64> = longs.into_iter().map(|v| v as i64).collect();
         assert_eq!(unpack(&longs, 9, 256, true).unwrap(), values);
+    }
+
+    #[test]
+    fn reads_the_26_1_layout() {
+        let world = temp_dir("map-layout");
+        let new = world.join("dimensions/minecraft/overworld/region");
+        assert_eq!(region_dir(&world), world.join("region"));
+        fs::create_dir_all(&new).unwrap();
+        assert_eq!(region_dir(&world), new);
+        let level = Tag::Compound(vec![(
+            "Data".into(),
+            Tag::Compound(vec![("spawn".into(), Tag::Compound(vec![("pos".into(), Tag::IntArray(vec![-128, 64, 96]))]))]),
+        )]);
+        let mut gz = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::fast());
+        gz.write_all(&nbt::write_root(&level)).unwrap();
+        fs::write(world.join("level.dat"), gz.finish().unwrap()).unwrap();
+        assert_eq!(spawn_of(&world), (-128, 96));
     }
 
     #[test]
@@ -484,3 +538,4 @@ mod tests {
         assert!(render_map(&game, "Nope", &cache, |_, _| {}).is_err());
     }
 }
+
