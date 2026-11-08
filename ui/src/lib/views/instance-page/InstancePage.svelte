@@ -610,14 +610,10 @@
     background: var(--bg-chrome);
     border-inline-start: var(--border-chrome) solid var(--edge);
   }
+  /* The panel's content is an Inspector (src/styles/inspector.css): this only makes it scroll on its own. */
   .layout > :global(.ip-aside) > :global(.ip-aside__inner) {
-    box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
     height: 100%;
     overflow-y: auto;
-    padding: var(--space-6) var(--space-5);
   }
   @media (max-width: 1099px) {
     .page {

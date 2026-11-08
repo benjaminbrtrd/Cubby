@@ -2,6 +2,7 @@ import { mount } from 'svelte'
 import './styles/fonts.css'
 import './styles/tokens.css'
 import './styles/cubby.css'
+import './styles/inspector.css'
 import './app.css'
 import App from './App.svelte'
 
