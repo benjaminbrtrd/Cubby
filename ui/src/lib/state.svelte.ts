@@ -632,4 +632,8 @@ class AppState {
   }
 }
 
-export const app = new AppState()
+// One state for the whole app. In development, a hot reload of this module (or of one it imports, like a catalog
+// of texts) would otherwise make a second one: the screens it reloads would read and navigate a state the rest of
+// the window doesn't show (links doing nothing, the account missing). The first one is kept across reloads.
+export const app: AppState = (import.meta.hot?.data.app as AppState | undefined) ?? new AppState()
+if (import.meta.hot) import.meta.hot.data.app = app
