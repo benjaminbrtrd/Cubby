@@ -378,6 +378,15 @@
 
   let exporting = $state(false)
 
+  async function addShortcut() {
+    try {
+      await api.createDesktopShortcut(id)
+      app.toast(t('A shortcut to {name} is on your desktop. Double-click it to play.', { name: instance?.name ?? '' }), 'success')
+    } catch (e) {
+      app.error(e)
+    }
+  }
+
   // More actions menu
   let menuOpen = $state(false)
   let moreEl: HTMLDivElement | undefined = $state()
@@ -389,6 +398,7 @@
     { id: 'offline', label: t('Play offline'), icon: 'offline', disabled: busy, run: () => void app.launch(id, true) },
     { id: 'log', label: t('Game log'), icon: 'terminal', run: () => app.navigate({ name: 'running', id }) },
     { id: 'folder', label: t('Open folder'), icon: 'folder', run: () => data.openFolder() },
+    { id: 'shortcut', label: t('Add to desktop'), icon: 'play', run: () => void addShortcut() },
     { id: 'export', label: t('Export as a modpack file'), icon: 'download', run: () => (exporting = true) },
     { id: 'duplicate', label: t('Duplicate'), icon: 'copy', disabled: data.duplicating, run: () => instance && void data.duplicate(instance) },
     { id: 'repair', label: t('Repair'), icon: 'wrench', disabled: busy, run: () => void data.repair() },

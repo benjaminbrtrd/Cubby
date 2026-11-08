@@ -86,6 +86,8 @@ export const api = {
   killInstance: (id: string) => call<void>('kill_instance', { id }),
   runningGames: () => call<RunningGame[]>('running_games'),
   gameLog: (id: string) => call<LogLine[]>('game_log', { id }),
+  /** Puts a shortcut on the Desktop that starts the instance (cubby://play/<id>); returns its path. */
+  createDesktopShortcut: (id: string) => call<string>('create_desktop_shortcut', { id }),
   openFolder: (id: string, sub?: string) => call<void>('open_folder', { id, sub: sub ?? null }),
 
   listVersions: () => call<GameVersion[]>('list_versions'),

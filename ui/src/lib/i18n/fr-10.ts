@@ -110,4 +110,9 @@ export const FR_10: Record<string, Entry> = {
   servers: 'serveurs',
   'Copied the {parts} of {name}.': '{parts} de {name} copiés.',
   '{name} has nothing to copy yet. Play it once first.': '{name} n’a encore rien à copier. Lancez-la une fois d’abord.',
+
+  // Desktop shortcuts
+  'Add to desktop': 'Ajouter au bureau',
+  'A shortcut to {name} is on your desktop. Double-click it to play.': 'Un raccourci vers {name} est sur votre bureau. Double-cliquez dessus pour jouer.',
+  'That shortcut’s instance isn’t in Cubby anymore.': 'L’instance de ce raccourci n’est plus dans Cubby.',
 }

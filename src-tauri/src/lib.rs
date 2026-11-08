@@ -55,6 +55,7 @@ pub fn run() {
             commands::instances::duplicate_instance,
             commands::instances::delete_instance,
             commands::instances::open_folder,
+            commands::instances::create_desktop_shortcut,
             commands::instances::list_versions,
             commands::instances::list_loader_versions,
             commands::content::list_mods,

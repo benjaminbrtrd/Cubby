@@ -12,6 +12,7 @@ pub mod prism;
 mod servers;
 pub mod skins;
 mod settings;
+pub mod shortcut;
 mod store;
 pub mod update_backups;
 mod util;

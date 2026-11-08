@@ -199,3 +199,38 @@ pub async fn list_loader_versions(
         .await
         .msg()
 }
+
+/// Cubby's own icon, for a desktop shortcut: the app executable on Windows (it holds the icon), the bundle's
+/// `.icns` on macOS, an installed PNG on Linux. `None` in development builds without a bundle.
+fn app_icon() -> Option<PathBuf> {
+    let exe = std::env::current_exe().ok()?;
+    if cfg!(target_os = "windows") {
+        return Some(exe);
+    }
+    if cfg!(target_os = "macos") {
+        let resources = exe.parent()?.parent()?.join("Resources");
+        return std::fs::read_dir(resources)
+            .ok()?
+            .flatten()
+            .map(|e| e.path())
+            .find(|p| p.extension().is_some_and(|e| e == "icns"));
+    }
+    ["/usr/share/icons/hicolor/128x128/apps/cubby.png", "/usr/share/pixmaps/cubby.png"]
+        .iter()
+        .map(PathBuf::from)
+        .find(|p| p.is_file())
+}
+
+/// Puts a shortcut on the Desktop that starts this instance. Returns its path.
+#[tauri::command]
+pub fn create_desktop_shortcut(
+    app: AppHandle,
+    core: State<'_, Core>,
+    id: String,
+) -> CmdResult<String> {
+    let inst = core.store.get(&id).msg()?;
+    let desktop = app.path().desktop_dir().map_err(|e| e.to_string())?;
+    let path = cubby_instance::shortcut::create_shortcut(&desktop, &inst.id, &inst.name, app_icon().as_deref())
+        .msg()?;
+    Ok(path.to_string_lossy().into_owned())
+}

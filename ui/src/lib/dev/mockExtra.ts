@@ -118,6 +118,8 @@ export async function handleExtra(command: string, args: Record<string, any>): P
     case 'copy_options':
       await sleep(300)
       return { ...args.what }
+    case 'create_desktop_shortcut':
+      return `/Users/you/Desktop/${args.id}.app`
     default:
       return NOT_HANDLED
   }
