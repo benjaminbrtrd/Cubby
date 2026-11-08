@@ -243,7 +243,7 @@ impl Reader<'_> {
             12 => {
                 let n = self.len()?;
                 let bytes = self.take(n.checked_mul(8)?)?;
-                Tag::LongArray(bytes.chunks_exact(8).map(|c| i64::from_be_bytes(c.try_into().unwrap_or([0; 8]))).collect())
+                Tag::LongArray(bytes.as_chunks::<8>().0.iter().map(|c| i64::from_be_bytes(*c)).collect())
             }
             _ => return None,
         })
