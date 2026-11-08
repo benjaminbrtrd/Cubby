@@ -136,4 +136,10 @@ export const FR_10: Record<string, Entry> = {
   // Import footer
   'Coming from Prism, CurseForge, the Modrinth App or another launcher?': 'Vous venez de Prism, CurseForge, Modrinth App ou d’un autre launcher ?',
   'Import its instances': 'Importer ses instances',
+
+  // Mod details
+  'Show less': 'Afficher moins',
+  'Show all {n} changes': 'Afficher les {n} changements',
+  'Turned on': 'Activé',
+  'Turned off': 'Désactivé',
 }

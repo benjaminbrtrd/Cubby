@@ -47,9 +47,10 @@
       "devCsp": null,
       "assetProtocol": {
         "enable": true,
-        "scope": [
-          "$DATA/Cubby/instances/**"
-        ]
+        "scope": {
+          "allow": ["$DATA/Cubby/instances/**"],
+          "requireLiteralLeadingDot": false
+        }
       }
     }
   },

@@ -195,13 +195,25 @@
   })
 
   /** A Markdown changelog as short plain lines. */
+  /** Changelog lines as plain text: Markdown links keep their text ("([#3916](https://…))" → "(#3916)"), bare URLs go. */
   function notes(md: string): string[] {
     return md
       .split('\n')
-      .map((l) => l.replace(/^\s*(#+|[-*+]|\d+\.)\s*/, '').replace(/[*_`]/g, '').trim())
+      .map((l) =>
+        l
+          .replace(/^\s*(#+|[-*+]|\d+\.)\s*/, '')
+          .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
+          .replace(/\(?\s*https?:\/\/\S+?\s*\)?(?=\s|$)/g, '')
+          .replace(/[*_`]/g, '')
+          .replace(/\(\s*\)/g, '')
+          .trim(),
+      )
       .filter(Boolean)
-      .slice(0, 8)
   }
+
+  const NOTES_SHOWN = 4
+  /** The selected mod whose whole changelog is shown. */
+  let notesOpen = $state<string | null>(null)
 
   const authors = (m: ModFile) => (m.authors.length ? `by ${m.authors.join(', ')}` : undefined)
 </script>
@@ -318,14 +330,23 @@
       <div class="chips">
         {#if m.version}<MetaChip>{m.version}</MetaChip>{/if}
         {#if !m.enabled}
-          <StatusTag state="disabled">{t('Off')}</StatusTag>
-        {:else if sel.update}
-          <StatusTag state="update">{t('On · update ready')}</StatusTag>
-        {:else if data.updates && sel.source}
-          <StatusTag state="ready">{t('On · up to date')}</StatusTag>
+          <StatusTag state="disabled">{t('Turned off')}</StatusTag>
         {:else}
-          <StatusTag state="ready">{t('On')}</StatusTag>
+          <StatusTag state="ready">{t('Turned on')}</StatusTag>
         {/if}
+        {#if sel.update}
+          <StatusTag state="update">{t('Update available')}</StatusTag>
+        {:else if data.updates && sel.source}
+          <StatusTag state="ready">{t('Up to date')}</StatusTag>
+        {/if}
+      </div>
+      <div class="actions">
+        {#if sel.source}<Button size="sm" icon="globe" onclick={() => sel.source && data.project(sel.source.slug, 'mod')}>{t('Open page')}</Button>{/if}
+        {#if sel.update}
+          <Button size="sm" icon="update" busy={!!updateTask} disabled={!!updateTask || running} onclick={() => sel.update && data.applyUpdates([sel.update.fileName])}>{t('Update')}</Button>
+        {/if}
+        <Button size="sm" icon={m.enabled ? 'minimize' : 'check'} onclick={() => toggle(sel, !m.enabled)}>{m.enabled ? t('Turn off') : t('Turn on')}</Button>
+        <Button size="sm" variant="danger" icon="trash" onclick={() => (removing = m)}>{t('Remove')}</Button>
       </div>
       <section class="part">
         <h3 class="text-label muted">{t('What it does')}</h3>
@@ -351,25 +372,27 @@
         <p class="warn text-small flag"><Icon name="warning" size={18} label={t('Warning')} /><span>{t('Also loaded from')} <span class="text-mono">{sel.twins.map((t) => t.fileName).join(', ')}</span>{t('. Keep one.')}</span></p>
       {/if}
       {#if sel.update}
+        {@const lines = notes(sel.update.changelog)}
+        {@const all = notesOpen === sel.key}
         <section class="part">
-          <h3 class="text-label muted">{t('New in {latestVersion}', { latestVersion: sel.update.latestVersion })}</h3>
-          {#if notes(sel.update.changelog).length}
+          <h3 class="text-label muted">{t('What’s new')}</h3>
+          <p class="text-mono text-small wrap">{sel.update.latestVersion}</p>
+          {#if lines.length}
             <ul class="changes text-small">
-              {#each notes(sel.update.changelog) as line, i (i)}<li>{line}</li>{/each}
+              {#each all ? lines : lines.slice(0, NOTES_SHOWN) as line, i (i)}<li>{line}</li>{/each}
             </ul>
+            {#if lines.length > NOTES_SHOWN}
+              <div>
+                <Button size="sm" variant="ghost" icon={all ? 'minimize' : 'chevron-down'} onclick={() => (notesOpen = all ? null : sel.key)}>
+                  {all ? t('Show less') : t('Show all {n} changes', { n: num(lines.length) })}
+                </Button>
+              </div>
+            {/if}
           {:else}
             <p class="muted text-small">{t('No changelog for this version.')}</p>
           {/if}
         </section>
       {/if}
-      <div class="actions">
-        {#if sel.source}<Button size="sm" icon="globe" onclick={() => sel.source && data.project(sel.source.slug, 'mod')}>{t('Open page')}</Button>{/if}
-        {#if sel.update}
-          <Button size="sm" icon="update" busy={!!updateTask} disabled={!!updateTask || running} onclick={() => sel.update && data.applyUpdates([sel.update.fileName])}>{t('Update')}</Button>
-        {/if}
-        <Button size="sm" icon={m.enabled ? 'minimize' : 'check'} onclick={() => toggle(sel, !m.enabled)}>{m.enabled ? t('Turn off') : t('Turn on')}</Button>
-        <Button size="sm" variant="danger" icon="trash" onclick={() => (removing = m)}>{t('Remove')}</Button>
-      </div>
     {:else}
       <p class="muted text-body">{t('Pick a mod to see what it does and its file.')}</p>
     {/if}
@@ -598,5 +621,6 @@
     margin: 0;
     padding-inline-start: 20px;
     list-style: square;
+    overflow-wrap: anywhere;
   }
 </style>

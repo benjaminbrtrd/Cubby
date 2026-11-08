@@ -231,9 +231,12 @@
     display: flex;
     flex-direction: column;
   }
+  /* Full width, so the two buttons wrap inside the panel instead of sticking out of it */
   .actions {
+    align-self: stretch;
     display: flex;
     flex-wrap: wrap;
+    justify-content: flex-end;
     gap: var(--space-2);
   }
   .finder {
