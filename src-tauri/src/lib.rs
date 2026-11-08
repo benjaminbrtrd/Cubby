@@ -82,6 +82,8 @@ pub fn run() {
             commands::settings::list_java,
             commands::prism::list_prism_instances,
             commands::prism::import_prism,
+            commands::prism::list_launcher_instances,
+            commands::prism::import_launcher_instances,
             commands::launch::repair_instance,
             commands::content::delete_screenshot,
             commands::content::list_packs,

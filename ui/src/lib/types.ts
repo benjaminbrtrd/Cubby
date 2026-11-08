@@ -573,3 +573,17 @@ export interface ExportResult {
   /** CurseForge without an API key: every mod is stored. */
   withoutKey: boolean
 }
+
+/** An instance of another launcher (Prism, MultiMC, CurseForge, ATLauncher, GDLauncher, Modrinth App, Minecraft Launcher). */
+export interface ForeignInstance {
+  launcher: 'prism' | 'multiMc' | 'polyMc' | 'curseForge' | 'atLauncher' | 'gdLauncher' | 'modrinthApp' | 'official'
+  launcherName: string
+  /** What importLauncherInstances takes. */
+  path: string
+  name: string
+  /** null when the launcher doesn't say: it can't be imported. */
+  minecraft: string | null
+  loader: Loader
+  group: string | null
+  gameDir: string
+}

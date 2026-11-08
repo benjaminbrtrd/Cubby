@@ -74,4 +74,18 @@ export const FR_10: Record<string, Entry> = {
   'Reading the instance…': 'Lecture de l’instance…',
   'Nothing else in this instance yet.': 'Rien d’autre dans cette instance pour l’instant.',
   'Writing the pack': 'Écriture du pack',
+
+  // Importing from other launchers
+  'Import from another launcher': 'Importer depuis un autre launcher',
+  'Copies instances, the other launcher stays as it is': 'Copie les instances, l’autre launcher reste tel quel',
+  'Imported {n}.': '{n} importée(s).',
+  'Looking for other launchers…': 'Recherche des autres launchers…',
+  'Couldn’t read the other launchers’ instances': 'Impossible de lire les instances des autres launchers',
+  'No other launcher found': 'Aucun autre launcher trouvé',
+  'Cubby looks for Prism Launcher, MultiMC, PolyMC, CurseForge, ATLauncher, GDLauncher, the Modrinth App and the Minecraft Launcher in their usual folders.':
+    'Cubby cherche Prism Launcher, MultiMC, PolyMC, CurseForge, ATLauncher, GDLauncher, la Modrinth App et le Minecraft Launcher dans leurs dossiers habituels.',
+  '{launcher} instances': 'Instances de {launcher}',
+  'Version unknown: export it as a .mrpack from {launcher}, then import the file.': 'Version inconnue : exportez-la en .mrpack depuis {launcher}, puis importez le fichier.',
+  'Safe: Cubby copies the mods, worlds, screenshots and settings. The other launchers stay as they are.':
+    'Sans risque : Cubby copie les mods, mondes, captures et réglages. Les autres launchers restent tels quels.',
 }

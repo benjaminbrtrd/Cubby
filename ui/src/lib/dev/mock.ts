@@ -742,9 +742,10 @@ export async function handle(command: string, args: Record<string, any>): Promis
         { path: 'C:\\Users\\Nyx\\AppData\\Roaming\\PrismLauncher\\instances\\Vanilla 1.21', name: 'Vanilla 1.21', minecraft: '1.21', loader: { kind: 'vanilla' }, group: null },
         { path: 'C:\\Users\\Nyx\\AppData\\Roaming\\PrismLauncher\\instances\\Fabulously Optimized', name: 'Fabulously Optimized', minecraft: '1.21.1', loader: { kind: 'fabric', version: '0.16.5' }, group: null },
       ]
-    case 'import_prism': {
+    case 'import_prism':
+    case 'import_launcher_instances': {
       const imported = (args.paths as string[]).map((p) => {
-        const name = p.split('\\').pop()!
+        const name = p.split(/[\\/#]/).pop()!
         return inst({ id: slug(name), name, icon: null, minecraft: '1.21.1', loader: { kind: 'fabric', version: '0.16.5' } })
       })
       instances = [...instances, ...imported.filter((n) => !instances.some((i) => i.id === n.id))]

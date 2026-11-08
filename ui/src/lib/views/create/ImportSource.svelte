@@ -173,7 +173,7 @@
   <div class="prism">
     <Icon name="library" size={18} />
     <span class="text-body">{t('Coming from Prism Launcher?')}</span>
-    <Button variant="ghost" size="sm" icon="import" onclick={() => (app.prismImportOpen = true)}>{t('Import from Prism Launcher')}</Button>
+    <Button variant="ghost" size="sm" icon="import" onclick={() => (app.prismImportOpen = true)}>{t('Import from another launcher')}</Button>
   </div>
 </div>
 

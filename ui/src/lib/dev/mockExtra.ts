@@ -104,6 +104,17 @@ export async function handleExtra(command: string, args: Record<string, any>): P
       return { path: `/Users/you/Downloads/${args.request.name} ${args.request.version}.${args.request.format === 'mrpack' ? 'mrpack' : 'zip'}`, listed: 34, stored: 6, withoutKey: false }
     case 'reveal_file':
       return
+    case 'list_launcher_instances': {
+      await sleep(400)
+      const prism = 'C:\\Users\\Nyx\\AppData\\Roaming\\PrismLauncher\\instances\\'
+      return [
+        { launcher: 'prism', launcherName: 'Prism Launcher', path: `${prism}Skyfactory`, name: 'Skyfactory', minecraft: '1.16.5', loader: { kind: 'forge', version: '36.2.39' }, group: 'Modpacks', gameDir: `${prism}Skyfactory\\minecraft` },
+        { launcher: 'prism', launcherName: 'Prism Launcher', path: `${prism}Vanilla 1.21`, name: 'Vanilla 1.21', minecraft: '1.21', loader: { kind: 'vanilla' }, group: null, gameDir: `${prism}Vanilla 1.21\\minecraft` },
+        { launcher: 'curseForge', launcherName: 'CurseForge', path: 'C:\\Users\\Nyx\\curseforge\\minecraft\\Instances\\All the Mods 9', name: 'All the Mods 9', minecraft: '1.20.1', loader: { kind: 'forge', version: '47.3.0' }, group: null, gameDir: 'C:\\Users\\Nyx\\curseforge\\minecraft\\Instances\\All the Mods 9' },
+        { launcher: 'modrinthApp', launcherName: 'Modrinth App', path: 'C:\\Users\\Nyx\\AppData\\Roaming\\ModrinthApp\\profiles\\Fabulously Optimized', name: 'Fabulously Optimized', minecraft: null, loader: { kind: 'vanilla' }, group: null, gameDir: 'C:\\Users\\Nyx\\AppData\\Roaming\\ModrinthApp\\profiles\\Fabulously Optimized' },
+        { launcher: 'official', launcherName: 'Minecraft Launcher', path: 'C:\\Users\\Nyx\\AppData\\Roaming\\.minecraft\\launcher_profiles.json#a1', name: 'Fabric 1.21.1', minecraft: '1.21.1', loader: { kind: 'fabric', version: '0.16.5' }, group: null, gameDir: 'C:\\Users\\Nyx\\AppData\\Roaming\\.minecraft' },
+      ]
+    }
     default:
       return NOT_HANDLED
   }

@@ -8,6 +8,7 @@ import type {
   BlockedFile,
   ContentUpdate,
   DataFolder,
+  ForeignInstance,
   ExportCandidate,
   ExportRequest,
   ExportResult,
@@ -224,6 +225,10 @@ export const api = {
 
   listPrismInstances: () => call<PrismInstance[]>('list_prism_instances'),
   importPrism: (paths: string[]) => call<Instance[]>('import_prism', { paths }),
+  /** Instances of every launcher Cubby knows, from their usual folders. */
+  listLauncherInstances: () => call<ForeignInstance[]>('list_launcher_instances'),
+  /** Copies them into new instances (by the `path` the listing gave). */
+  importLauncherInstances: (paths: string[]) => call<Instance[]>('import_launcher_instances', { paths }),
   openUrl: (url: string) => call<void>('open_url', { url }),
 }
 
