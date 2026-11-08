@@ -115,6 +115,9 @@ export async function handleExtra(command: string, args: Record<string, any>): P
         { launcher: 'official', launcherName: 'Minecraft Launcher', path: 'C:\\Users\\Nyx\\AppData\\Roaming\\.minecraft\\launcher_profiles.json#a1', name: 'Fabric 1.21.1', minecraft: '1.21.1', loader: { kind: 'fabric', version: '0.16.5' }, group: null, gameDir: 'C:\\Users\\Nyx\\AppData\\Roaming\\.minecraft' },
       ]
     }
+    case 'copy_options':
+      await sleep(300)
+      return { ...args.what }
     default:
       return NOT_HANDLED
   }

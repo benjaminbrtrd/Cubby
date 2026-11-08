@@ -88,4 +88,26 @@ export const FR_10: Record<string, Entry> = {
   'Version unknown: export it as a .mrpack from {launcher}, then import the file.': 'Version inconnue : exportez-la en .mrpack depuis {launcher}, puis importez le fichier.',
   'Safe: Cubby copies the mods, worlds, screenshots and settings. The other launchers stay as they are.':
     'Sans risque : Cubby copie les mods, mondes, captures et réglages. Les autres launchers restent tels quels.',
+
+  // Copying options
+  'Game options': 'Options du jeu',
+  'Copy from another instance': 'Copier depuis une autre instance',
+  'Bring over your key bindings, options or server list, so a new instance feels like home.':
+    'Récupérez vos touches, options ou serveurs : une nouvelle instance est tout de suite à votre goût.',
+  Copy: 'Copier',
+  'Copy settings into {name}': 'Copier des réglages dans {name}',
+  'There is no other instance to copy from yet.': 'Il n’y a pas encore d’autre instance depuis laquelle copier.',
+  From: 'Depuis',
+  'Key bindings': 'Touches',
+  'Your controls: jump, sprint, and the keys mods add.': 'Vos contrôles : sauter, sprinter, et les touches ajoutées par les mods.',
+  'Video, sound and other options': 'Vidéo, son et autres options',
+  'Render distance, FOV, volume, language... Resource packs stay as they are.': 'Distance d’affichage, FOV, volume, langue… Les resource packs ne changent pas.',
+  'Server list': 'Liste des serveurs',
+  'Replaces the Multiplayer list of this instance.': 'Remplace la liste Multijoueur de cette instance.',
+  'Close the game first: it writes its options when it quits.': 'Fermez d’abord le jeu : il enregistre ses options en quittant.',
+  options: 'options',
+  'key bindings': 'touches',
+  servers: 'serveurs',
+  'Copied the {parts} of {name}.': '{parts} de {name} copiés.',
+  '{name} has nothing to copy yet. Play it once first.': '{name} n’a encore rien à copier. Lancez-la une fois d’abord.',
 }

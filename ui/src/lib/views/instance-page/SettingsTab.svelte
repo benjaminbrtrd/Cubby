@@ -18,6 +18,7 @@
 </script>
 
 <script lang="ts">
+  import CopyOptionsDialog from './CopyOptionsDialog.svelte'
   import { t } from '../../i18n.svelte'
   import { osName } from '../../platform'
   import { onDestroy, untrack } from 'svelte'
@@ -127,6 +128,8 @@
     await save({ icon: src ?? encodeIcon(motif, ground) })
     iconOpen = false
   }
+
+  let copyingOptions = $state(false)
 
   // Java and memory
   const o = $derived(instance.javaOverrides)
@@ -408,6 +411,17 @@
         </div>
       </section>
 
+      <section class="block" aria-labelledby="is-options">
+        <div class="block__head"><h2 id="is-options" class="text-heading">{t('Game options')}</h2></div>
+        <div class="setting setting--wide">
+          <div>
+            <div class="text-body-strong">{t('Copy from another instance')}</div>
+            <div class="text-small muted">{t('Bring over your key bindings, options or server list, so a new instance feels like home.')}</div>
+          </div>
+          <Button size="sm" icon="copy" disabled={running} onclick={() => (copyingOptions = true)}>{t('Copy')}</Button>
+        </div>
+      </section>
+
       <section class="block" aria-labelledby="is-maint">
         <div class="block__head"><h2 id="is-maint" class="text-heading">{t('Maintenance')}</h2></div>
         <div class="setting setting--wide">
@@ -590,6 +604,10 @@
       </p>
     {/if}
   </Dialog>
+{/if}
+
+{#if copyingOptions}
+  <CopyOptionsDialog {instance} onClose={() => (copyingOptions = false)} />
 {/if}
 
 <style>

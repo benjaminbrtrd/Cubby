@@ -8,6 +8,7 @@ import type {
   BlockedFile,
   ContentUpdate,
   DataFolder,
+  OptionsCopy,
   ForeignInstance,
   ExportCandidate,
   ExportRequest,
@@ -109,6 +110,8 @@ export const api = {
   /** Replaces the whole servers.dat list, in this order. */
   saveServers: (id: string, servers: Server[]) => call<void>('save_servers', { id, servers }),
   /** `instanceId`: ask with that instance's Minecraft protocol, so `compatible` says whether the server takes it. */
+  /** Copies options, key bindings and/or the server list from instance `from`; returns what it copied. */
+  copyOptions: (id: string, from: string, what: OptionsCopy) => call<OptionsCopy>('copy_options', { id, from, what }),
   pingServer: (address: string, instanceId?: string) => call<ServerStatus>('ping_server', { address, instanceId: instanceId ?? null }),
 
   dataFolders: () => call<DataFolder[]>('data_folders'),

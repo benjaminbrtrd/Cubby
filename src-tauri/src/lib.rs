@@ -91,6 +91,7 @@ pub fn run() {
             commands::content::set_shader_pack,
             commands::content::list_servers,
             commands::content::save_servers,
+            commands::content::copy_options,
             commands::content::ping_server,
             commands::settings::data_folders,
             commands::settings::open_data_folder,

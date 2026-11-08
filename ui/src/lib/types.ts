@@ -587,3 +587,13 @@ export interface ForeignInstance {
   group: string | null
   gameDir: string
 }
+
+/** What copyOptions copies, and what it did copy. */
+export interface OptionsCopy {
+  /** options.txt without the key bindings */
+  options: boolean
+  /** the key_* lines of options.txt */
+  keys: boolean
+  /** servers.dat */
+  servers: boolean
+}
