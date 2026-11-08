@@ -203,7 +203,7 @@
     width: var(--size-inspector);
     display: flex;
     flex-direction: column;
-    gap: var(--space-5);
+    gap: var(--space-6);
     padding: var(--space-6) var(--space-5);
     background: var(--bg-chrome);
     border-inline-start: var(--border-chrome) solid var(--edge);

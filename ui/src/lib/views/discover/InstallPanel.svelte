@@ -459,7 +459,7 @@
 <section class={['panel', compact && 'compact']} aria-label={t('Install {title}', { title: project.title })}>
   {#if !compact}
     <div class="head">
-      <h2 class="text-heading">{t('Install')}</h2>
+      <p class="cb-ins-eyebrow">{t('Install')}</p>
     </div>
   {/if}
 
@@ -497,8 +497,8 @@
 
       {#if chosen}
         <section class="block" aria-labelledby="{project.id}-req">
-          <h3 id="{project.id}-req" class="text-label muted">{t('Comes with the pack')}</h3>
-          <dl class="req">
+          <h3 id="{project.id}-req" class="cb-ins-eyebrow">{t('Comes with the pack')}</h3>
+          <dl class="cb-ins-facts">
             <dt class="text-small muted">Minecraft</dt>
             <dd class="text-mono">{packMc ?? '—'}</dd>
             <dt class="text-small muted">{t('Loader')}</dt>
@@ -515,7 +515,7 @@
 
       {#if !compact}
         <section class="steps" aria-labelledby="{project.id}-steps">
-          <h3 id="{project.id}-steps" class="text-label muted">{t('When you install')}</h3>
+          <h3 id="{project.id}-steps" class="cb-ins-eyebrow">{t('When you install')}</h3>
           <ol>
             <li><span class="num text-counter" aria-hidden="true">1</span><span class="text-body">{group.trim() ? t('Cubby adds {name} to your Library, in {group}.', { name: name.trim() || project.title, group: group.trim() }) : t('Cubby adds {name} to your Library.', { name: name.trim() || project.title })}</span></li>
             <li>
@@ -656,7 +656,7 @@
 
     {#if !compact}
       <section class="steps" aria-labelledby="{project.id}-steps">
-        <h3 id="{project.id}-steps" class="text-label muted">{t('When you install')}</h3>
+        <h3 id="{project.id}-steps" class="cb-ins-eyebrow">{t('When you install')}</h3>
         <ol>
           {#if kind === 'mod'}
             <li><span class="num text-counter" aria-hidden="true">1</span><span class="text-body">{t('Cubby saves {title} in the', { title: project.title })} <span class="text-mono">mods</span> {t('folder of {name}, with the mods it needs.', { name: target.name })}</span></li>
@@ -702,7 +702,6 @@
     gap: var(--space-1) var(--space-2);
   }
   /* .panel first: wins over the dialog body's paragraph spacing */
-  .panel h2,
   .panel h3,
   .panel p,
   .panel ol,

@@ -335,11 +335,11 @@
             {#if !selected.isDefault}<Button variant="primary" class="wide" icon="check" onclick={() => selected && use(selected)}>{t('Use this account')}</Button>{/if}
             <Button class="wide" icon="accounts" onclick={() => selected && app.navigate({ name: 'skins', accountId: selected.id })}>{t('Skin and cape')}</Button>
           </div>
-          <InspectorSection title={t('Details')}>
+          <InspectorSection title="UUID">
             <dl class="cb-ins-facts">
-              <dt>UUID</dt><dd><span>{t('Your player ID on every server')}</span></dd>
               <InspectorPath path={dashedUuid(selected.id)} copyLabel={t('Copy UUID')} oncopy={() => selected && copyUuid(selected.id)} />
             </dl>
+            <p class="cb-ins-hint">{t('Your player ID on every server')}.</p>
           </InspectorSection>
           <InspectorNotice tone="info">{t('Sign-in tokens are stored in plain text in')} <span class="text-mono">accounts.json</span>{t(', in Cubby’s data folder on this PC. Signing out deletes them. Cubby never sees your password.')}</InspectorNotice>
         </Inspector>

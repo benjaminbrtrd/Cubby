@@ -332,53 +332,50 @@
     </div>
 
     <aside class="aside" aria-labelledby="ni-download">
-      <h2 id="ni-download" class="text-heading">{t('What Cubby will download')}</h2>
-      <ul class="dl">
-        <li>
-          <span class="dl__icon"><Icon name="cube" size={18} /></span>
-          <div>
-            <div class="text-body-strong">Minecraft <span class="text-mono">{minecraft ?? '…'}</span></div>
-            <div class="text-small muted">{t('Game and libraries, from Mojang')}</div>
+      <h2 id="ni-download" class="cb-ins-eyebrow">{t('What Cubby will download')}</h2>
+      <ul class="cb-ins-rows">
+        <li class="cb-ins-row">
+          <span class="cb-ins-row__ic"><Icon name="cube" size={18} /></span>
+          <div class="cb-ins-row__txt">
+            <div class="cb-ins-row__t">Minecraft <span class="text-mono">{minecraft ?? '…'}</span></div>
+            <div class="cb-ins-row__s">{t('Game and libraries, from Mojang')}</div>
           </div>
         </li>
-        <li>
-          <span class="dl__icon"><Icon name="folder" size={18} /></span>
-          <div>
-            <div class="text-body-strong">{t('Game assets')}</div>
-            <div class="text-small muted">{t('Sounds and textures, shared by your instances')}</div>
+        <li class="cb-ins-row">
+          <span class="cb-ins-row__ic"><Icon name="folder" size={18} /></span>
+          <div class="cb-ins-row__txt">
+            <div class="cb-ins-row__t">{t('Game assets')}</div>
+            <div class="cb-ins-row__s">{t('Sounds and textures, shared by your instances')}</div>
           </div>
         </li>
         {#if loader !== 'vanilla'}
-          <li>
-            <span class="dl__icon"><Icon name="mods" size={18} /></span>
-            <div>
-              <div class="text-body-strong">{t('{name} loader', { name: loaderInfo.name })} <span class="text-mono">{loaderVersion ?? '…'}</span></div>
-              <div class="text-small muted">{t('Runs your mods')}</div>
+          <li class="cb-ins-row">
+            <span class="cb-ins-row__ic"><Icon name="mods" size={18} /></span>
+            <div class="cb-ins-row__txt">
+              <div class="cb-ins-row__t">{t('{name} loader', { name: loaderInfo.name })} <span class="text-mono">{loaderVersion ?? '…'}</span></div>
+              <div class="cb-ins-row__s">{t('Runs your mods')}</div>
             </div>
           </li>
         {/if}
-        <li>
-          <span class="dl__icon"><Icon name="check" size={18} /></span>
-          <div>
-            <div class="text-body-strong">Java</div>
-            <div class="text-small muted">
+        <li class="cb-ins-row">
+          <span class="cb-ins-row__ic"><Icon name="check" size={18} /></span>
+          <div class="cb-ins-row__txt">
+            <div class="cb-ins-row__t">Java</div>
+            <div class="cb-ins-row__s">
               {app.settings?.java.auto === false ? t('Uses the Java from your settings') : t('Cubby picks the version this game needs')}
             </div>
           </div>
         </li>
-        <li class="dl__foot">
-          <span class="dl__icon"><Icon name="clock" size={18} /></span>
-          <span class="text-small">{t('Game files are downloaded the first time you play.')}</span>
-        </li>
       </ul>
+      <p class="cb-ins-hint">{t('Game files are downloaded the first time you play.')}</p>
 
-      <div class="go">
+      <div class="cb-ins-acts">
         <Button variant="primary" icon="play" busy={busy === 'play'} disabled={!!busy || !ready} onclick={() => create(true)}>
           {t('Create and play')}
         </Button>
         <Button icon="plus" busy={busy === 'create'} disabled={!!busy || !ready} onclick={() => create(false)}>{t('Create')}</Button>
-        <p class="text-small muted">{t('You can change all of this later.')}</p>
       </div>
+      <p class="cb-ins-hint">{t('You can change all of this later.')}</p>
     </aside>
   </div>
 </div>
@@ -574,8 +571,6 @@
     margin: 0;
     color: var(--gold-text);
   }
-
-
   .aside {
     box-sizing: border-box;
     flex: 0 0 var(--size-inspector);
@@ -584,50 +579,9 @@
     overflow: auto;
     display: flex;
     flex-direction: column;
-    gap: var(--space-4);
+    gap: var(--space-6);
     padding: var(--space-6) var(--space-5);
     background: var(--bg-chrome);
     border-inline-start: var(--border-chrome) solid var(--edge);
-  }
-  .dl {
-    display: flex;
-    flex-direction: column;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-    background: var(--surface);
-    border: var(--border-block) solid var(--edge);
-    box-shadow: var(--shadow-block-sm);
-  }
-  .dl li {
-    display: grid;
-    grid-template-columns: 18px minmax(0, 1fr);
-    gap: 10px;
-    align-items: start;
-    padding: var(--space-2) var(--space-3);
-    border-bottom: var(--border-hair) solid var(--line);
-  }
-  .dl .dl__foot {
-    align-items: center;
-    padding: 10px var(--space-3);
-    background: var(--bg);
-    border-bottom: 0;
-  }
-  .dl__icon {
-    display: inline-flex;
-    padding-top: 1px;
-    color: var(--ink-muted);
-  }
-  .go {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-    margin-top: auto;
-  }
-  .go :global(.cb-btn) {
-    width: 100%;
-  }
-  .go p {
-    margin: var(--space-1) 0 0;
   }
 </style>

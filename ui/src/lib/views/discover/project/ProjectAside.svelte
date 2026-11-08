@@ -39,7 +39,7 @@
 
 {#if links.length}
   <section class="aside-section" aria-labelledby="pp-links">
-    <h3 id="pp-links" class="text-label muted">{t('Links')}</h3>
+    <h3 id="pp-links" class="cb-ins-eyebrow">{t('Links')}</h3>
     <ul class="links">
       {#each links as l (l.url + l.label)}
         <li>
@@ -53,8 +53,8 @@
 {/if}
 
 <section class="aside-section" aria-labelledby="pp-details">
-  <h3 id="pp-details" class="text-label muted">{t('Details')}</h3>
-  <dl class="details">
+  <h3 id="pp-details" class="cb-ins-eyebrow">{t('Details')}</h3>
+  <dl class="cb-ins-facts">
     {#if project.license}<dt class="text-small muted">{t('License')}</dt><dd class="text-mono">{project.license}</dd>{/if}
     {#if kind === 'mod' && side}<dt class="text-small muted">{t('Runs on')}</dt><dd class="text-body">{side}</dd>{/if}
     {#if project.gameVersions.length}<dt class="text-small muted">Minecraft</dt><dd class="text-mono">{mcRange(project.gameVersions)}</dd>{/if}
@@ -91,10 +91,5 @@
   }
   .links a:hover {
     color: var(--ink);
-  }
-  .details {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: var(--space-2) var(--space-4);
   }
 </style>
