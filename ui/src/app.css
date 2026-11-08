@@ -57,13 +57,16 @@ aside :where(div, span, p):has(> :is(.cb-btn, .cb-iconbtn)):not(:has(> :not(.cb-
   flex-wrap: wrap;
   justify-content: flex-end;
 }
+/* Two buttons share the row equally; when their labels don't fit side by side, each takes a full row
+   (a grid of two halves made long labels stick out of the panel). */
 aside :where(div, span, p):has(> .cb-btn:first-child:nth-last-child(2)):not(:has(> :not(.cb-btn))) {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--space-2);
 }
 aside :where(div, span, p):has(> .cb-btn:first-child:nth-last-child(2)):not(:has(> :not(.cb-btn))) > .cb-btn {
-  width: 100%;
+  flex: 1 1 0;
+  min-width: max-content;
   justify-content: center;
   white-space: nowrap;
 }
