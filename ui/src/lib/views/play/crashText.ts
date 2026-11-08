@@ -1,7 +1,7 @@
 // The words of the crash screen: what happened, the ways to fix it and what Cubby checked, built from a
 // diagnosis. Pure functions; the screen (Crash.svelte) owns the state and the actions.
 import { locale, plural, playTime } from '../../format'
-import type { ModFile, World } from '../../types'
+import type { ModFile, UpdateBackup, World } from '../../types'
 import type { Diagnosis, Party } from './crash'
 import type { SessionFacts } from './log'
 import { t } from '../../i18n.svelte'
@@ -115,6 +115,22 @@ export function causeOf(d: Diagnosis, ctx: { name: string; memoryMb: number; min
       }
     }
     case 'conflict':
+      if (d.declared && b)
+        return {
+          title: [lead, ...who(a, t('a mod'), true), t(' doesn’t work with '), ...who(b, t('another mod'), true)],
+          text: [
+            ...who(a, t('A mod')),
+            t(' says it doesn’t work with '),
+            ...who(b, t('another mod')),
+            ' ',
+            { mono: d.declared.range },
+            ...(d.declared.present ? [t(', and you have '), { mono: d.declared.present }] : []),
+            t('. The loader stopped before the game started. A newer '),
+            ...who(b, t('version')),
+            t(' usually fixes it. Your PC is fine.'),
+          ],
+          marks: [t('Here marks the line that names them.')],
+        }
       return {
         title: [lead, ...who(a, t('a mod'), true), t(' doesn’t work with '), ...who(b, t('this setup'), true)],
         text: b
@@ -193,7 +209,7 @@ export function namedParts(d: Diagnosis): Part[] {
 
 // Ways to fix it
 
-export type FixId = 'disable' | 'enable' | 'find' | 'memory' | 'java' | 'updates' | 'driver' | 'settings' | 'repair' | 'help'
+export type FixId = 'disable' | 'enable' | 'find' | 'memory' | 'java' | 'updates' | 'undo-update' | 'driver' | 'settings' | 'repair' | 'help'
 
 export interface Fix {
   key: string
@@ -218,6 +234,8 @@ export interface FixContext {
   totalMb: number
   /** The instance runs a Java the player chose. */
   customJava: boolean
+  /** The newest content update that can be undone, if any. */
+  lastUpdate: UpdateBackup | null
 }
 
 /** The ways to fix a crash, best first. */
@@ -360,6 +378,28 @@ export function fixesFor(d: Diagnosis, ctx: FixContext): Fix[] {
     case 'conflict':
     case 'version':
     case 'mixin':
+      if (d.kind === 'conflict' && d.declared && d.other) {
+        // The loader named the versions: update the mod that is too old, or undo the update that brought the clash.
+        out.push({
+          ...updates([d.other]),
+          title: [t('Update '), ...who(d.other, t('the other mod'))],
+          text: [...who(d.culprit, t('A mod')), t(' needs a newer '), ...who(d.other, t('version')), t('. Opens the mods of {n}.', { n })],
+        })
+        const touched = (p: Party | null) => !!p?.mod && !!ctx.lastUpdate?.files.some((f) => baseName(p.mod!) === f.new.replace(/\.disabled$/, ''))
+        if (ctx.lastUpdate && (touched(d.culprit) || touched(d.other))) {
+          out.push({
+            key: 'undo-update',
+            id: 'undo-update',
+            title: [t('Undo the last update')],
+            text: [t('Puts back the {n} the last update replaced, so you play as before.', { n: plural(ctx.lastUpdate.files.length, 'file', 'files') })],
+            undoable: false,
+            undo: t('Update again from Mods'),
+          })
+        }
+        disable(d.other)
+        out.push(repair(false))
+        break
+      }
       disable(d.culprit)
       out.push(updates(d.kind === 'version' ? [d.culprit] : [d.culprit, d.other]))
       out.push(repair(false))

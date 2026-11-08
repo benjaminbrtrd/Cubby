@@ -20,7 +20,7 @@ Open an issue with:
    cargo fmt --all
    cargo clippy --workspace --all-targets
    cargo test --workspace
-   cd ui && npm run check
+   cd ui && npm run check && npm test
    ```
 
 ## Code

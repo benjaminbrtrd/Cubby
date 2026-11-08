@@ -142,4 +142,18 @@ export const FR_10: Record<string, Entry> = {
   'Show all {n} changes': 'Afficher les {n} changements',
   'Turned on': 'Activé',
   'Turned off': 'Désactivé',
+
+  // Crash: two mods the loader says don't work together
+  ' says it doesn’t work with ': ' indique ne pas fonctionner avec ',
+  ', and you have ': ', et vous avez ',
+  '. The loader stopped before the game started. A newer ': '. Le loader s’est arrêté avant le lancement du jeu. Une version plus récente de ',
+  ' usually fixes it. Your PC is fine.': ' règle généralement le problème. Votre PC va bien.',
+  'Here marks the line that names them.': 'Le repère indique la ligne qui les nomme.',
+  'the other mod': 'l’autre mod',
+  ' needs a newer ': ' a besoin d’une version plus récente de ',
+  '. Opens the mods of {n}.': '. Ouvre les mods de {n}.',
+  'Undo the last update': 'Annuler la dernière mise à jour',
+  'Puts back the {n} the last update replaced, so you play as before.': 'Remet les {n} remplacés par la dernière mise à jour : vous jouez comme avant.',
+  'Update again from Mods': 'Remettez à jour depuis Mods',
+  'Back as before': 'Revenu comme avant',
 }

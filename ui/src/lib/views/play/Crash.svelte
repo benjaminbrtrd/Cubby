@@ -7,7 +7,7 @@
   import { Banner, Button, Dialog, Icon, LogViewer, PlayButton, Switch } from '../../cubby'
   import { loaderFull, plural, timeOfDay } from '../../format'
   import { app } from '../../state.svelte'
-  import type { Instance, ModFile, World } from '../../types'
+  import type { Instance, ModFile, UpdateBackup, World } from '../../types'
   import CrashAside from './CrashAside.svelte'
   import Rich from './Rich.svelte'
   import { diagnose, type Party } from './crash'
@@ -53,8 +53,15 @@
         (w) => (worlds = w),
         () => (worlds = []),
       )
+      api.listUpdateBackups(id).then(
+        (b) => (lastUpdate = b[0] ?? null),
+        () => (lastUpdate = null),
+      )
     })
   })
+
+  /** The newest content update that can be undone: a crash right after an update often comes from it. */
+  let lastUpdate = $state<UpdateBackup | null>(null)
 
   const parser = new LogParser()
   const parsed = $derived(parser.parse(app.logs[id] ?? []))
@@ -100,6 +107,7 @@
       raisedMb,
       totalMb,
       customJava: !!instance?.javaOverrides.executable,
+      lastUpdate,
     }),
   )
 
@@ -201,6 +209,22 @@
   }
 
   const repairTask = $derived(app.tasks[`repair:${id}`])
+
+  async function undoUpdate() {
+    const b = lastUpdate
+    if (!b) return
+    busy = 'undo-update'
+    try {
+      const n = await api.undoUpdate(id, b.name)
+      applied['undo-update'] = true
+      app.toast(t('Put back {n} from before the update.', { n: plural(n, 'file', 'files') }), 'success')
+      await loadMods()
+    } catch (e) {
+      app.error(e)
+    } finally {
+      busy = null
+    }
+  }
 
   async function repair() {
     busy = 'repair'
@@ -347,6 +371,12 @@
                       <Button size="sm" variant="ghost" icon="update" disabled={busy === 'java'} onclick={() => setJava(javaBefore, false)}>{t('Undo')}</Button>
                     {:else}
                       <Button {variant} icon="wrench" busy={busy === 'java'} disabled={busy === 'java'} onclick={() => setJava(null, true)}>{t('Use automatic Java')}</Button>
+                    {/if}
+                  {:else if f.id === 'undo-update'}
+                    {#if applied['undo-update']}
+                      <span class="done text-small"><Icon name="check" size={18} />{t('Back as before')}</span>
+                    {:else}
+                      <Button {variant} icon="clock" busy={busy === 'undo-update'} disabled={busy === 'undo-update' || running} onclick={undoUpdate}>{t('Undo update')}</Button>
                     {/if}
                   {:else if f.id === 'updates'}
                     <Button {variant} icon="mods" onclick={() => app.openInstance(id, 'mods')}>{t('Open mods')}</Button>
