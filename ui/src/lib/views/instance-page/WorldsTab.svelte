@@ -8,6 +8,7 @@
   import type { Instance, World, WorldBackup } from '../../types'
   import { when, type InstanceData } from './InstancePage.svelte'
   import { opensWorlds } from '../library/Stage.svelte'
+  import WorldDatapacks from './WorldDatapacks.svelte'
 
   let { instance, data }: { instance: Instance; data: InstanceData } = $props()
 
@@ -190,6 +191,8 @@
         </div>
         {#if running}<p class="text-small muted">{t('Close the game to restore or delete a world.')}</p>{/if}
       </section>
+
+      <WorldDatapacks {instance} world={sel} />
 
       <div class="danger">
         <Button variant="danger" icon="trash" disabled={running} onclick={() => (deleting = sel)}>{t('Delete world')}</Button>

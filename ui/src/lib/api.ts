@@ -8,6 +8,7 @@ import type {
   BlockedFile,
   ContentUpdate,
   DataFolder,
+  Datapack,
   InstallPlan,
   SkinProfile,
   DefaultSkin,
@@ -193,6 +194,18 @@ export const api = {
   blockedFiles: (instanceId: string) => call<BlockedFile[]>('blocked_files', { instanceId }),
   /** Looks in the Downloads folder, moves matches into place and returns the updated list. */
   findBlockedFiles: (instanceId: string) => call<BlockedFile[]>('find_blocked_files', { instanceId }),
+
+  // Datapacks of a world
+  listDatapacks: (id: string, world: string) => call<Datapack[]>('list_datapacks', { id, world }),
+  setDatapackEnabled: (id: string, world: string, fileName: string, enabled: boolean) => call<void>('set_datapack_enabled', { id, world, fileName, enabled }),
+  /** Moves the datapack to the instance's trash folder. */
+  removeDatapack: (id: string, world: string, fileName: string) => call<void>('remove_datapack', { id, world, fileName }),
+  /** Asks for .zip files and copies them into the world; returns the names added (empty when cancelled). */
+  addDatapackFiles: (id: string, world: string) => call<string[]>('add_datapack_files', { id, world }),
+  /** Modrinth datapacks for the instance's Minecraft version, 20 per page. */
+  searchDatapacks: (id: string, query: string, offset: number) => call<SearchResults>('search_datapacks', { id, query, offset }),
+  /** Downloads the newest version for the instance's Minecraft version into the world; returns its file name. */
+  installDatapack: (id: string, world: string, projectId: string) => call<string>('install_datapack', { id, world, projectId }),
 
   listPrismInstances: () => call<PrismInstance[]>('list_prism_instances'),
   importPrism: (paths: string[]) => call<Instance[]>('import_prism', { paths }),

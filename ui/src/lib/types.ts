@@ -525,3 +525,15 @@ export interface PackFileInfo {
   /** CurseForge zip and no API key: it can't be installed, and this says why. */
   blockedReason: string | null
 }
+
+/** A datapack of a world (`saves/<world>/datapacks`; turned off ones wait in `datapacks.disabled`). */
+export interface Datapack {
+  fileName: string
+  /** The file name without `.zip`. */
+  name: string
+  isDir: boolean
+  enabled: boolean
+  size: number
+  modified: string | null
+  description: string | null
+}

@@ -3,6 +3,7 @@
 // that appear as installed. Add `?onboarding` to the URL to see the first-launch assistant.
 
 import { pixelArt, svgUrl } from './pixelart'
+import { handleExtra, NOT_HANDLED } from './mockExtra'
 import { OPTIONAL_MODS, PACKS, PACK_DESCRIPTION, PACK_MARKDOWN, PROVIDERS, SORTERS, morePacks, type MockPackDef } from './mockPacks'
 import type {
   Account,
@@ -1045,8 +1046,11 @@ export async function handle(command: string, args: Record<string, any>): Promis
       return
     case 'delete_world':
       return
-    default:
+    default: {
+      const extra = await handleExtra(command, args)
+      if (extra !== NOT_HANDLED) return extra
       throw `Unknown command: ${command}`
+    }
   }
 }
 
