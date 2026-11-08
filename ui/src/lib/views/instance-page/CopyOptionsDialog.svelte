@@ -73,7 +73,6 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
-    min-width: min(460px, 80vw);
   }
   .field {
     display: flex;

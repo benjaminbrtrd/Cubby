@@ -139,7 +139,6 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
-    min-width: min(480px, 80vw);
   }
   .include {
     gap: var(--space-2);
