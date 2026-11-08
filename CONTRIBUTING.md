@@ -39,6 +39,12 @@ The interface is in English for now. Write it the way the app already speaks:
 - An error says what happened and what to do about it.
 - Use the game's words: *instance*, *loader*, *mods*, *resource packs*, *shader packs*, *worlds*.
 
+## Releasing
+
+1. Set the version in `Cargo.toml`, `src-tauri/tauri.conf.json` and `ui/package.json`.
+2. Write the notes in `.github/releases/v<version>.md`, with a screenshot of what's new.
+3. Push a tag such as `v2026.11.0`. GitHub Actions builds a draft release.
+
 ## License
 
 By contributing, you agree that your work is released under the [GPL-3.0](LICENSE), like the rest of Cubby.

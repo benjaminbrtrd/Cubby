@@ -1,65 +1,68 @@
 <p align="center">
-  <img src="ui/public/branding/cubby-256.png" width="96" alt="">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="ui/public/branding/cubby-lockup-on-dark.svg">
+    <img src="ui/public/branding/cubby-lockup-on-light.svg" width="280" alt="Cubby">
+  </picture>
 </p>
 
-<h1 align="center">Cubby</h1>
+<p align="center">A lightweight Minecraft launcher for Windows, macOS and Linux.</p>
 
-<p align="center">The lightweight Minecraft launcher.</p>
+<p align="center">
+  <a href="https://github.com/benjaminbrtrd/Cubby/releases/latest"><strong>Download</strong></a>
+  &nbsp;·&nbsp;
+  <a href="https://www.cubbylauncher.com">Website</a>
+</p>
 
-![The Cubby library](docs/screenshots/library.png)
+<p align="center">
+  <a href="https://github.com/benjaminbrtrd/Cubby/releases/latest"><img src="https://img.shields.io/github/v/release/benjaminbrtrd/Cubby?style=flat-square&label=version&color=7fc956" alt="Latest version"></a>
+  <img src="https://img.shields.io/badge/Windows%20%C2%B7%20macOS%20%C2%B7%20Linux-2b2a27?style=flat-square" alt="Windows, macOS and Linux">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0-2b2a27?style=flat-square" alt="GPL-3.0"></a>
+  <a href="https://github.com/benjaminbrtrd/Cubby/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/benjaminbrtrd/Cubby/ci.yml?branch=main&style=flat-square&label=build" alt="Build"></a>
+</p>
 
-Cubby keeps each of your worlds in its own instance, with its own version, loader, mods and settings. You pick one and press Play: Cubby downloads the game, the loader and the right Java, then gets out of the way.
+![Cubby](docs/screenshots/discover.png)
 
-It's a native app built with Rust and Tauri, so there's no bundled browser and no Java just to open the launcher. The installer is about 11 MB.
+## Features
 
-## What it does
+- Instances for any Minecraft version, with Fabric, Quilt, Forge or NeoForge
+- Mods, shader packs, resource packs and datapacks from Modrinth and CurseForge
+- Modpacks from Modrinth, CurseForge, FTB, ATLauncher and Technic
+- Mod updates with changelogs, and undo
+- World backups and maps
+- Import from Prism Launcher, MultiMC, CurseForge, ATLauncher, GDLauncher, the Modrinth App and the Minecraft Launcher
+- Export to `.mrpack` or CurseForge `.zip`
+- Native app built with Rust and Tauri
 
-- **Instances.** Any release, snapshot or old version, with Fabric, Quilt, Forge or NeoForge. Give each one an emblem and a colour so you can spot it at a glance.
-- **Mods, resource packs and shaders** from Modrinth and CurseForge, searched from inside the launcher. Cubby only shows what works with the instance you're installing into, adds the dependencies, and finds updates for what you already have.
-- **Modpacks** from Modrinth, CurseForge, FTB, ATLauncher and Technic, or from a `.mrpack` or `.zip` you downloaded.
-- **Crash diagnosis.** When the game crashes, Cubby reads the log, tells you what most likely went wrong and offers a fix, like turning off a mod made for another version of the game.
-- **While you play:** the live game log, your screenshots as you take them, and the status of the server you joined.
-- **Also:** world backups, import from Prism Launcher, several accounts, and night, day and high-contrast themes.
+<p>
+  <img src="docs/screenshots/mods.png" width="49%" alt="The mods of an instance">
+  <img src="docs/screenshots/worlds.png" width="49%" alt="A world, its map and its datapacks">
+  <img src="docs/screenshots/project.png" width="49%" alt="A mod page">
+  <img src="docs/screenshots/library.png" width="49%" alt="The library">
+</p>
 
-| Find mods | Mod pages | When it crashes |
-| --- | --- | --- |
-| ![Discover](docs/screenshots/discover.png) | ![A mod page](docs/screenshots/project.png) | ![The crash screen](docs/screenshots/crash.png) |
+## Building
 
-## Download
-
-Cubby runs on Windows 10 and 11, on macOS 11 or later (Apple Silicon and Intel) and on 64-bit Linux. Get it from the [releases page](https://github.com/benjaminbrtrd/Cubby/releases).
-
-The full game needs a signed-in Microsoft account that owns Minecraft: Java Edition. Without one, Cubby only starts the Minecraft demo.
-
-## Versions
-
-Cubby uses calendar versions: `2026.11.0` is the first release of November 2026, `2026.11.1` the next one that month. Test builds add `-alpha.N` or `-beta.N`. The full year keeps them apart from Minecraft's own version numbers.
-
-To publish a release, push a tag such as `v2026.11.0`: GitHub Actions builds the installer and attaches it to a draft release.
-
-## Building from source
-
-You need [Rust](https://rustup.rs) 1.90 or newer and [Node.js](https://nodejs.org) 20 or newer. On Windows, the WebView2 runtime (already there on Windows 11). On Linux, WebKitGTK 4.1 and its development files (`libwebkit2gtk-4.1-dev` on Debian and Ubuntu).
+Requires [Rust](https://rustup.rs) 1.90+ and [Node.js](https://nodejs.org) 20+. On Linux, `libwebkit2gtk-4.1-dev`.
 
 ```sh
 git clone https://github.com/benjaminbrtrd/Cubby cubby
-cd cubby/ui
-npm install
-cd ..
+cd cubby/ui && npm install && cd ..
 npm run tauri dev
 ```
 
-`npm run tauri build` makes the installer in `target/release/bundle/`.
+`npm run dev` in `ui/` runs the interface in a browser with sample data.
 
-Two values can be set at build time:
+<details>
+<summary>Build-time variables</summary>
 
-- `CUBBY_CURSEFORGE_API_KEY`: a [CurseForge API key](https://console.curseforge.com). Without it, CurseForge search is turned off, and everything else works.
-- `CUBBY_DISCORD_CLIENT_ID`: optional. The id of a Discord application whose Rich Presence art has an image named `cubby`. With it, Discord shows which instance the player is playing (Settings › Game › Show on Discord).
-- `CUBBY_MSA_CLIENT_ID`: optional. Cubby already has its own Azure application id, approved by Mojang; set this only to sign in through another one.
+- `CUBBY_CURSEFORGE_API_KEY`: [CurseForge API key](https://console.curseforge.com). Without it, CurseForge is turned off.
+- `CUBBY_DISCORD_CLIENT_ID`: optional, for Discord Rich Presence.
+- `CUBBY_MSA_CLIENT_ID`: optional, to sign in through another Azure application.
 
-The interface also runs in a plain browser with sample data, which is handy for working on screens: `npm run dev` in `ui/`.
+</details>
 
-## How the code is laid out
+<details>
+<summary>Code layout</summary>
 
 ```
 crates/
@@ -67,26 +70,25 @@ crates/
   cubby-meta        Mojang versions, Fabric, Quilt, Forge and NeoForge installs
   cubby-java        finding, picking and downloading Java
   cubby-auth        Microsoft sign-in
-  cubby-instance    instances, their content, backups, settings
+  cubby-instance    instances, their content, worlds, backups, settings
   cubby-launch      building the command line and running the game
-  cubby-modrinth    Modrinth search, installs and updates
+  cubby-modrinth    Modrinth
   cubby-curseforge  CurseForge
   cubby-ftb         Feed The Beast
   cubby-atlauncher  ATLauncher
   cubby-technic     Technic
   cubby-packinstall installing a modpack plan
-src-tauri/          the desktop app: window, commands, events
+  cubby-discord     Discord Rich Presence
+src-tauri/          the desktop app
 ui/                 the interface, in Svelte
 ```
 
-Each crate builds and tests on its own. `cargo test --workspace` runs the offline tests; the ones that call real services are marked `#[ignore]` and run with `cargo test -- --ignored`.
+</details>
 
-## Contributing
-
-Bug reports and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
+See [CONTRIBUTING.md](CONTRIBUTING.md) to contribute.
 
 ## License
 
-Cubby is free software under the [GNU General Public License v3.0](LICENSE).
+[GPL-3.0](LICENSE). Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft.
 
-**Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft.** Made by Benjamin · contact@cubbylauncher.com
+Made by Benjamin · contact@cubbylauncher.com
