@@ -126,6 +126,12 @@ pub fn run() {
             packs::import_pack_url,
             packs::blocked_files,
             packs::find_blocked_files,
+            commands::datapacks::list_datapacks,
+            commands::datapacks::set_datapack_enabled,
+            commands::datapacks::remove_datapack,
+            commands::datapacks::add_datapack_files,
+            commands::datapacks::search_datapacks,
+            commands::datapacks::install_datapack,
         ])
         .build(tauri::generate_context!())
         .expect("error while building Cubby")
