@@ -444,6 +444,8 @@ pub struct DataFolderDto {
 pub struct ServerStatusDto {
     pub online: bool,
     pub motd: String,
+    /// The message of the day with its `§` colour and style codes.
+    pub motd_formatted: String,
     pub players_online: u32,
     pub players_max: u32,
     pub version: Option<String>,
@@ -458,6 +460,7 @@ impl From<cubby_launch::ServerStatus> for ServerStatusDto {
         Self {
             online: s.online,
             motd: s.motd,
+            motd_formatted: s.motd_formatted,
             players_online: s.players_online,
             players_max: s.players_max,
             version: s.version,

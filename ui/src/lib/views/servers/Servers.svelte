@@ -2,7 +2,7 @@
   import { t } from '../../i18n.svelte'
   import { tick, untrack } from 'svelte'
   import { api } from '../../api'
-  import { Button, Dialog, Icon, Inspector, InspectorHead, InspectorNotice, InspectorSection, InspectorStatus, InstanceIcon, MetaChip, PlayButton, ServerRow, StatusTag, TextField } from '../../cubby'
+  import { Button, Dialog, Icon, Inspector, InspectorHead, InspectorNotice, InspectorSection, InspectorStatus, InstanceIcon, MetaChip, Motd, PlayButton, ServerRow, StatusTag, TextField } from '../../cubby'
   import { num } from '../../format'
   import { iconOf } from '../../icon'
   import { app } from '../../state.svelte'
@@ -357,6 +357,7 @@
                     address={e.server.address}
                     iconSrc={e.status?.iconUrl ?? e.server.iconUrl ?? undefined}
                     motd={motdOf(e.status)}
+                    motdFormatted={e.status?.motdFormatted}
                     online={e.status ? e.status.online : false}
                     offlineText={e.status ? t('Can’t reach server') : t('Checking the server…')}
                     players={e.status?.online ? { online: e.status.playersOnline, max: e.status.playersMax } : undefined}
@@ -429,14 +430,14 @@
           {/if}
           {#if s?.online && motdOf(s)}
             <InspectorSection title={t('Message of the day')}>
-              <p class="motd text-mono">{motdOf(s)}</p>
+              <Motd text={s.motdFormatted || motdOf(s)} />
             </InspectorSection>
           {/if}
           <InspectorSection title={t('Details')}>
             <dl class="cb-ins-facts">
               <dt>{t('Instance')}</dt>
               <dd><InstanceIcon {...iconOf(selInstance)} seed={selInstance.name} size={24} /><span>{selInstance.name}</span><MetaChip>{selInstance.minecraft}</MetaChip></dd>
-              {#if s?.version}<dt>{t('Version')}</dt><dd><MetaChip>{s.version}</MetaChip></dd>{/if}
+              {#if s?.version}<dt>{t('Version')}</dt><dd><span class="text-mono" title={s.version}>{s.version}</span></dd>{/if}
               {#if check}
                 <dt>{t('Fit')}</dt>
                 <dd>
@@ -652,13 +653,5 @@
     max-height: calc(100vh - var(--size-titlebar));
     min-height: 0;
     overflow: auto;
-  }
-  .motd {
-    padding: var(--space-2) var(--space-3);
-    white-space: pre-line;
-    overflow-wrap: anywhere;
-    background: var(--field);
-    border: var(--border-block) solid var(--outline);
-    box-shadow: var(--shadow-well);
   }
 </style>

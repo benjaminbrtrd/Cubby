@@ -23,6 +23,8 @@ pub fn run() {
     }));
     builder
         .plugin(tauri_plugin_deep_link::init())
+        // Reopens the window at the size and place it had when Cubby closed.
+        .plugin(tauri_plugin_window_state::Builder::default().build())
         .plugin(
             tauri_plugin_log::Builder::default()
                 .level(if cfg!(debug_assertions) {

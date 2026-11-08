@@ -2,7 +2,7 @@
   import { t } from '../../i18n.svelte'
   import { tick, untrack } from 'svelte'
   import { api } from '../../api'
-  import { Button, Dialog, Icon, IconButton, Inspector, InspectorHead, InspectorNotice, InspectorSection, InspectorStatus, MetaChip, PlayButton, SegmentedControl, ServerRow, StatusTag, TextField } from '../../cubby'
+  import { Button, Dialog, Icon, IconButton, Inspector, InspectorHead, InspectorNotice, InspectorSection, InspectorStatus, MetaChip, Motd, PlayButton, SegmentedControl, ServerRow, StatusTag, TextField } from '../../cubby'
   import { num, plural } from '../../format'
   import { app } from '../../state.svelte'
   import type { Instance, Server, ServerStatus } from '../../types'
@@ -227,6 +227,7 @@
                 address={s.address}
                 iconSrc={st.iconUrl ?? s.iconUrl ?? undefined}
                 motd={st.motd}
+                motdFormatted={st.motdFormatted}
                 online={st.online}
                 players={st.online ? { online: st.playersOnline, max: st.playersMax } : undefined}
                 playersLabel={t('{n} of {n2} players online', { n: num(st.playersOnline), n2: num(st.playersMax) })}
@@ -300,6 +301,10 @@
           />
           <Button icon="copy" aria-label={t('Copy address')} onclick={() => sel && copy(sel.address)}>{t('Copy')}</Button>
           <Button icon="wrench" onclick={startEdit}>{t('Edit')}</Button>
+          {#if servers.length > 1}
+            <Button icon="chevron-down" class="flip" disabled={selIndex === 0} onclick={() => move(selIndex, selIndex - 1)}>{t('Move up')}</Button>
+            <Button icon="chevron-down" disabled={selIndex === servers.length - 1} onclick={() => move(selIndex, selIndex + 1)}>{t('Move down')}</Button>
+          {/if}
         </div>
         {#if versionDiffers}
           <InspectorNotice>
@@ -308,7 +313,7 @@
         {/if}
         {#if selStatus?.online && selStatus.motd}
           <InspectorSection title={t('Message of the day')}>
-            <p class="motd text-mono">{selStatus.motd}</p>
+            <Motd text={selStatus.motdFormatted || selStatus.motd} />
           </InspectorSection>
         {/if}
         <InspectorSection title={t('Server resource packs')}>
@@ -326,13 +331,9 @@
         </InspectorSection>
         <InspectorSection title={t('Details')}>
           <dl class="cb-ins-facts">
-            {#if selStatus?.version}<dt>{t('Version')}</dt><dd><MetaChip>{selStatus.version}</MetaChip>{#if !versionDiffers && selStatus.online}<InspectorStatus tone="ok">{t('Fits')}</InspectorStatus>{/if}</dd>{/if}
-            <dt>{t('Position')}</dt>
-            <dd>
-              <span>{t('{n} of {n2}', { n: num(selIndex + 1), n2: num(servers.length) })}</span>
-              <IconButton size="sm" icon="update" label={t('Move {name} up', { name: sel.name })} disabled={selIndex === 0} onclick={() => move(selIndex, selIndex - 1)} />
-              <IconButton size="sm" icon="download" label={t('Move {name} down', { name: sel.name })} disabled={selIndex === servers.length - 1} onclick={() => move(selIndex, selIndex + 1)} />
-            </dd>
+            {#if selStatus?.version}<dt>{t('Version')}</dt><dd><span class="text-mono" title={selStatus.version}>{selStatus.version}</span></dd>{/if}
+            {#if selStatus?.online}<dt>{t('Fit')}</dt><dd>{#if versionDiffers}<InspectorStatus tone="warn">{t('May not get in')}</InspectorStatus>{:else}<InspectorStatus tone="ok">{t('Can join')}</InspectorStatus>{/if}</dd>{/if}
+            <dt>{t('Position')}</dt><dd><span>{t('{n} of {n2}', { n: num(selIndex + 1), n2: num(servers.length) })}</span></dd>
           </dl>
         </InspectorSection>
       {/if}
@@ -469,13 +470,5 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
-  }
-  .motd {
-    padding: var(--space-2) var(--space-3);
-    overflow-wrap: anywhere;
-    white-space: pre-wrap;
-    background: var(--field);
-    border: var(--border-block) solid var(--outline);
-    box-shadow: var(--shadow-well);
   }
 </style>

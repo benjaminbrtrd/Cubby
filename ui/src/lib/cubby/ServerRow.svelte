@@ -3,6 +3,7 @@
   import Button from './Button.svelte';
   import Icon from './Icon.svelte';
   import StatusTag from './StatusTag.svelte';
+  import Motd from './Motd.svelte';
   import type { ServerRowProps } from './types';
 
   let {
@@ -10,6 +11,7 @@
     address,
     iconSrc,
     motd,
+    motdFormatted,
     online: onlineProp,
     offlineText,
     players,
@@ -35,28 +37,35 @@
       <span class="cb-server__name text-heading">{name}</span>
       <span class="cb-server__address text-mono">{address}</span>
     </div>
-    <p class="cb-server__motd text-mono">{online ? motd : offlineText || t('Can’t reach server')}</p>
+    {#if online && motdFormatted}
+      <Motd text={motdFormatted} class="cb-server__motd" />
+    {:else}
+      <p class="cb-server__motd text-mono">{online ? motd : offlineText || t('Can’t reach server')}</p>
+    {/if}
   </div>
+  <!-- Fixed columns, so the status, players, ping and instance line up from one server to the next -->
   <div class="cb-server__stats">
-    <StatusTag state={online ? 'online' : 'offline'} />
-    {#if online && players}
-      <span class="cb-server__players" title={playersLabel}>
+    <span class="cb-server__cell"><StatusTag state={online ? 'online' : 'offline'} /></span>
+    <span class="cb-server__cell cb-server__players" title={playersLabel}>
+      {#if online && players}
         <Icon name="accounts" size={18} />
-        <span class="text-counter">{players.online + '/' + players.max}</span>
+        <span class="text-counter">{players.online.toLocaleString() + ' / ' + players.max.toLocaleString()}</span>
         <span class="cb-visually-hidden">{playersLabel || t('players online')}</span>
-      </span>
-    {/if}
-    {#if online}
-      <span class={['cb-ping', 'cb-ping--' + bars]}>
-        <span class="cb-ping__bars" aria-hidden="true">
-          {#each { length: 4 }, i (i)}<span class={['cb-ping__bar', i < bars && 'is-on']} style:height="{5 + i * 3}px"></span>{/each}
+      {/if}
+    </span>
+    <span class="cb-server__cell">
+      {#if online}
+        <span class={['cb-ping', 'cb-ping--' + bars]}>
+          <span class="cb-ping__bars" aria-hidden="true">
+            {#each { length: 4 }, i (i)}<span class={['cb-ping__bar', i < bars && 'is-on']} style:height="{5 + i * 3}px"></span>{/each}
+          </span>
+          <span class="cb-ping__ms text-mono">{ping == null ? '—' : pingText || ping + t(' ms')}</span>
         </span>
-        <span class="cb-ping__ms text-mono">{ping == null ? '—' : pingText || ping + t(' ms')}</span>
-      </span>
-    {/if}
+      {/if}
+    </span>
   </div>
   <div class="cb-server__join">
-    {#if instance}<span class="cb-server__instance text-small"><Icon name="cube" size={18} />{instance}</span>{/if}
+    {#if instance}<span class="cb-server__instance text-small" title={instance}><Icon name="cube" size={18} /><span>{instance}</span></span>{/if}
     <Button variant={online ? 'primary' : 'secondary'} icon="play" disabled={!online} onclick={onJoin} aria-label={joinLabel}>{joinText || t('Join')}</Button>
   </div>
 </div>

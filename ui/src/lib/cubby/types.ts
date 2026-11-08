@@ -250,6 +250,8 @@ export interface ServerRowProps {
   address: string;
   iconSrc?: string;
   motd?: string;
+  /** The message of the day with its `§` codes: drawn in the game's colours when given. */
+  motdFormatted?: string;
   online?: boolean;
   offlineText?: string;
   players?: { online: number; max: number };

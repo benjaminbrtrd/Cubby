@@ -241,6 +241,8 @@ export interface Server {
 export interface ServerStatus {
   online: boolean
   motd: string
+  /** The message of the day with its `§` colour and style codes (draw it with Motd). */
+  motdFormatted?: string
   playersOnline: number
   playersMax: number
   version: string | null

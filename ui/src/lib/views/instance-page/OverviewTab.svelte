@@ -234,6 +234,7 @@
           address={server.address}
           iconSrc={status.iconUrl ?? server.iconUrl ?? undefined}
           motd={status.motd}
+          motdFormatted={status.motdFormatted}
           online={status.online}
           players={status.online ? { online: status.playersOnline, max: status.playersMax } : undefined}
           playersLabel={t('players online')}

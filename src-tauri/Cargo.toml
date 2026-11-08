@@ -55,6 +55,7 @@ tauri-plugin-dialog = "2"
 sysinfo = { version = "0.39", default-features = false, features = ["system"] }
 tauri-plugin-updater = "2"
 tauri-plugin-deep-link = "2"
+tauri-plugin-window-state = "2"
 
 [target.'cfg(any(target_os = "windows", target_os = "linux"))'.dependencies]
 tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }

@@ -22,6 +22,10 @@ pub struct ServerStatus {
     pub online: bool,
     /// Message of the day as plain text (formatting codes stripped, newlines kept).
     pub motd: String,
+    /// Message of the day with its colours and styles as `§` codes, the way the game draws it: `§0`–`§f` colours,
+    /// `§l` bold, `§o` italic, `§n` underlined, `§m` struck, `§k` obfuscated, `§r` reset, and `§#rrggbb` for a
+    /// hex colour from a JSON component.
+    pub motd_formatted: String,
     pub players_online: u32,
     pub players_max: u32,
     pub version: Option<String>,
@@ -38,7 +42,7 @@ pub struct ServerStatus {
 
 impl ServerStatus {
     fn offline() -> Self {
-        Self { online: false, motd: String::new(), players_online: 0, players_max: 0, version: None, protocol: None, asked_protocol: PROTOCOL_VERSION, ping_ms: None, favicon: None }
+        Self { online: false, motd: String::new(), motd_formatted: String::new(), players_online: 0, players_max: 0, version: None, protocol: None, asked_protocol: PROTOCOL_VERSION, ping_ms: None, favicon: None }
     }
 }
 
@@ -143,6 +147,7 @@ fn parse_status(value: &Value) -> ServerStatus {
     ServerStatus {
         online: true,
         motd: value.get("description").map(flatten_motd).unwrap_or_default(),
+        motd_formatted: value.get("description").map(formatted_motd).unwrap_or_default(),
         players_online: players["online"].as_u64().unwrap_or(0) as u32,
         players_max: players["max"].as_u64().unwrap_or(0) as u32,
         version: value["version"]["name"].as_str().map(str::to_string),
@@ -173,6 +178,91 @@ fn push_component(value: &Value, out: &mut String) {
             }
             if let Some(extra) = map.get("extra") {
                 push_component(extra, out);
+            }
+        }
+        _ => {}
+    }
+}
+
+/// Colours and styles a chat component sets, inherited by its `extra` children.
+#[derive(Debug, Clone, Default)]
+struct Style {
+    color: Option<String>,
+    bold: bool,
+    italic: bool,
+    underlined: bool,
+    strikethrough: bool,
+    obfuscated: bool,
+}
+
+impl Style {
+    fn with(&self, map: &serde_json::Map<String, Value>) -> Style {
+        let flag = |key: &str, current: bool| map.get(key).and_then(Value::as_bool).unwrap_or(current);
+        Style {
+            color: map.get("color").and_then(Value::as_str).and_then(color_code).or_else(|| self.color.clone()),
+            bold: flag("bold", self.bold),
+            italic: flag("italic", self.italic),
+            underlined: flag("underlined", self.underlined),
+            strikethrough: flag("strikethrough", self.strikethrough),
+            obfuscated: flag("obfuscated", self.obfuscated),
+        }
+    }
+
+    /// `§r`, then the colour, then the styles: what puts the text in this style whatever came before.
+    fn codes(&self) -> String {
+        let mut out = String::from("§r");
+        if let Some(color) = &self.color {
+            out.push_str(color);
+        }
+        for (on, code) in [(self.obfuscated, 'k'), (self.bold, 'l'), (self.strikethrough, 'm'), (self.underlined, 'n'), (self.italic, 'o')] {
+            if on {
+                out.push('§');
+                out.push(code);
+            }
+        }
+        out
+    }
+}
+
+/// `§` code of a JSON colour: a name (`gold`) or `#rrggbb`.
+fn color_code(name: &str) -> Option<String> {
+    const NAMES: [&str; 16] = [
+        "black", "dark_blue", "dark_green", "dark_aqua", "dark_red", "dark_purple", "gold", "gray",
+        "dark_gray", "blue", "green", "aqua", "red", "light_purple", "yellow", "white",
+    ];
+    if let Some(i) = NAMES.iter().position(|n| *n == name) {
+        return Some(format!("§{:x}", i));
+    }
+    let hex = name.strip_prefix('#')?;
+    (hex.len() == 6 && hex.chars().all(|c| c.is_ascii_hexdigit())).then(|| format!("§#{}", hex.to_ascii_lowercase()))
+}
+
+/// The message of the day with `§` codes for its colours and styles (see [`ServerStatus::motd_formatted`]).
+fn formatted_motd(value: &Value) -> String {
+    let mut out = String::new();
+    push_formatted(value, &Style::default(), &mut out);
+    out
+}
+
+fn push_formatted(value: &Value, style: &Style, out: &mut String) {
+    match value {
+        Value::String(s) => {
+            if !s.is_empty() {
+                out.push_str(&style.codes());
+                out.push_str(s);
+            }
+        }
+        Value::Array(items) => items.iter().for_each(|item| push_formatted(item, style, out)),
+        Value::Object(map) => {
+            let style = style.with(map);
+            if let Some(text) = map.get("text").or_else(|| map.get("translate")).and_then(Value::as_str) {
+                if !text.is_empty() {
+                    out.push_str(&style.codes());
+                    out.push_str(text);
+                }
+            }
+            if let Some(extra) = map.get("extra") {
+                push_formatted(extra, &style, out);
             }
         }
         _ => {}
@@ -279,6 +369,15 @@ mod tests {
         write_varint(&mut buf, -1);
         assert_eq!(buf, [0xff, 0xff, 0xff, 0xff, 0x0f]);
         assert!(read_varint_slice(&mut &[0x80u8, 0x80][..]).is_err());
+    }
+
+    #[test]
+    fn motd_formatting() {
+        assert_eq!(formatted_motd(&json!("§aHello §lworld")), "§r§aHello §lworld");
+        let component = json!({"text": "Cubby ", "color": "gold", "bold": true, "extra": [{"text": "test", "bold": false, "color": "#4CC9D6"}, "!"]});
+        assert_eq!(formatted_motd(&component), "§r§6§lCubby §r§#4cc9d6test§r§6§l!");
+        assert_eq!(formatted_motd(&json!({"text": "", "extra": [{"text": "x", "italic": true}]})), "§r§ox");
+        assert_eq!(color_code("pink"), None);
     }
 
     #[test]

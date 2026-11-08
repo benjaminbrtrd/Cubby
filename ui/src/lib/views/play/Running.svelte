@@ -2,7 +2,7 @@
   import { t } from '../../i18n.svelte'
   import { untrack } from 'svelte'
   import { api } from '../../api'
-  import { Banner, Button, Icon, IconButton, Inspector, InspectorNotice, InspectorSection, InstanceIcon, LogViewer, MetaChip, PlayButton, SegmentedControl, StatusTag, TextField, type SegmentedOption } from '../../cubby'
+  import { Banner, Button, Icon, IconButton, Inspector, InspectorNotice, InspectorSection, InstanceIcon, LogViewer, MetaChip, Motd, PlayButton, SegmentedControl, type SegmentedOption, StatusTag, TextField } from '../../cubby'
   import { fold, loaderFull, megabytes, num, plural, session, timeOfDay } from '../../format'
   import { iconOf } from '../../icon'
   import { app } from '../../state.svelte'
@@ -378,7 +378,7 @@
                   {/if}
                 </li>
               </ul>
-              {#if status?.online && motd}<p class="motd cb-ins-hint">{motd}</p>{/if}
+              {#if status?.online && motd}<Motd text={status.motdFormatted || motd} />{/if}
             </InspectorSection>
           {/if}
         </Inspector>
@@ -541,9 +541,5 @@
     width: 100%;
     aspect-ratio: 16 / 9;
     object-fit: cover;
-  }
-  .motd {
-    overflow-wrap: anywhere;
-    white-space: pre-line;
   }
 </style>

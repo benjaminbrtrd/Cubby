@@ -645,7 +645,7 @@ export async function handle(command: string, args: Record<string, any>): Promis
       const host = String(args.address)
       if (host.startsWith('192.168.1.42') || host.startsWith('localhost'))
         return { online: false, motd: '', playersOnline: 0, playersMax: 0, version: null, pingMs: null, iconUrl: null }
-      if (host.startsWith('crew')) return { online: true, motd: 'Season 4 · back on Saturday', playersOnline: 5, playersMax: 20, version: '1.21.1', pingMs: 24, iconUrl: SERVER_ICONS.crew }
+      if (host.startsWith('crew')) return { online: true, motd: 'Season 4 · back on Saturday', motdFormatted: '§r§6§l        The Crew §r§7· §aSeason 4\n§r§7      back on §bSaturday §r§8[1.21]', playersOnline: 5, playersMax: 20, version: '1.21.1', pingMs: 24, iconUrl: SERVER_ICONS.crew }
       if (host.includes('createfactory')) return { online: true, motd: 'Create Factory · 24/7 · whitelist on Discord', playersOnline: 87, playersMax: 100, version: '1.20.1', pingMs: 212, iconUrl: SERVER_ICONS.factory }
       return { online: true, motd: 'A Minecraft Server', playersOnline: host.length % 9, playersMax: 20, version: '1.21.1', pingMs: 40 + host.length, iconUrl: null }
     }
