@@ -120,7 +120,27 @@ export async function handleExtra(command: string, args: Record<string, any>): P
       return { ...args.what }
     case 'create_desktop_shortcut':
       return `/Users/you/Desktop/${args.id}.app`
+    case 'render_world_map': {
+      await sleep(900)
+      return { url: mockMap(), minX: -384, minZ: -384, size: 768, chunks: 1840 }
+    }
     default:
       return NOT_HANDLED
   }
+}
+
+/** A made-up landscape: water, sand, grass and forest from a few waves. */
+function mockMap(): string {
+  const size = 96
+  const canvas = document.createElement('canvas')
+  canvas.width = canvas.height = size
+  const ctx = canvas.getContext('2d')!
+  for (let z = 0; z < size; z++) {
+    for (let x = 0; x < size; x++) {
+      const h = Math.sin(x / 9) + Math.cos(z / 11) + Math.sin((x + z) / 17) * 0.8
+      ctx.fillStyle = h < -0.6 ? '#345cc4' : h < -0.35 ? '#dbcfa3' : h < 1 ? (Math.random() < 0.06 ? '#376e23' : '#76a846') : h < 1.6 ? '#376e23' : '#7d7d7d'
+      ctx.fillRect(x, z, 1, 1)
+    }
+  }
+  return canvas.toDataURL()
 }

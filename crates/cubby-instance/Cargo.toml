@@ -16,3 +16,4 @@ toml.workspace = true
 chrono.workspace = true
 zip.workspace = true
 flate2 = "1"
+png = "0.18"

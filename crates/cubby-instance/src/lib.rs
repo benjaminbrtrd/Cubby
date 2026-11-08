@@ -5,6 +5,7 @@ pub mod datapacks;
 pub mod memory;
 pub mod content;
 pub mod launchers;
+pub mod map;
 mod model;
 mod nbt;
 pub mod options;
@@ -27,6 +28,7 @@ pub use datapacks::{datapack_path, import_datapacks, list_datapacks, remove_data
 pub use update_backups::{record_update, UpdateBackup, UpdatedFile};
 pub use launchers::{import_foreign, known_locations, list_all_foreign, list_foreign, ForeignInstance, Launcher, SystemDirs};
 pub use options::{copy_options, OptionsCopy};
+pub use map::{render_map, WorldMap};
 pub use memory::{count_enabled_mods, recommended_memory_mb};
 pub use model::{Instance, JavaOverrides, Loader, ModpackInfo, NewInstance, WindowSize};
 pub use prism::{import_prism, list_prism_instances, PrismInstanceInfo};

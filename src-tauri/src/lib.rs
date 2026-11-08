@@ -141,6 +141,7 @@ pub fn run() {
             commands::datapacks::add_datapack_files,
             commands::datapacks::search_datapacks,
             commands::datapacks::install_datapack,
+            commands::datapacks::render_world_map,
         ])
         .build(tauri::generate_context!())
         .expect("error while building Cubby")

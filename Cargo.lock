@@ -854,6 +854,7 @@ dependencies = [
  "chrono",
  "cubby-common",
  "flate2",
+ "png",
  "serde",
  "serde_json",
  "tokio",

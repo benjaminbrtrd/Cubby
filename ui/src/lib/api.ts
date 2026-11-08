@@ -8,6 +8,7 @@ import type {
   BlockedFile,
   ContentUpdate,
   DataFolder,
+  WorldMapImage,
   OptionsCopy,
   ForeignInstance,
   ExportCandidate,
@@ -209,6 +210,9 @@ export const api = {
   blockedFiles: (instanceId: string) => call<BlockedFile[]>('blocked_files', { instanceId }),
   /** Looks in the Downloads folder, moves matches into place and returns the updated list. */
   findBlockedFiles: (instanceId: string) => call<BlockedFile[]>('find_blocked_files', { instanceId }),
+
+  /** Draws the map around a world's spawn (task `map:<id>`), or returns the one already drawn since it last changed. */
+  renderWorldMap: (id: string, world: string) => call<WorldMapImage>('render_world_map', { id, world }),
 
   // Exports
   exportCandidates: (id: string) => call<ExportCandidate[]>('export_candidates', { id }),

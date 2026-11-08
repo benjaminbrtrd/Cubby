@@ -597,3 +597,14 @@ export interface OptionsCopy {
   /** servers.dat */
   servers: boolean
 }
+
+/** A world's map around its spawn, drawn by renderWorldMap. */
+export interface WorldMapImage {
+  url: string
+  /** Block coordinates of the top-left pixel. */
+  minX: number
+  minZ: number
+  /** Width and height, in blocks (one pixel per block). */
+  size: number
+  chunks: number
+}

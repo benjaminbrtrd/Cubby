@@ -115,4 +115,16 @@ export const FR_10: Record<string, Entry> = {
   'Add to desktop': 'Ajouter au bureau',
   'A shortcut to {name} is on your desktop. Double-click it to play.': 'Un raccourci vers {name} est sur votre bureau. Double-cliquez dessus pour jouer.',
   'That shortcut’s instance isn’t in Cubby anymore.': 'L’instance de ce raccourci n’est plus dans Cubby.',
+
+  // World map
+  Map: 'Carte',
+  'Show the map of {name} bigger': 'Agrandir la carte de {name}',
+  'Map of {name} around its spawn': 'Carte de {name} autour du point d’apparition',
+  '{n} blocks around the spawn · {chunks} chunks explored': '{n} blocs autour du point d’apparition · {chunks} chunks explorés',
+  'Drawing the map': 'Dessin de la carte',
+  'See the land around the spawn from above.': 'Voyez les environs du point d’apparition vus du ciel.',
+  'Draw again': 'Redessiner',
+  'Draw the map': 'Dessiner la carte',
+  'From {x}, {z} to {x2}, {z2}. The red dot is the spawn.': 'De {x}, {z} à {x2}, {z2}. Le point rouge est le point d’apparition.',
+  'This world has no map yet: play in it once, then draw it.': 'Ce monde n’a pas encore de carte : jouez-y une fois, puis dessinez-la.',
 }

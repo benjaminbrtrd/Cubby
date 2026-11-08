@@ -107,3 +107,53 @@ pub async fn install_datapack(
     cubby_common::net::ensure_file(&core.http, &job).await.msg()?;
     Ok(file.file_name)
 }
+
+// World map
+
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WorldMapDto {
+    /// The PNG, as an asset URL (with a version, so a new drawing isn't hidden by the cache).
+    pub url: String,
+    pub min_x: i32,
+    pub min_z: i32,
+    pub size: u32,
+    pub chunks: u32,
+}
+
+/// Draws the map around the world's spawn (task `map:<id>`), or returns the one drawn since the world last changed.
+#[tauri::command]
+pub async fn render_world_map(
+    app: AppHandle,
+    core: State<'_, Core>,
+    id: String,
+    world: String,
+) -> CmdResult<WorldMapDto> {
+    let inst = core.store.get(&id).msg()?;
+    let game = core.store.game_dir(&inst);
+    let cache = core.paths.instance(&inst.id).join("maps");
+    run_task(&app, format!("map:{id}"), move |app, task| async move {
+        let sink = app.state::<Core>().sink.clone();
+        let map = blocking(move || {
+            cubby_instance::render_map(&game, &world, &cache, |done, total| {
+                sink.progress(&task, "Drawing the map", done, total)
+            })
+            .msg()
+        })
+        .await?;
+        let stamp = std::fs::metadata(&map.path)
+            .and_then(|m| m.modified())
+            .ok()
+            .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+        Ok(WorldMapDto {
+            url: format!("{}?v={stamp}", dto::asset_url(&map.path)),
+            min_x: map.min_x,
+            min_z: map.min_z,
+            size: map.size,
+            chunks: map.chunks,
+        })
+    })
+    .await
+}
