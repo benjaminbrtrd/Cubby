@@ -8,7 +8,6 @@
 
 use std::io::{Read, Write};
 use std::sync::mpsc::{self, Receiver, Sender};
-use std::time::Duration;
 
 use serde_json::{json, Value};
 
@@ -66,6 +65,7 @@ impl<T: Read + Write + Send> Pipe for T {}
 #[cfg(unix)]
 fn connect() -> Option<Box<dyn Pipe>> {
     use std::os::unix::net::UnixStream;
+    use std::time::Duration;
     let mut bases: Vec<std::path::PathBuf> = ["XDG_RUNTIME_DIR", "TMPDIR", "TMP", "TEMP"].iter().filter_map(std::env::var_os).map(Into::into).collect();
     bases.push("/tmp".into());
     // Flatpak and Snap builds of Discord put the socket in their own folder.
