@@ -1,7 +1,7 @@
 <script lang="ts">
   import { t } from '../../i18n.svelte'
   import { api } from '../../api'
-  import { Banner, Button, Dialog, Icon, InstanceIcon, StatusTag } from '../../cubby'
+  import { Banner, Button, Dialog, Icon, Inspector, InspectorHead, InspectorNotice, InspectorPath, InspectorSection, InspectorStatus, InstanceIcon, MetaChip, StatusTag } from '../../cubby'
   import { bytes, relativeTime } from '../../format'
   import { projectArt } from '../../icon'
   import { app } from '../../state.svelte'
@@ -219,52 +219,60 @@
 </div>
 
 <aside class="ip-aside" aria-label={t('Shader pack details')}>
-  <div class="ip-aside__inner">
-    <div class="aside__title">
-      <p class="text-label muted">{shown ? (shown.enabled ? t('In use') : t('Not in use')) : !current ? t('In use') : t('Not in use')}</p>
-      <h2 class="text-heading wrap">{shown ? (shownSource?.title ?? shown.name) : t('No shader pack')}</h2>
-    </div>
+  <Inspector class="ip-aside__inner" danger={shown ? { label: t('Delete'), hint: t('Moves the pack to the instance’s trash.'), disabled: locked, onclick: () => (deleting = shown) } : null}>
     {#if shown}
-      <dl class="facts">
-        <dt class="text-small muted">{t('Size')}</dt>
-        <dd class="text-body">{bytes(shown.size)}</dd>
-        {#if shown.modified}
-          <dt class="text-small muted">{t('Changed')}</dt>
-          <dd class="text-body">{relativeTime(shown.modified)}</dd>
-        {/if}
-        <dt class="text-small muted">{t('Source')}</dt>
-        <dd class="text-body">{shownSource ? 'Modrinth' : t('Not found on Modrinth')}</dd>
-        {#if shownSource}
-          <dt class="text-small muted">{t('Version')}</dt>
-          <dd class="text-mono">{shownSource.versionNumber}</dd>
-        {/if}
-        <dt class="text-small muted full">{t('File')}</dt>
-        <dd class="text-mono full wrap">{shown.fileName}</dd>
-      </dl>
-      <div class="actions">
-        {#if shown.enabled}
-          <Button icon="close" disabled={locked || saving} onclick={() => use(null)}>{t('Use no shaders')}</Button>
-        {:else}
-          <Button variant="primary" icon="check" disabled={locked || saving} onclick={() => use(shown.fileName)}>{t('Use this pack')}</Button>
-        {/if}
-        {#if shownUpdate}
-          <Button icon="update" busy={updating} disabled={updating || locked} onclick={() => data.applyUpdates([shownUpdate.fileName])}>{t('Update to {latestVersion}', { latestVersion: shownUpdate.latestVersion })}</Button>
-        {/if}
-        {#if shownSource}
-          <Button icon="globe" onclick={() => shownSource && data.project(shownSource.slug, 'shader')}>{t('Open page')}</Button>
-        {/if}
-      </div>
-      <p class="text-small muted">{t('Each pack has its own settings, like shadows and fog. Change them in game under Options › Video settings › Shader packs › Shader pack settings.')}</p>
-      <div class="danger">
-        <Button variant="danger" icon="trash" disabled={locked} onclick={() => (deleting = shown)}>{t('Delete')}</Button>
-      </div>
-    {:else}
-      <p class="text-body">{t('The game uses its normal look and runs at its fastest. Pick a pack to use it the next time you play.')}</p>
-      {#if current}
-        <div class="actions"><Button icon="close" disabled={locked || saving} onclick={() => use(null)}>{t('Use no shaders')}</Button></div>
+      {#snippet shaderMedia()}
+        <span class="cb-ins-media" style:opacity={shown.enabled ? undefined : 0.6}>
+          {#if shownSource?.iconUrl}<InstanceIcon src={shownSource.iconUrl} size={52} />{:else}<InstanceIcon {...projectArt(shownSource?.slug ?? shown.name)} size={52} />{/if}
+        </span>
+      {/snippet}
+      {#snippet shaderMeta()}
+        {#if shownSource?.versionNumber}<MetaChip>{shownSource.versionNumber}</MetaChip>{/if}
+        {#if shown.enabled}<InspectorStatus tone="ok">{t('In use')}</InspectorStatus>{:else}<InspectorStatus tone="off">{t('Not in use')}</InspectorStatus>{/if}
+        {#if shownUpdate}<InspectorStatus tone="update">{t('Update available')}</InspectorStatus>{/if}
+      {/snippet}
+      <InspectorHead eyebrow={t('Shader pack')} title={shownSource?.title ?? shown.name} sub={shownSource ? null : bytes(shown.size)} media={shaderMedia} meta={shaderMeta} />
+      {#if requirement && !requirement.ok}
+        {@const fix = requirement.fix}
+        {#snippet fixAction()}<Button size="sm" icon={fix.icon} onclick={fix.run}>{fix.label}</Button>{/snippet}
+        <InspectorNotice action={fixAction}><strong>{requirement.title}.</strong> {requirement.text}</InspectorNotice>
       {/if}
+      <div class="cb-ins-acts">
+        {#if shownUpdate}
+          <Button variant="primary" class="wide" icon="update" busy={updating} disabled={updating || locked} onclick={() => data.applyUpdates([shownUpdate.fileName])}>{t('Update to {latestVersion}', { latestVersion: shownUpdate.latestVersion })}</Button>
+        {/if}
+        {#if shown.enabled}
+          <Button icon="close" disabled={locked || saving} onclick={() => use(null)}>{t('Use none')}</Button>
+        {:else}
+          <Button variant={shownUpdate ? 'secondary' : 'primary'} class={shownUpdate ? undefined : 'wide'} icon="check" disabled={locked || saving} onclick={() => use(shown.fileName)}>{t('Use this pack')}</Button>
+        {/if}
+        {#if shownSource}<Button icon="globe" onclick={() => shownSource && data.project(shownSource.slug, 'shader')}>{t('Open page')}</Button>{/if}
+      </div>
+      <InspectorSection title={t('Settings')}>
+        <p class="cb-ins-hint">{t('Each pack has its own settings, like shadows and fog. Change them in game under Options › Video settings › Shader packs › Shader pack settings.')}</p>
+      </InspectorSection>
+      <InspectorSection title={t('Details')}>
+        <dl class="cb-ins-facts">
+          <dt>{t('Source')}</dt><dd><span>{shownSource ? 'Modrinth' : t('Not found on Modrinth')}</span></dd>
+          {#if shown.modified}<dt>{t('Changed')}</dt><dd><span>{relativeTime(shown.modified)}</span></dd>{/if}
+          <dt>{t('Size')}</dt><dd><span>{bytes(shown.size)}</span></dd>
+          <InspectorPath path={shown.fileName} openLabel={t('Open folder')} onopen={() => data.openFolder('shaderpacks')} />
+        </dl>
+      </InspectorSection>
+    {:else}
+      {#snippet noneMedia()}<span class="cb-ins-media cb-ins-media--empty"><Icon name="cube" size={27} /></span>{/snippet}
+      {#snippet noneMeta()}{#if !current}<InspectorStatus tone="ok">{t('In use')}</InspectorStatus>{:else}<InspectorStatus tone="off">{t('Not in use')}</InspectorStatus>{/if}{/snippet}
+      <InspectorHead eyebrow={t('Shader pack')} title={t('No shaders')} sub={t('The game’s normal look')} media={noneMedia} meta={noneMeta} />
+      <p class="cb-ins-hint">{t('The game uses its normal look and runs at its fastest. Pick a pack to use it the next time you play.')}</p>
+      <div class="cb-ins-acts">
+        {#if current}
+          <Button variant="primary" icon="close" disabled={locked || saving} onclick={() => use(null)}>{t('Use no shaders')}</Button>
+        {:else}
+          <Button variant="primary" icon="search" onclick={() => data.discover('shader')}>{t('Find shader packs')}</Button>
+        {/if}
+      </div>
     {/if}
-  </div>
+  </Inspector>
 </aside>
 
 {#snippet deleteActions()}
@@ -409,20 +417,6 @@
     position: relative;
     z-index: 1;
   }
-  .actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-  }
-  .danger {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 6px;
-    padding-top: var(--space-4);
-    border-top: var(--border-hair) solid var(--line);
-    text-align: end;
-  }
   .card__foot {
     display: flex;
     margin-top: auto;
@@ -432,21 +426,5 @@
     flex-wrap: wrap;
     align-items: center;
     gap: var(--space-2);
-  }
-  .aside__title {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-  }
-  .facts {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    gap: var(--space-2) var(--space-4);
-    padding: var(--space-4);
-    background: var(--surface);
-    border: var(--border-block) solid var(--edge);
-  }
-  .facts .full {
-    grid-column: 1 / -1;
   }
 </style>
