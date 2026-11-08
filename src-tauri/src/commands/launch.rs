@@ -175,6 +175,19 @@ pub async fn launch_instance(
         .msg()?;
     core.sink.finished(&task, None);
 
+    let loader = dto::LoaderDto::from(&inst.loader);
+    let activity = cubby_discord::Activity {
+        details: format!("Playing {}", inst.name),
+        state: if loader.kind == "vanilla" {
+            format!("Minecraft {}", inst.minecraft)
+        } else {
+            format!("Minecraft {} · {}", inst.minecraft, loader_title(&loader.kind))
+        },
+        started: chrono::Utc::now().timestamp(),
+    };
+    core.playing.lock().expect("playing lock").push((inst.id.clone(), activity));
+    core.update_presence();
+
     let window = app.get_webview_window("main");
     if let Some(w) = &window {
         let _ = match settings.on_launch {
@@ -188,6 +201,8 @@ pub async fn launch_instance(
     tauri::async_runtime::spawn(async move {
         let exit = handle.wait().await;
         let core = app.state::<Core>();
+        core.playing.lock().expect("playing lock").retain(|(i, _)| *i != id);
+        core.update_presence();
         // Keep the log of this session, so it can still be read after Cubby restarts.
         let (path, lines) = (session_log_path(&core, &id), core.games.log_lines(&id));
         if !lines.is_empty()
@@ -315,4 +330,15 @@ pub(super) async fn java_for(
     let major = cubby_java::required_major(version);
     let installs = cubby_java::detect(&core.paths).await;
     cubby_java::pick(&installs, major).ok_or_else(|| format!("Java {major} is required but wasn't found. Turn on \"Choose Java automatically\" in Settings."))
+}
+
+/// "Fabric", "NeoForge"... for Discord.
+fn loader_title(kind: &str) -> &'static str {
+    match kind {
+        "fabric" => "Fabric",
+        "quilt" => "Quilt",
+        "forge" => "Forge",
+        "neoforge" => "NeoForge",
+        _ => "Vanilla",
+    }
 }

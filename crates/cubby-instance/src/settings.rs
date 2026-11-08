@@ -158,6 +158,8 @@ pub struct Settings {
     pub curseforge_api_key: Option<String>,
     /// The first-run onboarding has been completed.
     pub onboarded: bool,
+    /// Show the instance being played on the player's Discord profile.
+    pub discord_presence: bool,
 }
 
 impl Default for Settings {
@@ -182,6 +184,7 @@ impl Default for Settings {
             updates: UpdateSettings::default(),
             curseforge_api_key: None,
             onboarded: false,
+            discord_presence: true,
         }
     }
 }

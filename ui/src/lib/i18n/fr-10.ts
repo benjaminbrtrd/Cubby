@@ -127,4 +127,9 @@ export const FR_10: Record<string, Entry> = {
   'Draw the map': 'Dessiner la carte',
   'From {x}, {z} to {x2}, {z2}. The red dot is the spawn.': 'De {x}, {z} à {x2}, {z2}. Le point rouge est le point d’apparition.',
   'This world has no map yet: play in it once, then draw it.': 'Ce monde n’a pas encore de carte : jouez-y une fois, puis dessinez-la.',
+
+  // Discord
+  'Show on Discord': 'Afficher sur Discord',
+  'Your Discord profile says which instance you’re playing, while you play. Discord has to be open on this computer.':
+    'Votre profil Discord indique à quelle instance vous jouez, pendant la partie. Discord doit être ouvert sur cet ordinateur.',
 }

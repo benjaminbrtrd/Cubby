@@ -176,6 +176,7 @@ let settings: Settings = {
   downloadConcurrency: 4,
   msaClientId: null,
   trackPlayTime: true,
+  discordPresence: true,
   showPlayTime: true,
   proxy: { mode: 'system', url: '' },
   updates: { mode: 'ask', channel: 'preview', skipped: null },
@@ -546,7 +547,7 @@ export async function handle(command: string, args: Record<string, any>): Promis
   await sleep(60)
   switch (command) {
     case 'app_info':
-      return { version: '0.1.0', dataDir: 'C:\\Users\\Nyx\\AppData\\Roaming\\Cubby', msaConfigured: true, msaSource: 'builtIn', curseforgeKey: settings.curseforgeApiKey ? 'settings' : null, totalMemoryMb: 32768, devBuild: true }
+      return { version: '0.1.0', dataDir: 'C:\\Users\\Nyx\\AppData\\Roaming\\Cubby', msaConfigured: true, msaSource: 'builtIn', curseforgeKey: settings.curseforgeApiKey ? 'settings' : null, totalMemoryMb: 32768, devBuild: true, discord: true }
     case 'list_instances':
       return structuredClone(instances)
     case 'create_instance': {

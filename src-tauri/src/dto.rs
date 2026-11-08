@@ -426,6 +426,8 @@ pub struct AppInfoDto {
     pub total_memory_mb: u64,
     /// Development build: without an account the full game starts offline instead of the demo.
     pub dev_build: bool,
+    /// This build can show the game on Discord (it has a Discord application id).
+    pub discord: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]

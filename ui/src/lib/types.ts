@@ -176,6 +176,8 @@ export interface Settings {
   curseforgeApiKey: string | null
   /** The first-launch assistant was completed or skipped. */
   onboarded: boolean
+  /** Show the instance being played on the player's Discord profile. */
+  discordPresence: boolean
 }
 
 export interface PrismInstance {
@@ -202,6 +204,8 @@ export interface AppInfo {
   totalMemoryMb: number
   /** Development build: without an account the full game starts offline instead of the demo. */
   devBuild: boolean
+  /** This build can show the game on Discord (it has a Discord application id). */
+  discord: boolean
 }
 
 export type CubbyEvent =

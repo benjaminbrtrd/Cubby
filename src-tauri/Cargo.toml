@@ -38,6 +38,7 @@ cubby-ftb.workspace = true
 cubby-technic.workspace = true
 cubby-atlauncher.workspace = true
 cubby-curseforge.workspace = true
+cubby-discord.workspace = true
 dirs.workspace = true
 futures.workspace = true
 uuid.workspace = true

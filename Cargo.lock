@@ -741,6 +741,7 @@ dependencies = [
  "cubby-auth",
  "cubby-common",
  "cubby-curseforge",
+ "cubby-discord",
  "cubby-ftb",
  "cubby-instance",
  "cubby-java",
@@ -831,6 +832,15 @@ dependencies = [
  "tokio",
  "tracing",
  "zip 2.6.1",
+]
+
+[[package]]
+name = "cubby-discord"
+version = "2026.11.0-beta.1"
+dependencies = [
+ "serde",
+ "serde_json",
+ "tracing",
 ]
 
 [[package]]

@@ -22,7 +22,7 @@
   const BLOCKS: { id: BlockId; label: string; words: string }[] = [
     { id: 'language', label: t('Language'), words: 'english french français langue translation locale' },
     { id: 'java', label: t('Java and memory'), words: 'java runtime automatic memory ram jvm arguments installs detected' },
-    { id: 'game', label: t('Game'), words: 'window size width height fullscreen starts launch minimize keep close play time track show' },
+    { id: 'game', label: t('Game'), words: 'window size width height fullscreen starts launch minimize keep close play time track show discord rich presence status' },
     { id: 'downloads', label: t('Downloads'), words: 'parallel concurrency mod updates check modrinth proxy network system manual address' },
     { id: 'storage', label: t('Storage'), words: 'data folder disk space size cache clean up instances libraries assets logs trash open' },
     { id: 'accounts', label: t('Accounts'), words: 'microsoft application client id azure sign in curseforge api key' },
@@ -572,6 +572,9 @@
               />
               <p class="text-small muted">{ON_LAUNCH_HINT[s.onLaunch]}</p>
             </div>
+            {#if app.info?.discord}
+              {@render switchRow('discord', t('Show on Discord'), t('Your Discord profile says which instance you’re playing, while you play. Discord has to be open on this computer.'), s.discordPresence, (v) => save({ discordPresence: v }))}
+            {/if}
             {@render switchRow('track', t('Count play time'), t('Adds each session to the instance’s play time.'), s.trackPlayTime, (v) => save({ trackPlayTime: v }))}
             {@render switchRow('show', t('Show play time'), t('In the library, with each instance.'), s.showPlayTime, (v) => save({ showPlayTime: v }))}
           </section>

@@ -1,0 +1,12 @@
+[package]
+name = "cubby-discord"
+description = "Discord Rich Presence: what the player is playing, on their Discord profile"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true

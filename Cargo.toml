@@ -21,6 +21,7 @@ cubby-ftb = { path = "crates/cubby-ftb" }
 cubby-technic = { path = "crates/cubby-technic" }
 cubby-atlauncher = { path = "crates/cubby-atlauncher" }
 cubby-curseforge = { path = "crates/cubby-curseforge" }
+cubby-discord = { path = "crates/cubby-discord" }
 tokio = { version = "1", features = ["full"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls", "gzip", "multipart"] }
 serde = { version = "1", features = ["derive"] }

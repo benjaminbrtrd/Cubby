@@ -14,6 +14,7 @@ pub fn app_info(core: State<'_, Core>) -> AppInfoDto {
         curseforge_key: core.curseforge_key_with_source().map(|(_, source)| source),
         total_memory_mb: core.total_memory_mb,
         dev_build: cfg!(debug_assertions),
+        discord: core.discord.is_some(),
     }
 }
 

@@ -54,6 +54,7 @@ npm run tauri dev
 Two values can be set at build time:
 
 - `CUBBY_CURSEFORGE_API_KEY`: a [CurseForge API key](https://console.curseforge.com). Without it, CurseForge search is turned off, and everything else works.
+- `CUBBY_DISCORD_CLIENT_ID`: optional. The id of a Discord application whose Rich Presence art has an image named `cubby`. With it, Discord shows which instance the player is playing (Settings › Game › Show on Discord).
 - `CUBBY_MSA_CLIENT_ID`: optional. Cubby already has its own Azure application id, approved by Mojang; set this only to sign in through another one.
 
 The interface also runs in a plain browser with sample data, which is handy for working on screens: `npm run dev` in `ui/`.
