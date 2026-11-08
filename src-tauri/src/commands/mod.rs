@@ -22,6 +22,7 @@ pub(crate) mod app;
 pub(crate) mod content;
 pub(crate) mod datapacks;
 pub(crate) mod discover;
+pub(crate) mod export;
 pub(crate) mod instances;
 pub(crate) mod launch;
 pub(crate) mod prism;

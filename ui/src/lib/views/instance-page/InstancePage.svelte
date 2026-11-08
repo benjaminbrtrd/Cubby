@@ -248,6 +248,7 @@
 </script>
 
 <script lang="ts">
+  import ExportDialog from './ExportDialog.svelte'
   import { tick, untrack } from 'svelte'
   import { Banner, Button, Icon, IconButton, InstanceIcon, MetaChip, PlayButton, Tabs, type IconName, type TabItem } from '../../cubby'
   import { floating } from '../../cubby/floating'
@@ -375,6 +376,8 @@
     }),
   )
 
+  let exporting = $state(false)
+
   // More actions menu
   let menuOpen = $state(false)
   let moreEl: HTMLDivElement | undefined = $state()
@@ -386,6 +389,7 @@
     { id: 'offline', label: t('Play offline'), icon: 'offline', disabled: busy, run: () => void app.launch(id, true) },
     { id: 'log', label: t('Game log'), icon: 'terminal', run: () => app.navigate({ name: 'running', id }) },
     { id: 'folder', label: t('Open folder'), icon: 'folder', run: () => data.openFolder() },
+    { id: 'export', label: t('Export as a modpack file'), icon: 'download', run: () => (exporting = true) },
     { id: 'duplicate', label: t('Duplicate'), icon: 'copy', disabled: data.duplicating, run: () => instance && void data.duplicate(instance) },
     { id: 'repair', label: t('Repair'), icon: 'wrench', disabled: busy, run: () => void data.repair() },
     { id: 'delete', label: t('Delete'), icon: 'trash', danger: true, disabled: !!startedAt, run: () => (app.deletingId = id) },
@@ -533,6 +537,10 @@
     <p class="muted text-body">{t('It may have been deleted or moved to the trash.')}</p>
     <Button variant="primary" icon="library" onclick={() => app.navigate({ name: 'library' })}>{t('Back to library')}</Button>
   </div>
+{/if}
+
+{#if exporting && instance}
+  <ExportDialog {instance} onClose={() => (exporting = false)} />
 {/if}
 
 {#if blockedOpen && instance}

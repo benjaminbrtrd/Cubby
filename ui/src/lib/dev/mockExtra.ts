@@ -92,6 +92,18 @@ export async function handleExtra(command: string, args: Record<string, any>): P
       updateBackups = updateBackups.filter((x) => x.name !== args.name)
       return b?.files.length ?? 0
     }
+    case 'export_candidates':
+      return [
+        { name: 'config', isDir: true, size: 1_840_000, suggested: true },
+        { name: 'options.txt', isDir: false, size: 5_600, suggested: true },
+        { name: 'saves', isDir: true, size: 412_000_000, suggested: false },
+        { name: 'servers.dat', isDir: false, size: 420, suggested: false },
+      ]
+    case 'export_instance':
+      await sleep(1200)
+      return { path: `/Users/you/Downloads/${args.request.name} ${args.request.version}.${args.request.format === 'mrpack' ? 'mrpack' : 'zip'}`, listed: 34, stored: 6, withoutKey: false }
+    case 'reveal_file':
+      return
     default:
       return NOT_HANDLED
   }

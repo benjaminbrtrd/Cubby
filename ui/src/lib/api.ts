@@ -8,6 +8,9 @@ import type {
   BlockedFile,
   ContentUpdate,
   DataFolder,
+  ExportCandidate,
+  ExportRequest,
+  ExportResult,
   UpdateBackup,
   Datapack,
   InstallPlan,
@@ -200,6 +203,12 @@ export const api = {
   blockedFiles: (instanceId: string) => call<BlockedFile[]>('blocked_files', { instanceId }),
   /** Looks in the Downloads folder, moves matches into place and returns the updated list. */
   findBlockedFiles: (instanceId: string) => call<BlockedFile[]>('find_blocked_files', { instanceId }),
+
+  // Exports
+  exportCandidates: (id: string) => call<ExportCandidate[]>('export_candidates', { id }),
+  /** Asks where to save, then writes the pack (task `export:<id>`); null when cancelled. */
+  exportInstance: (id: string, request: ExportRequest) => call<ExportResult | null>('export_instance', { id, request }),
+  revealFile: (path: string) => call<void>('reveal_file', { path }),
 
   // Datapacks of a world
   listDatapacks: (id: string, world: string) => call<Datapack[]>('list_datapacks', { id, world }),

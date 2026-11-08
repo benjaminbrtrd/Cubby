@@ -545,3 +545,31 @@ export interface UpdateBackup {
   /** folder: "mods", "resourcepacks" or "shaderpacks"; old: the file before, new: the file the update put in. */
   files: { folder: string; old: string; new: string }[]
 }
+
+/** A top-level file or folder of an instance that an export can include. */
+export interface ExportCandidate {
+  name: string
+  isDir: boolean
+  size: number
+  /** Usually shipped with a pack (config, options.txt...). */
+  suggested: boolean
+}
+
+export interface ExportRequest {
+  format: 'mrpack' | 'curseforge'
+  name: string
+  version: string
+  /** Summary (Modrinth) or author (CurseForge). */
+  note: string
+  include: string[]
+}
+
+export interface ExportResult {
+  path: string
+  /** Files the launcher that opens it downloads. */
+  listed: number
+  /** Files stored inside the pack. */
+  stored: number
+  /** CurseForge without an API key: every mod is stored. */
+  withoutKey: boolean
+}

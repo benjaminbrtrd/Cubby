@@ -48,4 +48,30 @@ export const FR_10: Record<string, Entry> = {
   'These files go back to the version you had before. The newer files move to the instance’s trash folder.':
     'Ces fichiers reviennent à la version d’avant. Les plus récents vont dans la corbeille de l’instance.',
   'Put back {n} from before the update.': '{n} remis comme avant la mise à jour.',
+
+  // Export
+  'Export as a modpack file': 'Exporter en fichier modpack',
+  'Export {name}': 'Exporter {name}',
+  Export: 'Exporter',
+  'Show in folder': 'Afficher dans le dossier',
+  'Saved to': 'Enregistré dans',
+  '{listed} downloaded by the launcher that opens it, {stored} stored in the file.': '{listed} téléchargés par le launcher qui l’ouvre, {stored} stockés dans le fichier.',
+  'Without a CurseForge API key, Cubby can’t tell which mods CurseForge has, so they are all stored in the file. It works, but the file is bigger.':
+    'Sans clé d’API CurseForge, Cubby ne sait pas quels mods CurseForge propose : ils sont tous stockés dans le fichier. Ça marche, mais le fichier est plus lourd.',
+  Format: 'Format',
+  'Opens in Cubby, the Modrinth App, Prism Launcher and most launchers. Mods from Modrinth are downloaded from there, the others are stored in the file.':
+    'S’ouvre dans Cubby, la Modrinth App, Prism Launcher et la plupart des launchers. Les mods de Modrinth sont téléchargés depuis Modrinth, les autres sont stockés dans le fichier.',
+  'Opens in the CurseForge app, Cubby and Prism Launcher. Mods CurseForge has are downloaded from there, the others are stored in the file.':
+    'S’ouvre dans l’app CurseForge, Cubby et Prism Launcher. Les mods présents sur CurseForge en sont téléchargés, les autres sont stockés dans le fichier.',
+  'No CurseForge API key': 'Pas de clé d’API CurseForge',
+  'Every mod will be stored in the file.': 'Tous les mods seront stockés dans le fichier.',
+  'Pack name': 'Nom du pack',
+  Version: 'Version',
+  Summary: 'Résumé',
+  Author: 'Auteur',
+  'Also include': 'Inclure aussi',
+  'Mods, resource packs and shader packs are always in. Turned-off mods are left out.': 'Les mods, resource packs et shader packs sont toujours inclus. Les mods désactivés sont exclus.',
+  'Reading the instance…': 'Lecture de l’instance…',
+  'Nothing else in this instance yet.': 'Rien d’autre dans cette instance pour l’instant.',
+  'Writing the pack': 'Écriture du pack',
 }

@@ -17,3 +17,4 @@ sha1.workspace = true
 hex.workspace = true
 dirs.workspace = true
 tracing.workspace = true
+zip.workspace = true
