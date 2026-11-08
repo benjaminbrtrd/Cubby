@@ -7,14 +7,15 @@
 
 <script lang="ts">
   import { t } from '../../i18n.svelte'
-  import { tick } from 'svelte'
+  import { tick, untrack } from 'svelte'
   import { api } from '../../api'
   import { Banner, Button, Dialog, Icon, InstanceIcon, MetaChip, ModRow, ProgressBar, SegmentedControl, StatusTag, TextField } from '../../cubby'
   import { bytes, fold, num, plural, relativeTime } from '../../format'
   import { projectArt } from '../../icon'
   import { app } from '../../state.svelte'
   import type { ContentSource, ContentUpdate, Instance, ModFile } from '../../types'
-  import { baseFile, modName, type InstanceData } from './InstancePage.svelte'
+  import { baseFile, modName, when, type InstanceData } from './InstancePage.svelte'
+  import Markdown from '../discover/Markdown.svelte'
 
   let { instance, data }: { instance: Instance; data: InstanceData } = $props()
 
@@ -124,8 +125,37 @@
     }
   }
 
+  // Updating: the review lists each new version with its changelog before anything changes.
+  let reviewing = $state(false)
+  const pending = $derived(rows.filter((r) => r.update))
+
   function updateAll() {
-    void data.applyUpdates(rows.filter((r) => r.update).map((r) => r.update!.fileName))
+    reviewing = false
+    void data.applyUpdates(pending.map((r) => r.update!.fileName))
+  }
+
+  // Undoing the last update
+  untrack(() => {
+    if (!data.updateBackups) void data.loadUpdateBackups()
+  })
+  const lastUpdate = $derived(data.updateBackups?.[0] ?? null)
+  let undoing = $state(false)
+  let undoBusy = $state(false)
+
+  async function undo() {
+    const b = lastUpdate
+    if (!b) return
+    undoBusy = true
+    try {
+      const n = await api.undoUpdate(id, b.name)
+      undoing = false
+      app.toast(t('Put back {n} from before the update.', { n: plural(n, 'file', 'files') }), 'success')
+      await Promise.all([data.loadMods(), data.loadPacks(), data.loadUpdateBackups(), data.checkUpdates(true)])
+    } catch (e) {
+      app.error(e)
+    } finally {
+      undoBusy = false
+    }
   }
 
   function clear() {
@@ -187,8 +217,11 @@
   <div class="toolbar">
     <SegmentedControl label={t('Show')} options={filters} value={filter} onChange={(v) => ((filter = v as Filter), (limit = 60))} />
     <span class="grow"></span>
+    {#if lastUpdate && !updateTask}
+      <Button variant="ghost" icon="clock" disabled={running} onclick={() => (undoing = true)}>{t('Undo last update')}</Button>
+    {/if}
     {#if counts.updates}
-      <Button icon="update" busy={!!updateTask} disabled={!!updateTask || running} onclick={updateAll}>{t('Update all ({n})', { n: num(counts.updates) })}</Button>
+      <Button icon="update" busy={!!updateTask} disabled={!!updateTask || running} onclick={() => (reviewing = true)}>{t('Update all ({n})', { n: num(counts.updates) })}</Button>
     {:else if data.checkingUpdates}
       <Button icon="update" busy disabled>{t('Checking for updates')}</Button>
     {:else if !data.updates}
@@ -356,7 +389,80 @@
   </Dialog>
 {/if}
 
+{#if reviewing}
+  {#snippet reviewActions()}
+    <Button variant="ghost" onclick={() => (reviewing = false)}>{t('Cancel')}</Button>
+    <Button variant="primary" icon="update" disabled={!!updateTask || running || !pending.length} onclick={updateAll}>{t('Update {n}', { n: plural(pending.length, 'file', 'files') })}</Button>
+  {/snippet}
+  <Dialog wide icon="update" title={t('What’s new')} onClose={() => (reviewing = false)} actions={reviewActions}>
+    <p class="text-small muted">{t('Cubby keeps the old files, so you can undo the update if something breaks.')}</p>
+    <div class="review">
+      {#each pending as r (r.key)}
+        {@const u = r.update!}
+        <details class="review__item">
+          <summary>
+            <span class="text-body-strong">{r.name}</span>
+            <span class="text-small muted text-mono">{u.currentVersion} → {u.latestVersion}</span>
+          </summary>
+          {#if u.changelog.trim()}
+            <div class="review__notes text-small"><Markdown source={u.changelog} level={4} /></div>
+          {:else}
+            <p class="text-small muted">{t('No changelog for this version.')}</p>
+          {/if}
+        </details>
+      {/each}
+    </div>
+  </Dialog>
+{/if}
+
+{#if undoing && lastUpdate}
+  {@const b = lastUpdate}
+  {#snippet undoActions()}
+    <Button variant="ghost" onclick={() => (undoing = false)}>{t('Cancel')}</Button>
+    <Button variant="primary" icon="clock" busy={undoBusy} disabled={undoBusy || running} onclick={undo}>{t('Undo update')}</Button>
+  {/snippet}
+  <Dialog tone="warning" icon="clock" title={t('Undo the update from {when}?', { when: when(b.created, true) })} onClose={() => (undoing = false)} actions={undoActions}>
+    <p>{t('These files go back to the version you had before. The newer files move to the instance’s trash folder.')}</p>
+    <ul class="undo text-small">
+      {#each b.files as f (f.folder + f.old)}
+        <li><span class="text-mono">{f.new}</span> → <span class="text-mono">{f.old}</span></li>
+      {/each}
+    </ul>
+  </Dialog>
+{/if}
+
 <style>
+  .review {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    max-height: 55vh;
+    overflow-y: auto;
+    min-width: min(600px, 80vw);
+  }
+  .review__item {
+    padding: var(--space-2) var(--space-3);
+    background: var(--surface);
+    border: var(--border-hair) solid var(--line);
+  }
+  .review__item summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-2);
+    cursor: pointer;
+  }
+  .review__notes {
+    margin-top: var(--space-2);
+    overflow-wrap: anywhere;
+  }
+  .undo {
+    margin: var(--space-2) 0 0;
+    padding-left: var(--space-4);
+    max-height: 40vh;
+    overflow-y: auto;
+    overflow-wrap: anywhere;
+  }
   .toolbar {
     display: flex;
     flex-wrap: wrap;

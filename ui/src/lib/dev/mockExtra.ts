@@ -1,6 +1,6 @@
 // Browser dev mode: sample answers for the commands added with datapacks, update undo, exports, launcher
 // imports, shared options, shortcuts, world maps and Discord. See mock.ts.
-import type { Datapack, ProjectHit } from '../types'
+import type { Datapack, ProjectHit, UpdateBackup } from '../types'
 
 export const NOT_HANDLED = Symbol('not handled')
 
@@ -40,6 +40,17 @@ const DATAPACK_HITS: ProjectHit[] = [
   serverSide: 'required',
 })) as unknown as ProjectHit[]
 
+let updateBackups: UpdateBackup[] = [
+  {
+    name: 'content-20261106-201500',
+    created: '2026-11-06T19:15:00Z',
+    files: [
+      { folder: 'mods', old: 'sodium-fabric-0.5.11+mc1.21.jar', new: 'sodium-fabric-0.6.0+mc1.21.1.jar' },
+      { folder: 'mods', old: 'lithium-fabric-0.13.0.jar', new: 'lithium-fabric-0.14.3.jar' },
+    ],
+  },
+]
+
 export async function handleExtra(command: string, args: Record<string, any>): Promise<unknown> {
   switch (command) {
     case 'list_datapacks':
@@ -72,6 +83,14 @@ export async function handleExtra(command: string, args: Record<string, any>): P
       list.push({ fileName, name: fileName.slice(0, -4), isDir: false, enabled: true, size: 1_200_000, modified: new Date().toISOString(), description: hit?.summary ?? null })
       datapacks.set(key, list)
       return fileName
+    }
+    case 'list_update_backups':
+      return args.instanceId === 'friends-smp' ? structuredClone(updateBackups) : []
+    case 'undo_update': {
+      await sleep(700)
+      const b = updateBackups.find((x) => x.name === args.name)
+      updateBackups = updateBackups.filter((x) => x.name !== args.name)
+      return b?.files.length ?? 0
     }
     default:
       return NOT_HANDLED

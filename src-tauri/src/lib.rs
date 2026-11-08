@@ -126,6 +126,8 @@ pub fn run() {
             packs::import_pack_url,
             packs::blocked_files,
             packs::find_blocked_files,
+            commands::discover::list_update_backups,
+            commands::discover::undo_update,
             commands::datapacks::list_datapacks,
             commands::datapacks::set_datapack_enabled,
             commands::datapacks::remove_datapack,

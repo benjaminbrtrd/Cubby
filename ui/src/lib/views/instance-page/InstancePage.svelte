@@ -3,7 +3,7 @@
   import { date, timeOfDay } from '../../format'
   import { t } from '../../i18n.svelte'
   import { app } from '../../state.svelte'
-  import type { ContentSource, ContentUpdate, Instance, ModFile, Pack, ProjectKind, Screenshot, Server, World, WorldBackup } from '../../types'
+  import type { ContentSource, ContentUpdate, Instance, ModFile, Pack, ProjectKind, Screenshot, Server, World, UpdateBackup, WorldBackup } from '../../types'
 
   // Helpers shared by the tabs of this folder (plain hoisted functions, safe to import from the tabs).
 
@@ -51,6 +51,8 @@
     screenshots = $state<Screenshot[] | null>(null)
     servers = $state<Server[] | null>(null)
     backups = $state<WorldBackup[] | null>(null)
+    /** Content updates that can be undone, newest first. */
+    updateBackups = $state<UpdateBackup[] | null>(null)
     checkingUpdates = $state(false)
     duplicating = $state(false)
 
@@ -184,6 +186,16 @@
       try {
         await api.applyUpdates(this.id, fileNames)
       } catch (e) {
+        app.error(e)
+      }
+      void this.loadUpdateBackups()
+    }
+
+    async loadUpdateBackups() {
+      try {
+        this.updateBackups = await api.listUpdateBackups(this.id)
+      } catch (e) {
+        this.updateBackups ??= []
         app.error(e)
       }
     }

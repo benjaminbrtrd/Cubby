@@ -8,6 +8,7 @@ import type {
   BlockedFile,
   ContentUpdate,
   DataFolder,
+  UpdateBackup,
   Datapack,
   InstallPlan,
   SkinProfile,
@@ -164,6 +165,11 @@ export const api = {
   checkUpdates: (instanceId: string) => call<ContentUpdate[]>('check_updates', { instanceId }),
   /** Replaces each file by its latest compatible version (task `update:<instanceId>`). Backs up the old files into <instance>/backups/content-<date>/. */
   applyUpdates: (instanceId: string, fileNames: string[]) => call<void>('apply_updates', { instanceId, fileNames }),
+
+  /** Updates that can be undone, newest first. */
+  listUpdateBackups: (instanceId: string) => call<UpdateBackup[]>('list_update_backups', { instanceId }),
+  /** Puts back the files an update replaced; returns how many came back. */
+  undoUpdate: (instanceId: string, name: string) => call<number>('undo_update', { instanceId, name }),
 
   // Worlds
   backupWorld: (instanceId: string, folder: string) => call<WorldBackup>('backup_world', { instanceId, folder }),

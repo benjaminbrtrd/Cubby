@@ -537,3 +537,11 @@ export interface Datapack {
   modified: string | null
   description: string | null
 }
+
+/** An update that can be undone: its old files are kept in <instance>/backups/<name>/. */
+export interface UpdateBackup {
+  name: string
+  created: string
+  /** folder: "mods", "resourcepacks" or "shaderpacks"; old: the file before, new: the file the update put in. */
+  files: { folder: string; old: string; new: string }[]
+}

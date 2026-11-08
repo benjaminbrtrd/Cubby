@@ -35,4 +35,17 @@ export const FR_10: Record<string, Entry> = {
   Add: 'Ajouter',
   '{title} is in {world}.': '{title} est dans {world}.',
   '{name} moved to the instance’s trash folder.': '{name} a été déplacé dans la corbeille de l’instance.',
+
+  // Reviewing and undoing updates
+  'Undo last update': 'Annuler la dernière mise à jour',
+  'Update {n}': 'Mettre à jour {n}',
+  file: ['fichier', 'fichiers'],
+  'What’s new': 'Nouveautés',
+  'Cubby keeps the old files, so you can undo the update if something breaks.': 'Cubby garde les anciens fichiers : vous pourrez annuler la mise à jour si quelque chose casse.',
+  'No changelog for this version.': 'Pas de notes de version pour cette version.',
+  'Undo update': 'Annuler la mise à jour',
+  'Undo the update from {when}?': 'Annuler la mise à jour du {when} ?',
+  'These files go back to the version you had before. The newer files move to the instance’s trash folder.':
+    'Ces fichiers reviennent à la version d’avant. Les plus récents vont dans la corbeille de l’instance.',
+  'Put back {n} from before the update.': '{n} remis comme avant la mise à jour.',
 }

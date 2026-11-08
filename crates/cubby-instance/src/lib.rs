@@ -11,6 +11,7 @@ mod servers;
 pub mod skins;
 mod settings;
 mod store;
+pub mod update_backups;
 mod util;
 
 pub use content::{
@@ -20,6 +21,7 @@ pub use content::{
 pub use servers::{read_servers, write_servers, ServerEntry};
 pub use backups::{backup_stamp, WorldBackup};
 pub use datapacks::{datapack_path, import_datapacks, list_datapacks, remove_datapack, set_datapack_enabled, DatapackFile};
+pub use update_backups::{record_update, UpdateBackup, UpdatedFile};
 pub use memory::{count_enabled_mods, recommended_memory_mb};
 pub use model::{Instance, JavaOverrides, Loader, ModpackInfo, NewInstance, WindowSize};
 pub use prism::{import_prism, list_prism_instances, PrismInstanceInfo};
