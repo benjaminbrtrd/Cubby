@@ -326,7 +326,7 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f
 .cb-mod.is-off .cb-mod__name { color: var(--ink-muted); }
 
 /* ServerRow */
-.cb-server { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3) var(--space-4); padding: var(--space-3) var(--space-4); color: var(--ink); background: var(--surface); border: var(--border-block) solid var(--edge); box-shadow: var(--shadow-block-sm); }
+.cb-server { container-type: inline-size; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3) var(--space-4); padding: var(--space-3) var(--space-4); color: var(--ink); background: var(--surface); border: var(--border-block) solid var(--edge); box-shadow: var(--shadow-block-sm); }
 .cb-server__icon { display: flex; align-items: center; justify-content: center; flex: none; width: 48px; height: 48px; overflow: hidden; color: var(--ink-muted); background: var(--bg-chrome); border: var(--border-block) solid var(--edge); }
 .cb-server__icon img { width: 100%; height: 100%; image-rendering: pixelated; }
 .cb-server__body { flex: 1 1 220px; min-width: 0; }
@@ -341,10 +341,17 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f
 .cb-server__instance { display: inline-flex; align-items: center; gap: var(--space-1); width: 130px; color: var(--ink-muted); }
 .cb-server__instance > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cb-server.is-offline .cb-server__icon { opacity: .55; }
+@container (max-width: 820px) {
+  .cb-server__body { flex-basis: calc(100% - 64px); }
+  .cb-server__stats { grid-template-columns: 96px 144px auto; }
+  .cb-server__join { margin-inline-start: auto; }
+  .cb-server__instance { display: none; }
+}
 /* A message of the day, drawn like the game's server list */
 .cb-motd { box-sizing: border-box; overflow: hidden; padding: 6px 8px; background: #0b0a09; border: var(--border-block) solid var(--edge); font-family: var(--font-mono); font-size: 12px; line-height: 18px; }
 .cb-motd--bare { padding: 0; background: none; border: 0; margin-top: 4px; }
-.cb-motd__line { white-space: pre; min-height: 18px; overflow: hidden; }
+.cb-motd__line { white-space: pre-wrap; overflow-wrap: anywhere; min-height: 18px; }
+.cb-motd__line.is-centred { text-align: center; }
 .cb-motd__run.is-bold { font-weight: 700; }
 .cb-motd__run.is-italic { font-style: italic; }
 .cb-motd__run.is-obfuscated { filter: blur(2px); }

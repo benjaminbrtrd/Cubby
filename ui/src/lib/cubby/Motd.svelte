@@ -5,7 +5,7 @@
   const COLORS = ['#000000', '#0000aa', '#00aa00', '#00aaaa', '#aa0000', '#aa00aa', '#ffaa00', '#aaaaaa', '#555555', '#5555ff', '#55ff55', '#55ffff', '#ff5555', '#ff55ff', '#ffff55', '#ffffff'];
   const DEFAULT = '#aaaaaa';
 
-  type Run = { text: string; color: string; bold: boolean; italic: boolean; underline: boolean; strike: boolean; obfuscated: boolean };
+  export type Run = { text: string; color: string; bold: boolean; italic: boolean; underline: boolean; strike: boolean; obfuscated: boolean };
 
   /** Lines of styled runs, from text with `§` codes (`§#rrggbb` for a hex colour). */
   export function parseMotd(source: string): Run[][] {
@@ -59,12 +59,29 @@
 
 <script lang="ts">
   let { text, class: className }: { text: string; class?: string } = $props();
-  const lines = $derived(parseMotd(text).filter((l, i, all) => l.length || i < all.length - 1))
+
+  /** A line that starts with spaces is one the server centred with them: they are sized for the game's font, so the
+   *  line is trimmed and centred instead. Others stay on the left, as in the game. */
+  function layout(runs: Run[]): { runs: Run[]; centred: boolean } {
+    const all = runs.map((r) => r.text).join('')
+    const centred = /^ {2,}/.test(all)
+    if (!centred) return { runs, centred }
+    const out = runs.map((r) => ({ ...r }))
+    while (out.length && !out[0].text.trimStart()) out.shift()
+    while (out.length && !out[out.length - 1].text.trimEnd()) out.pop()
+    if (out.length) {
+      out[0].text = out[0].text.trimStart()
+      out[out.length - 1].text = out[out.length - 1].text.trimEnd()
+    }
+    return { runs: out, centred }
+  }
+
+  const lines = $derived(parseMotd(text).filter((l, i, all) => l.length || i < all.length - 1).map(layout))
 </script>
 
 <div class={['cb-motd', className]}>
   {#each lines as line, i (i)}
-    <div class="cb-motd__line">{#each line as run, j (j)}<span
+    <div class={['cb-motd__line', line.centred && 'is-centred']}>{#each line.runs as run, j (j)}<span
           class={['cb-motd__run', run.bold && 'is-bold', run.italic && 'is-italic', run.obfuscated && 'is-obfuscated']}
           style:color={run.color}
           style:text-shadow="1px 1px 0 {shadow(run.color)}"

@@ -86,7 +86,9 @@
     image-rendering: pixelated;
   }
   .map--big {
-    width: min(70vh, 80vw);
+    /* the whole map stays inside the dialog, whatever the window's size */
+    width: min(100%, calc(100vh - 260px));
+    margin-inline: auto;
     cursor: default;
   }
   .spawn {
