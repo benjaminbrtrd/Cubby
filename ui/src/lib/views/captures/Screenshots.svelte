@@ -2,7 +2,7 @@
   import { t } from '../../i18n.svelte'
   import { tick, untrack } from 'svelte'
   import { api } from '../../api'
-  import { Button, Dialog, Icon, InstanceIcon, Tabs, type TabItem } from '../../cubby'
+  import { Button, Dialog, Icon, Inspector, InspectorHead, InspectorPath, InspectorSection, InstanceIcon, MetaChip, Tabs, type TabItem } from '../../cubby'
   import { locale, date, num, plural, timeOfDay } from '../../format'
   import { iconOf } from '../../icon'
   import { app } from '../../state.svelte'
@@ -339,54 +339,43 @@
     </div>
 
     <aside class="aside" aria-label={t('Screenshot details')}>
-      <div class="aside-inner">
+      <Inspector class="aside-inner" danger={cur ? { label: t('Delete'), hint: t('Deletes the file for good.'), onclick: () => (confirmDelete = cur) } : null}>
         {#if cur}
-          <div class="big">
-            <img src={cur.url} alt={t('Screenshot from {instanceId}, {time}', { instanceId: nameOf(cur.instanceId), time: takenLabel(cur.time) })} onload={onLoad} />
-          </div>
-          <div class="nav">
-            <Button size="sm" variant="ghost" disabled={index === 0} onclick={() => select(index - 1, false)}>{t('Newer')}</Button>
-            <span class="text-counter muted pos">{t('{n} of {n2}', { n: num(index + 1), n2: num(list.length) })}</span>
-            <Button size="sm" variant="ghost" disabled={index >= list.length - 1} onclick={() => select(index + 1, false)}>{t('Older')}</Button>
-          </div>
-
-          <div class="file">
-            <h2 class="text-mono name">{cur.fileName}</h2>
-            <p class="text-small muted">{takenLabel(cur.time)}</p>
-          </div>
-
-          <dl class="facts">
-            <dt class="text-small muted">{t('Instance')}</dt>
-            <dd class="dd-row">
-              {#if curInstance}<InstanceIcon {...iconOf(curInstance)} seed={curInstance.name} size={32} />{/if}
-              <span class="text-body">{nameOf(cur.instanceId)}</span>
-            </dd>
-            {#if resolution}
-              <dt class="text-small muted">{t('Resolution')}</dt>
-              <dd class="text-body">{resolution}</dd>
+          {#snippet gMedia()}
+            <span class="cb-ins-media cb-ins-media--wide">
+              <img src={cur.url} alt={t('Screenshot from {instanceId}, {time}', { instanceId: nameOf(cur.instanceId), time: takenLabel(cur.time) })} onload={onLoad} />
+            </span>
+          {/snippet}
+          {#snippet gMeta()}
+            {#if resolution}<MetaChip>{resolution}</MetaChip>{/if}
+            <span class="text-counter muted">{t('{n} of {n2}', { n: num(index + 1), n2: num(list.length) })}</span>
+          {/snippet}
+          <InspectorHead eyebrow={t('Screenshot')} title={takenLabel(cur.time)} sub={cur.fileName} mono media={gMedia} wide meta={gMeta} />
+          <div class="cb-ins-acts">
+            <Button variant="primary" class="wide" icon="copy" onclick={() => cur && copyImage(cur)}>{t('Copy image')}</Button>
+            <Button disabled={index === 0} onclick={() => select(index - 1, false)}>{t('Newer')}</Button>
+            <Button iconEnd="chevron-right" disabled={index >= list.length - 1} onclick={() => select(index + 1, false)}>{t('Older')}</Button>
+            {#if curInstance}
+              <Button class="wide" icon="cube" busy={settingIcon} disabled={settingIcon} onclick={() => cur && setIcon(cur)}>{t('Set as instance icon')}</Button>
             {/if}
-          </dl>
-
-          <Button variant="primary" icon="copy" onclick={() => cur && copyImage(cur)}>{t('Copy image')}</Button>
-          <div class="row">
-            <Button size="sm" icon="folder" onclick={() => cur && openFolder(cur.instanceId)}>{t('Open folder')}</Button>
           </div>
-          {#if curInstance}
-            <div class="icon-set">
-              <Button size="sm" icon="cube" busy={settingIcon} disabled={settingIcon} onclick={() => cur && setIcon(cur)}>{t('Set as instance icon')}</Button>
-              <p class="text-small muted hint">{t('Shown as a square next to {name}.', { name: curInstance.name })}</p>
-            </div>
-          {/if}
-
-          <div class="danger-zone">
-            <Button size="sm" variant="danger" icon="trash" onclick={() => (confirmDelete = cur)}>{t('Delete')}</Button>
-            <span class="text-small muted">{t('Deletes the file for good.')}</span>
-          </div>
+          <InspectorSection title={t('Details')}>
+            <dl class="cb-ins-facts">
+              <dt>{t('Instance')}</dt>
+              <dd>
+                {#if curInstance}<InstanceIcon {...iconOf(curInstance)} seed={curInstance.name} size={24} />{/if}
+                <span>{nameOf(cur.instanceId)}</span>
+              </dd>
+              {#if resolution}<dt>{t('Resolution')}</dt><dd><span>{resolution}</span></dd>{/if}
+              <InspectorPath path={cur.fileName} openLabel={t('Open folder')} onopen={() => cur && openFolder(cur.instanceId)} />
+            </dl>
+          </InspectorSection>
         {:else}
-          <h2 class="text-heading">{t('Screenshot details')}</h2>
-          <p class="text-small muted">{shots?.length ? t('Select a screenshot to see it larger.') : t('Your screenshots show up here.')}</p>
+          {#snippet gEmpty()}<span class="cb-ins-media cb-ins-media--wide cb-ins-media--empty"><Icon name="captures" size={36} /></span>{/snippet}
+          <InspectorHead eyebrow={t('Screenshot')} title={shots?.length ? t('No screenshot selected') : t('No screenshots yet')} sub={shots?.length ? null : t('Press F2 in game to take one')} media={gEmpty} wide empty />
+          <p class="cb-ins-hint">{shots?.length ? t('Select a screenshot to see it larger, copy it or delete it.') : t('Screenshots you take while playing show up here.')}</p>
         {/if}
-      </div>
+      </Inspector>
     </aside>
   </div>
 </div>
@@ -540,83 +529,12 @@
     background: var(--bg-chrome);
     border-inline-start: var(--border-chrome) solid var(--edge);
   }
-  .aside-inner {
+  .aside :global(.aside-inner) {
     position: sticky;
     top: 0;
     max-height: calc(100vh - var(--size-titlebar));
+    min-height: 0;
     overflow: auto;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-    padding: var(--space-6) var(--space-5);
-  }
-  .big {
-    background: var(--field);
-    border: var(--border-block) solid var(--edge);
-    box-shadow: var(--shadow-block);
-  }
-  .big img {
-    display: block;
-    width: 100%;
-    aspect-ratio: 16 / 9;
-    object-fit: contain;
-  }
-  .nav {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-  }
-  .pos {
-    flex: 1;
-    text-align: center;
-  }
-  .file {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-  }
-  .name {
-    overflow-wrap: anywhere;
-  }
-  .facts {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    align-items: center;
-    gap: var(--space-2) var(--space-4);
-    padding: var(--space-3) var(--space-4);
-    background: var(--surface);
-    border: var(--border-block) solid var(--edge);
-  }
-  .dd-row {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    min-width: 0;
-    overflow-wrap: anywhere;
-  }
-  .row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-  }
-  .hint {
-    margin-top: 6px;
-  }
-  .icon-set {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    text-align: end;
-  }
-  .danger-zone {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 6px;
-    margin-top: auto;
-    padding-top: var(--space-4);
-    border-top: var(--border-hair) solid var(--line);
-    text-align: end;
   }
   .full {
     display: block;

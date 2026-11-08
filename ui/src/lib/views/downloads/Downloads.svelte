@@ -2,7 +2,7 @@
   import { t } from '../../i18n.svelte'
   import { untrack } from 'svelte'
   import { api } from '../../api'
-  import { Button, Dialog, Icon, IconButton, InstanceIcon, ProgressBar, Slider, StatusTag } from '../../cubby'
+  import { Button, Dialog, Icon, IconButton, Inspector, InspectorSection, InstanceIcon, ProgressBar, Slider, StatusTag } from '../../cubby'
   import { bytes, num, timeOfDay } from '../../format'
   import { iconOf, projectArt } from '../../icon'
   import { queue } from '../../queue.svelte'
@@ -336,62 +336,81 @@
     </div>
 
     <aside class="aside" aria-label={t('Storage')}>
-      <h2 class="text-heading">{t('Storage')}</h2>
-      {#if folders == null}
-        <p class="text-small muted">{t('Measuring Cubby’s folders…')}</p>
-      {:else if foldersFailed && !folders.length}
-        <p class="text-small muted">{t('Cubby couldn’t measure its folders.')}</p>
-        <div><Button size="sm" icon="update" onclick={loadFolders}>{t('Try again')}</Button></div>
-      {:else}
-        <div class="total">
-          <span class="text-small muted">{t('Cubby uses')}</span>
-          <span class="text-stat">{bytes(total)}</span>
-          {#if app.info?.dataDir}<span class="text-mono muted path">{app.info.dataDir}</span>{/if}
+      <Inspector>
+        <div class="cb-ins-head">
+          <p class="cb-ins-eyebrow">{t('Storage')}</p>
+          {#if folders == null}
+            <span class="cb-ins-skel" style:height="36px" style:width="50%"></span>
+            <span class="cb-ins-skel" style:width="85%"></span>
+          {:else}
+            <span class="text-stat">{bytes(total)}</span>
+            {#if app.info?.dataDir}<p class="cb-ins-sub cb-ins-sub--mono" title={app.info.dataDir}>{app.info.dataDir}</p>{/if}
+            {#if total > 0}
+              <div class="bar" role="img" aria-label={barLabel}>
+                {#each folders.filter((f) => f.sizeBytes > 0) as f (f.key)}
+                  <span class={['seg', `seg--${f.key}`]} style:flex="{Math.max(1, Math.round((f.sizeBytes / total) * 1000))} 1 0px"></span>
+                {/each}
+              </div>
+            {/if}
+          {/if}
         </div>
-        {#if total > 0}
-          <div class="bar" role="img" aria-label={barLabel}>
-            {#each folders.filter((f) => f.sizeBytes > 0) as f (f.key)}
-              <span class={['seg', `seg--${f.key}`]} style:flex="{Math.max(1, Math.round((f.sizeBytes / total) * 1000))} 1 0px"></span>
-            {/each}
-          </div>
+        <InspectorSection title={t('Folders')}>
+          {#if folders == null}
+            <p class="cb-ins-hint">{t('Measuring Cubby’s folders…')}</p>
+          {:else if foldersFailed && !folders.length}
+            <p class="cb-ins-hint">{t('Cubby couldn’t measure its folders.')}</p>
+            <div><Button size="sm" icon="update" onclick={loadFolders}>{t('Try again')}</Button></div>
+          {:else}
+            <ul class="cb-ins-rows">
+              {#each folders as f (f.key)}
+                <li class="cb-ins-row">
+                  <span class={['swatch', `seg--${f.key}`]} aria-hidden="true"></span>
+                  <div class="cb-ins-row__txt"><span class="cb-ins-row__t">{LABELS[f.key] ?? f.label}</span></div>
+                  <span class="text-mono">{bytes(f.sizeBytes)}</span>
+                  <IconButton icon="folder" size="sm" label={t('Open the {toLowerCase} folder', { toLowerCase: (LABELS[f.key] ?? f.label).toLowerCase() })} onclick={() => openData(f.key)} />
+                </li>
+              {/each}
+            </ul>
+          {/if}
+        </InspectorSection>
+        {#if folders?.length}
+          <InspectorSection title={t('Free up space')}>
+            <ul class="cb-ins-rows">
+              <li class="cb-ins-row">
+                <div class="cb-ins-row__txt">
+                  <span class="cb-ins-row__t">{t('Clean up cache')}</span>
+                  <span class="cb-ins-row__s">{cache ? t('Frees {n}. ', { n: bytes(cache.sizeBytes) }) : ''}{t('Your instances stay as they are.')}</span>
+                </div>
+                <Button size="sm" onclick={() => (confirmClean = true)}>{t('Clean')}</Button>
+              </li>
+              {#if trash && trash.sizeBytes > 0}
+                <li class="cb-ins-row">
+                  <div class="cb-ins-row__txt">
+                    <span class="cb-ins-row__t">{t('Empty trash')}</span>
+                    <span class="cb-ins-row__s">{t('Frees {n} for good.', { n: bytes(trash.sizeBytes) })}</span>
+                  </div>
+                  <Button size="sm" variant="danger" onclick={() => (confirmTrash = true)}>{t('Empty')}</Button>
+                </li>
+              {/if}
+            </ul>
+          </InspectorSection>
         {/if}
-        <ul class="legend">
-          {#each folders as f (f.key)}
-            <li class="legend-row">
-              <span class={['swatch', `seg--${f.key}`]} aria-hidden="true"></span>
-              <span class="text-body grow">{LABELS[f.key] ?? f.label}</span>
-              <span class="text-body-strong">{bytes(f.sizeBytes)}</span>
-              <IconButton icon="folder" size="sm" label={t('Open the {toLowerCase} folder', { toLowerCase: (LABELS[f.key] ?? f.label).toLowerCase() })} onclick={() => openData(f.key)} />
-            </li>
-          {/each}
-        </ul>
-        <div class="clean">
-          <Button size="sm" icon="trash" onclick={() => (confirmClean = true)}>{t('Clean up cache')}</Button>
-          <span class="text-small muted">{cache ? t('Frees {n}. ', { n: bytes(cache.sizeBytes) }) : ''}{t('Your instances stay as they are.')}</span>
-        </div>
-        {#if trash && trash.sizeBytes > 0}
-          <div class="clean">
-            <Button size="sm" variant="danger" icon="trash" onclick={() => (confirmTrash = true)}>{t('Empty trash')}</Button>
-            <span class="text-small muted">{t('Frees {n} for good.', { n: bytes(trash.sizeBytes) })}</span>
-          </div>
-        {/if}
-      {/if}
-
-      <div class="settings">
-        <Slider
-          label={t('Parallel downloads')}
-          min={1}
-          max={16}
-          step={1}
-          value={Math.min(16, concurrency)}
-          valueText={t('{n} at a time', { n: concurrency })}
-          marks={['1', '16']}
-          onChange={setConcurrency}
-        />
-        <div class="settings__more">
-          <Button size="sm" iconEnd="chevron-right" onclick={() => app.navigate({ name: 'settings', section: 'downloads' })}>{t('All download settings')}</Button>
-        </div>
-      </div>
+        <InspectorSection title={t('Downloads')}>
+          {#snippet action()}
+            <Button size="sm" variant="ghost" iconEnd="chevron-right" onclick={() => app.navigate({ name: 'settings', section: 'downloads' })}>{t('All settings')}</Button>
+          {/snippet}
+          <Slider
+            label={t('Parallel downloads')}
+            min={1}
+            max={16}
+            step={1}
+            value={Math.min(16, concurrency)}
+            valueText={t('{n} at a time', { n: concurrency })}
+            marks={['1', '16']}
+            onChange={setConcurrency}
+          />
+        </InspectorSection>
+      </Inspector>
     </aside>
   </div>
 </div>
@@ -596,10 +615,6 @@
     min-height: 0;
     overflow: auto;
     width: var(--size-inspector);
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-    padding: var(--space-6) var(--space-5);
     background: var(--bg-chrome);
     border-inline-start: var(--border-chrome) solid var(--edge);
   }

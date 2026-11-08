@@ -2,20 +2,7 @@
   import { t } from '../../i18n.svelte'
   import { untrack } from 'svelte'
   import { api } from '../../api'
-  import {
-    Banner,
-    Button,
-    Icon,
-    IconButton,
-    InstanceIcon,
-    LogViewer,
-    MetaChip,
-    PlayButton,
-    SegmentedControl,
-    StatusTag,
-    TextField,
-    type SegmentedOption,
-  } from '../../cubby'
+  import { Banner, Button, Icon, IconButton, Inspector, InspectorNotice, InspectorSection, InstanceIcon, LogViewer, MetaChip, PlayButton, SegmentedControl, StatusTag, TextField, type SegmentedOption } from '../../cubby'
   import { fold, loaderFull, megabytes, num, plural, session, timeOfDay } from '../../format'
   import { iconOf } from '../../icon'
   import { app } from '../../state.svelte'
@@ -342,82 +329,59 @@
       </div>
 
       <aside class="aside" aria-label={running ? t('While you play') : t('Last session')}>
-        <h2 class="text-heading">{running ? t('While you play') : t('Last session')}</h2>
-
-        <section class="block" aria-labelledby="shots-title">
-          <div class="block-head">
-            <h3 id="shots-title" class="text-body-strong">{t('Screenshots')}{sessionShots ? `: ${num(sessionShots.length)}` : ''}</h3>
-            <span class="text-small muted">{t('this session')}</span>
+        <Inspector>
+          <div class="cb-ins-head">
+            <p class="cb-ins-eyebrow">{running ? t('While you play') : t('Last session')}</p>
           </div>
-          {#if sessionShots == null}
-            <p class="text-small muted">{t('Looking for screenshots…')}</p>
-          {:else if !sessionShots.length}
-            <p class="text-small muted">{t('None yet. Press F2 in game to take one.')}</p>
-          {:else}
-            <div class="shots">
-              {#each sessionShots.slice(0, 6) as s (s.fileName)}
-                <button
-                  type="button"
-                  class="shot"
-                  aria-label={t('Screenshot taken at {taken}, open Screenshots', { taken: timeOfDay(s.taken) })}
-                  onclick={() => app.navigate({ name: 'captures' })}
-                >
-                  <img src={s.url} alt="" loading="lazy" />
-                </button>
-              {/each}
-            </div>
-            {#if sessionShots.length > 6}
-              <Button size="sm" variant="ghost" iconEnd="chevron-right" onclick={() => app.navigate({ name: 'captures' })}>
-                {t('See all {n}', { n: plural(sessionShots.length, 'screenshot', 'screenshots') })}
-              </Button>
-            {/if}
-          {/if}
-        </section>
-
-        {#if server}
-          <section class="block" aria-labelledby="server-title">
-            <h3 id="server-title" class="text-label muted">{t('Your server')}</h3>
-            <div class="server">
-              <div class="server-top">
-                <span class="server-icon">
-                  {#if status?.iconUrl ?? server.iconUrl}<img src={status?.iconUrl ?? server.iconUrl} alt="" />{:else}<Icon name="servers" size={27} />{/if}
-                </span>
-                <div class="server-name">
-                  <p class="text-body-strong">{server.name}</p>
-                  <p class="text-mono muted">{server.address}</p>
-                </div>
-              </div>
-              {#if !status}
-                <p class="text-small muted">{t('Checking the server…')}</p>
-              {:else}
-                <div class="server-stats">
-                  <StatusTag state={status.online ? 'online' : 'offline'} />
-                  {#if status.online}
-                    <span class="text-small">
-                      <span class="text-counter">{num(status.playersOnline)}/{num(status.playersMax)}</span> {t('players')}
-                    </span>
-                    {#if status.pingMs != null}<span class="text-mono muted">{status.pingMs} ms</span>{/if}
-                  {/if}
-                </div>
-                {#if status.online && motd}<p class="text-small muted motd">{motd}</p>{/if}
-                {#if !status.online}<p class="text-small muted">{t('Can’t reach server')}</p>{/if}
-              {/if}
-              {#if running}
-                <Button size="sm" icon="copy" onclick={copyAddress}>{t('Copy address')}</Button>
-              {:else}
-                <Button size="sm" icon="play" disabled={!status?.online || !!launch} aria-label={t('Join {name} with {name2}', { name: server.name, name2: instance.name })} onclick={join}>{t('Join')}</Button>
-              {/if}
-            </div>
-          </section>
-        {/if}
-
-        {#if running}
-          <div class="note">
-            <Banner tone="info">
+          {#if running}
+            <InspectorNotice tone="info">
               {t('Closing Cubby won’t stop the game.')}{#if trackPlayTime}{' '}{t('Keep it open to count this session in your play time.')}{/if}
-            </Banner>
-          </div>
-        {/if}
+            </InspectorNotice>
+          {/if}
+          <InspectorSection title={t('Screenshots')} count={sessionShots?.length ? num(sessionShots.length) : null}>
+            {#snippet action()}
+              {#if sessionShots?.length}
+                <Button size="sm" variant="ghost" iconEnd="chevron-right" onclick={() => app.navigate({ name: 'captures' })}>{t('See all')}</Button>
+              {/if}
+            {/snippet}
+            {#if sessionShots == null}
+              <p class="cb-ins-hint">{t('Looking for screenshots…')}</p>
+            {:else if !sessionShots.length}
+              <p class="cb-ins-hint">{t('None yet. Press F2 in game to take one.')}</p>
+            {:else}
+              <div class="shots">
+                {#each sessionShots.slice(0, 6) as s (s.fileName)}
+                  <button type="button" class="shot" aria-label={t('Screenshot taken at {taken}, open Screenshots', { taken: timeOfDay(s.taken) })} onclick={() => app.navigate({ name: 'captures' })}>
+                    <img src={s.url} alt="" loading="lazy" />
+                  </button>
+                {/each}
+              </div>
+            {/if}
+          </InspectorSection>
+          {#if server}
+            <InspectorSection title={t('Your server')}>
+              <ul class="cb-ins-rows">
+                <li class="cb-ins-row">
+                  <span class="cb-ins-row__ic">
+                    {#if status?.iconUrl ?? server.iconUrl}<img src={status?.iconUrl ?? server.iconUrl} alt="" />{:else}<Icon name="servers" size={18} />{/if}
+                  </span>
+                  <div class="cb-ins-row__txt">
+                    <span class="cb-ins-row__t">{server.name}</span>
+                    <span class="cb-ins-row__s">
+                      {#if !status}{t('Checking the server…')}{:else if status.online}{num(status.playersOnline)}/{num(status.playersMax)} {t('players')}{#if status.pingMs != null} · {status.pingMs} ms{/if}{:else}{t('Can’t reach server')}{/if}
+                    </span>
+                  </div>
+                  {#if running}
+                    <IconButton size="sm" icon="copy" label={t('Copy address')} onclick={copyAddress} />
+                  {:else}
+                    <Button size="sm" icon="play" disabled={!status?.online || !!launch} aria-label={t('Join {name} with {name2}', { name: server.name, name2: instance.name })} onclick={join}>{t('Join')}</Button>
+                  {/if}
+                </li>
+              </ul>
+              {#if status?.online && motd}<p class="motd cb-ins-hint">{motd}</p>{/if}
+            </InspectorSection>
+          {/if}
+        </Inspector>
       </aside>
     </div>
   {/if}
@@ -444,15 +408,10 @@
     padding: var(--space-6);
   }
   h1,
-  h2,
-  h3,
   p,
   dl,
   dd {
     margin: 0;
-  }
-  .muted {
-    color: var(--ink-muted);
   }
 
   .head {
@@ -553,23 +512,9 @@
   .aside {
     flex: none;
     width: var(--size-inspector);
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-    padding: var(--space-6) var(--space-4);
     overflow: auto;
     background: var(--bg-chrome);
     border-inline-start: var(--border-chrome) solid var(--edge);
-  }
-  .block {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-  }
-  .block-head {
-    display: flex;
-    align-items: baseline;
-    gap: var(--space-2);
   }
   .shots {
     display: grid;
@@ -597,58 +542,8 @@
     aspect-ratio: 16 / 9;
     object-fit: cover;
   }
-
-  .server {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--space-2);
-    padding: var(--space-3) var(--space-4);
-    background: var(--surface);
-    border: var(--border-block) solid var(--edge);
-    box-shadow: var(--shadow-block-sm);
-  }
-  .server-top {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    min-width: 0;
-    width: 100%;
-  }
-  .server-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex: none;
-    width: 48px;
-    height: 48px;
-    overflow: hidden;
-    color: var(--ink-muted);
-    background: var(--bg-chrome);
-    border: var(--border-block) solid var(--edge);
-  }
-  .server-icon img {
-    width: 100%;
-    height: 100%;
-    image-rendering: pixelated;
-  }
-  .server-name {
-    min-width: 0;
-  }
-  .server-name p {
-    overflow-wrap: anywhere;
-  }
-  .server-stats {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-2) var(--space-3);
-  }
   .motd {
     overflow-wrap: anywhere;
     white-space: pre-line;
-  }
-  .note {
-    margin-top: auto;
   }
 </style>

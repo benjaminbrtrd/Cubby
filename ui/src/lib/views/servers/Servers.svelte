@@ -2,7 +2,7 @@
   import { t } from '../../i18n.svelte'
   import { tick, untrack } from 'svelte'
   import { api } from '../../api'
-  import { Button, Dialog, Icon, InstanceIcon, MetaChip, PlayButton, ServerRow, StatusTag, TextField } from '../../cubby'
+  import { Button, Dialog, Icon, Inspector, InspectorHead, InspectorNotice, InspectorSection, InspectorStatus, InstanceIcon, MetaChip, PlayButton, ServerRow, StatusTag, TextField } from '../../cubby'
   import { num } from '../../format'
   import { iconOf } from '../../icon'
   import { app } from '../../state.svelte'
@@ -375,121 +375,90 @@
     </div>
 
     <aside class="aside" aria-label={t('Server details')}>
-      <div class="aside-inner">
+      <Inspector class="aside-inner" danger={selected && selInstance ? { label: t('Remove'), hint: t('Takes it off the server list.'), onclick: () => (confirmRemove = selected) } : null}>
         {#if selected && selInstance}
           {@const s = selected.status}
           {@const icon = s?.iconUrl ?? selected.server.iconUrl}
           {@const isRunning = app.running[selInstance.id] != null}
           {@const launch = app.tasks[`launch:${selInstance.id}`]}
-          <div class="who">
-            {#if icon}
-              <img class="big-icon" src={icon} alt={`${selected.server.name} server icon`} width="64" height="64" />
+          {#snippet svMedia()}
+            {#if icon}<span class="cb-ins-media"><img src={icon} alt="" /></span>{:else}<span class="cb-ins-media"><Icon name="servers" size={27} /></span>{/if}
+          {/snippet}
+          {#snippet svMeta()}
+            {#if !s}
+              <InspectorStatus tone="off">{t('Checking…')}</InspectorStatus>
+            {:else if s.online}
+              <InspectorStatus tone="ok">{t('Online')}</InspectorStatus>
+              <MetaChip>{num(s.playersOnline)} / {num(s.playersMax)}</MetaChip>
+              {#if s.pingMs != null}<MetaChip>{num(s.pingMs)} ms</MetaChip>{/if}
             {:else}
-              <span class="big-icon placeholder" aria-hidden="true"><Icon name="servers" size={36} /></span>
+              <InspectorStatus tone="bad">{t('Can’t reach it')}</InspectorStatus>
             {/if}
-            <div class="who-text">
-              <h2 class="text-heading">{selected.server.name}</h2>
-              <p class="text-mono muted address">{selected.server.address}</p>
-            </div>
+          {/snippet}
+          <InspectorHead eyebrow={t('Server')} title={selected.server.name} sub={selected.server.address} mono media={svMedia} meta={svMeta} />
+          <div class="cb-ins-acts">
+            {#if isRunning}
+              <PlayButton state="running" detail={t('{name} is running', { name: selInstance.name })} aria-label={t('Stop {name}', { name: selInstance.name })} onclick={() => app.kill(selInstance.id)} />
+            {:else if launch}
+              <PlayButton state="installing" detail={launch.label} progress={launch.total ? (launch.done / launch.total) * 100 : undefined} />
+            {:else}
+              <PlayButton
+                label={t('Join')}
+                detail={s && !s.online ? t('Can’t reach it right now') : t('With {name}', { name: selInstance.name })}
+                aria-label={t('Join {name} with {name2}', { name: selected.server.name, name2: selInstance.name })}
+                onclick={() => join(selected)}
+              />
+            {/if}
+            <Button class="wide" icon="copy" aria-label={t('Copy address')} onclick={() => copyAddress(selected)}>{t('Copy address')}</Button>
           </div>
-
-          {#if isRunning}
-            <PlayButton state="running" size="lg" detail={`${selInstance.name} is running`} aria-label={t('Stop {name}', { name: selInstance.name })} onclick={() => app.kill(selInstance.id)} />
-          {:else if launch}
-            <PlayButton state="installing" size="lg" detail={launch.label} progress={launch.total ? (launch.done / launch.total) * 100 : undefined} />
-          {:else}
-            <PlayButton
-              size="lg"
-              label={t('Join')}
-              detail={s && !s.online ? t('Can’t reach it right now') : t('With {name}', { name: selInstance.name })}
-              aria-label={t('Join {name} with {name2}', { name: selected.server.name, name2: selInstance.name })}
-              onclick={() => join(selected)}
-            />
-          {/if}
-
-          <div class="actions">
-            <Button size="sm" icon="copy" aria-label={t('Copy address')} onclick={() => copyAddress(selected)}>{t('Copy')}</Button>
-            <Button size="sm" variant="danger" icon="trash" onclick={() => (confirmRemove = selected)}>{t('Remove')}</Button>
-          </div>
-
-          {#if s?.online && motdOf(s)}
-            <div>
-              <p class="text-label muted label">{t('Message of the day')}</p>
-              <p class="text-mono motd">{motdOf(s)}</p>
-            </div>
-          {/if}
-
-          <dl class="facts">
-            <dt class="text-small muted">{t('Status')}</dt>
-            <dd class="dd-row">
-              {#if !s}
-                <span class="text-small muted">{t('Checking…')}</span>
+          {#if check && check.fit === 'mismatch'}
+            {#snippet otherAction()}
+              {#if check.other}
+                {@const other = check.other}
+                <Button size="sm" icon="play" onclick={() => join(selected, other.id)}>{t('Join with {name}', { name: other.name })}</Button>
+              {/if}
+            {/snippet}
+            <InspectorNotice action={otherAction}>
+              <strong>{t('{name} may not get in.', { name: selInstance.name })}</strong>
+              {#if check.exact}
+                {t('The server doesn’t take Minecraft')} <span class="text-mono">{selInstance.minecraft}</span>.
               {:else}
-                <StatusTag state={s.online ? 'online' : 'offline'} />
-                {#if s.online && s.pingMs != null}<span class="text-mono">{s.pingMs} ms</span>{/if}
+                {t('The server runs')} <span class="text-mono">{check.version}</span>{t(', and {name} uses', { name: selInstance.name })} <span class="text-mono">{selInstance.minecraft}</span>.
               {/if}
-            </dd>
-            {#if s?.online}
-              <dt class="text-small muted">{t('Players')}</dt>
-              <dd class="text-body">{t('{n} of {n2}', { n: num(s.playersOnline), n2: num(s.playersMax) })}</dd>
-              {#if s.version}
-                <dt class="text-small muted">{t('Version')}</dt>
-                <dd class="dd-row"><MetaChip>{s.version}</MetaChip></dd>
-              {/if}
-            {/if}
-            <dt class="text-small muted">{t('Instance')}</dt>
-            <dd class="dd-row">
-              <InstanceIcon {...iconOf(selInstance)} seed={selInstance.name} size={24} />
-              <span class="text-body">{selInstance.name}</span>
-              <MetaChip>{selInstance.minecraft}</MetaChip>
-            </dd>
-          </dl>
-
-          {#if check}
-            <div class={['fit', `fit--${check.fit}`]}>
-              <span class="fit-icon">
-                <Icon name={check.fit === 'mismatch' ? 'warning' : check.fit === 'unknown' ? 'info' : 'check'} size={18} />
-              </span>
-              <div class="fit-text">
-                {#if check.fit === 'match'}
-                  <p class="text-body-strong">{t('{name} matches the server', { name: selInstance.name })}</p>
-                  <p class="text-small muted">{t('Both use Minecraft')} <span class="text-mono">{selInstance.minecraft}</span>.</p>
-                {:else if check.fit === 'accepted'}
-                  <p class="text-body-strong">{t('{name} can join', { name: selInstance.name })}</p>
-                  <p class="text-small muted">{t('The server takes Minecraft')} <span class="text-mono">{selInstance.minecraft}</span>.</p>
-                {:else if check.fit === 'range'}
-                  <p class="text-body-strong">{t('{name} should work', { name: selInstance.name })}</p>
-                  <p class="text-small muted">{t('The server accepts')} <span class="text-mono">{check.version}</span>.</p>
-                {:else if check.fit === 'mismatch'}
-                  <p class="text-body-strong">{t('{name} may not get in', { name: selInstance.name })}</p>
-                  {#if check.exact}
-                    <p class="text-small muted">{t('The server doesn’t take Minecraft')} <span class="text-mono">{selInstance.minecraft}</span>.</p>
-                  {:else}
-                    <p class="text-small muted">
-                      {t('The server runs')} <span class="text-mono">{check.version}</span>{t(', and {name} uses', { name: selInstance.name })}
-                      <span class="text-mono">{selInstance.minecraft}</span>.
-                    </p>
-                  {/if}
-                  {#if check.other}
-                    {@const other = check.other}
-                    <div class="fit-action">
-                      <Button size="sm" icon="play" onclick={() => join(selected, other.id)}>{t('Join with {name}', { name: other.name })}</Button>
-                    </div>
-                  {/if}
-                {:else}
-                  <p class="text-body-strong">{t('Version not known')}</p>
-                  <p class="text-small muted">
-                    {s?.online ? t('The server doesn’t say which Minecraft version it runs.') : t('Cubby can check it when the server is online.')}
-                  </p>
-                {/if}
-              </div>
-            </div>
+            </InspectorNotice>
           {/if}
+          {#if s?.online && motdOf(s)}
+            <InspectorSection title={t('Message of the day')}>
+              <p class="motd text-mono">{motdOf(s)}</p>
+            </InspectorSection>
+          {/if}
+          <InspectorSection title={t('Details')}>
+            <dl class="cb-ins-facts">
+              <dt>{t('Instance')}</dt>
+              <dd><InstanceIcon {...iconOf(selInstance)} seed={selInstance.name} size={24} /><span>{selInstance.name}</span><MetaChip>{selInstance.minecraft}</MetaChip></dd>
+              {#if s?.version}<dt>{t('Version')}</dt><dd><MetaChip>{s.version}</MetaChip></dd>{/if}
+              {#if check}
+                <dt>{t('Fit')}</dt>
+                <dd>
+                  {#if check.fit === 'match' || check.fit === 'accepted'}
+                    <InspectorStatus tone="ok">{t('Can join')}</InspectorStatus>
+                  {:else if check.fit === 'range'}
+                    <InspectorStatus tone="ok">{t('Should work')}</InspectorStatus>
+                  {:else if check.fit === 'mismatch'}
+                    <InspectorStatus tone="warn">{t('May not get in')}</InspectorStatus>
+                  {:else}
+                    <InspectorStatus tone="off">{s?.online ? t('Version not given') : t('Known when online')}</InspectorStatus>
+                  {/if}
+                </dd>
+              {/if}
+            </dl>
+          </InspectorSection>
         {:else}
-          <h2 class="text-heading">{t('Server details')}</h2>
-          <p class="text-small muted">{entries?.length ? t('Select a server to see its details.') : t('Add a server to see its status here.')}</p>
+          {#snippet svEmpty()}<span class="cb-ins-media cb-ins-media--empty"><Icon name="servers" size={27} /></span>{/snippet}
+          <InspectorHead eyebrow={t('Server')} title={entries?.length ? t('No server selected') : t('No servers yet')} media={svEmpty} empty />
+          <p class="cb-ins-hint">{entries?.length ? t('Select a server to see who’s online and join it.') : t('Add a server to see its status here.')}</p>
         {/if}
-      </div>
+      </Inspector>
     </aside>
   </div>
 </div>
@@ -677,54 +646,12 @@
     background: var(--bg-chrome);
     border-inline-start: var(--border-chrome) solid var(--edge);
   }
-  .aside-inner {
+  .aside :global(.aside-inner) {
     position: sticky;
     top: 0;
     max-height: calc(100vh - var(--size-titlebar));
+    min-height: 0;
     overflow: auto;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-    padding: var(--space-6) var(--space-5);
-  }
-  .aside-inner :global(.cb-play) {
-    width: 100%;
-  }
-  .who {
-    display: flex;
-    align-items: center;
-    gap: var(--space-4);
-  }
-  .who-text {
-    min-width: 0;
-  }
-  .address {
-    margin-top: var(--space-1);
-    overflow-wrap: anywhere;
-  }
-  .big-icon {
-    display: block;
-    flex: none;
-    width: 64px;
-    height: 64px;
-    image-rendering: pixelated;
-    border: var(--border-block) solid var(--edge);
-    box-shadow: var(--shadow-block-sm);
-  }
-  .placeholder {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--ink-muted);
-    background: var(--surface);
-  }
-  .actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-  }
-  .label {
-    margin-bottom: 6px;
   }
   .motd {
     padding: var(--space-2) var(--space-3);
@@ -733,53 +660,5 @@
     background: var(--field);
     border: var(--border-block) solid var(--outline);
     box-shadow: var(--shadow-well);
-  }
-  .facts {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    align-items: center;
-    gap: var(--space-2) var(--space-4);
-    padding: var(--space-3) var(--space-4);
-    background: var(--surface);
-    border: var(--border-block) solid var(--edge);
-  }
-  .dd-row {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-2);
-    min-width: 0;
-  }
-  .fit {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    padding: 10px var(--space-3);
-    background: var(--surface);
-    border: var(--border-block) solid var(--edge);
-  }
-  .fit-icon {
-    display: inline-flex;
-    flex: none;
-    padding-top: 2px;
-  }
-  .fit--match .fit-icon,
-  .fit--range .fit-icon {
-    color: var(--grass-text);
-  }
-  .fit--mismatch .fit-icon {
-    color: var(--gold-text);
-  }
-  .fit--unknown .fit-icon {
-    color: var(--diamond-text);
-  }
-  .fit-text {
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-  .fit-action {
-    margin-top: var(--space-2);
   }
 </style>

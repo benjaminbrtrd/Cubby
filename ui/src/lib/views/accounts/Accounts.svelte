@@ -110,7 +110,7 @@
 
 <script lang="ts">
   import { onMount } from 'svelte'
-  import { Dialog, StatusTag } from '../../cubby'
+  import { Dialog, Inspector, InspectorHead, InspectorNotice, InspectorPath, InspectorSection, InspectorStatus, StatusTag } from '../../cubby'
   import { num } from '../../format'
 
   const uid = $props.id()
@@ -323,44 +323,26 @@
 
     {#if selected}
       <aside class="aside" aria-label={t('Account details')}>
-        {@render skinHead(selected.skinUrl, selected.username, 128, t('Skin of {username}', { username: selected.username }))}
-
-        <div>
-          <h2 class="text-title name">{selected.username}</h2>
-          <p class="aside__kind text-body">
-            <Icon name="globe" size={18} />
-            {t('Microsoft account')}
-          </p>
-          <p class="text-small muted">{t('Owns Minecraft: Java Edition')}</p>
-        </div>
-
-        {#if selected.isDefault}
-          <div class="aside__use">
-            <StatusTag state="ready">{t('In use')}</StatusTag>
-            <p class="text-small muted">{t('Cubby plays every instance with this account.')}</p>
+        {#snippet accMedia()}{@render skinHead(selected.skinUrl, selected.username, 96, t('Skin of {username}', { username: selected.username }))}{/snippet}
+        {#snippet accMeta()}
+          {#if selected.isDefault}<InspectorStatus tone="ok">{t('In use')}</InspectorStatus>{:else}<InspectorStatus tone="off">{t('Not in use')}</InspectorStatus>{/if}
+          <InspectorStatus tone="off">{t('Owns Java Edition')}</InspectorStatus>
+        {/snippet}
+        <Inspector danger={{ label: t('Sign out'), icon: 'close', hint: t('Removes the account from Cubby. Your Minecraft stays yours.'), onclick: () => selected && (removing = selected) }}>
+          <InspectorHead eyebrow={t('Account')} title={selected.username} sub={t('Microsoft account')} media={accMedia} meta={accMeta} big />
+          {#if selected.isDefault}<p class="cb-ins-hint">{t('Cubby plays every instance with this account.')}</p>{/if}
+          <div class="cb-ins-acts">
+            {#if !selected.isDefault}<Button variant="primary" class="wide" icon="check" onclick={() => selected && use(selected)}>{t('Use this account')}</Button>{/if}
+            <Button class="wide" icon="accounts" onclick={() => selected && app.navigate({ name: 'skins', accountId: selected.id })}>{t('Skin and cape')}</Button>
           </div>
-        {:else}
-          <div><Button onclick={() => selected && use(selected)}>{t('Use this account')}</Button></div>
-        {/if}
-
-        <div>
-          <p class="text-label muted label">UUID</p>
-          <div class="uuid">
-            <code class="text-mono uuid__value">{dashedUuid(selected.id)}</code>
-            <IconButton icon="copy" label={t('Copy UUID')} size="sm" onclick={() => selected && copyUuid(selected.id)} />
-          </div>
-          <p class="text-small muted note">
-            {t('Your player ID on every server.')}
-          </p>
-        </div>
-
-        <div><Button icon="accounts" onclick={() => selected && app.navigate({ name: 'skins', accountId: selected.id })}>{t('Skin and cape')}</Button></div>
-        <p class="secure text-small muted">
-          <Icon name="key" size={18} />
-          <span>
-            {t('Sign-in tokens are stored in plain text in')} <span class="text-mono">accounts.json</span>{t(', in Cubby’s data folder on this PC. Signing out deletes them. Cubby never sees your password.')}
-          </span>
-        </p>
+          <InspectorSection title={t('Details')}>
+            <dl class="cb-ins-facts">
+              <dt>UUID</dt><dd><span>{t('Your player ID on every server')}</span></dd>
+              <InspectorPath path={dashedUuid(selected.id)} copyLabel={t('Copy UUID')} oncopy={() => selected && copyUuid(selected.id)} />
+            </dl>
+          </InspectorSection>
+          <InspectorNotice tone="info">{t('Sign-in tokens are stored in plain text in')} <span class="text-mono">accounts.json</span>{t(', in Cubby’s data folder on this PC. Signing out deletes them. Cubby never sees your password.')}</InspectorNotice>
+        </Inspector>
       </aside>
     {/if}
   </div>
@@ -438,7 +420,9 @@
     align-items: center;
     gap: var(--space-3);
   }
-  .screen :where(h1, h2, p),
+  .screen :where(h1,
+  h2,
+  p),
   .dc :where(p) {
     margin: 0;
   }
@@ -534,8 +518,7 @@
     gap: 6px 10px;
     overflow-wrap: anywhere;
   }
-  .acc__kind,
-  .aside__kind {
+  .acc__kind {
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -554,56 +537,12 @@
     min-height: 0;
     overflow: auto;
     width: var(--size-inspector);
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-    padding: var(--space-6) var(--space-5);
     background: var(--bg-chrome);
     border-inline-start: var(--border-chrome) solid var(--edge);
   }
   .aside > .skin,
   .aside > :global(.cb-avatar) {
     box-shadow: var(--shadow-block);
-  }
-  .name {
-    overflow-wrap: anywhere;
-  }
-  .aside__kind {
-    margin-top: var(--space-1);
-  }
-  .aside__use {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 6px;
-  }
-  .label {
-    margin-bottom: 6px;
-  }
-  .uuid {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    padding: 6px 6px 6px 10px;
-    background: var(--field);
-    border: var(--border-block) solid var(--outline);
-    box-shadow: var(--shadow-well);
-  }
-  .uuid__value {
-    flex: 1;
-    min-width: 0;
-    overflow-wrap: anywhere;
-  }
-  .note {
-    margin-top: 6px;
-  }
-  .secure {
-    display: flex;
-    align-items: flex-start;
-    gap: var(--space-2);
-  }
-  .secure :global(.cb-icon) {
-    margin-top: 1px;
   }
 
   /* Skin head */
