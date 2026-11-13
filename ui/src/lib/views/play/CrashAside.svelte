@@ -2,7 +2,7 @@
 <script lang="ts">
   import { t } from '../../i18n.svelte'
   import { api } from '../../api'
-  import { Button, Icon, PlayButton } from '../../cubby'
+  import { Button, Icon, Inspector, InspectorHead, InspectorPath, InspectorSection, InspectorStatus, PlayButton } from '../../cubby'
   import { plural } from '../../format'
   import { app } from '../../state.svelte'
   import type { Diagnosis } from './crash'
@@ -57,135 +57,81 @@
 </script>
 
 <aside class="aside" aria-label={t('Crash details')}>
-  <section class="block" aria-labelledby="checked-title">
-    <h2 id="checked-title" class="text-label muted">{t('What Cubby checked')}</h2>
-    {#if logLines}
-      <ul class="checks">
-        {#each checks as c (c.label)}
-          <li class="check">
-            <div class="check-row">
-              <span class="text-body check-label">{c.label}</span>
-              <span class={['text-body-strong state', c.bad ? 'is-bad' : 'is-ok']}>
-                <Icon name={c.bad ? 'error' : 'check'} size={18} />{c.word}
-              </span>
-            </div>
-            {#if c.detail}<span class="text-small muted">{c.detail}</span>{/if}
-          </li>
-        {/each}
-      </ul>
-      <p class="text-small muted">{t('Cubby looked for these in the last {n} of the game log.', { n: plural(d.checkedLines, 'line', 'lines') })}</p>
-    {:else}
-      <p class="text-small muted">{t('The game wrote nothing to its log, so there was nothing to check.')}</p>
-    {/if}
-  </section>
-
-  <section class="block" aria-labelledby="report-title">
-    <h2 id="report-title" class="text-label muted">{t('Crash report')}</h2>
-    {#if d.reportPath}
-      <p class="text-mono path">crash-reports/{fileNameOf(d.reportPath)}</p>
-    {:else if d.jvmReportPath}
-      <p class="text-mono path">{fileNameOf(d.jvmReportPath)}</p>
-      <p class="text-small muted">{t('Java wrote this report in the game folder.')}</p>
-    {:else}
-      <p class="text-small muted">{t('The game didn’t write a crash report. The log has the details.')}</p>
-    {/if}
-    <div class="stack">
-      <Button size="sm" icon="copy" onclick={onCopyReport}>{t('Copy report')}</Button>
-      <Button size="sm" icon="folder" onclick={openReports}>{t('Open folder')}</Button>
+  <Inspector>
+    <InspectorHead eyebrow={t('Crash')} title={name} sub={d.kind === 'unknown' ? t('Cubby couldn’t find the cause') : t('Cubby found what most likely went wrong')}>
+      {#snippet meta()}
+        {#if d.kind === 'unknown'}<InspectorStatus tone="warn">{t('Cause not found')}</InspectorStatus>{:else}<InspectorStatus tone="bad">{t('Cause found')}</InspectorStatus>{/if}
+      {/snippet}
+    </InspectorHead>
+    <div class="cb-ins-acts">
+      {#if running}
+        <Button class="wide" icon="terminal" onclick={() => app.navigate({ name: 'running', id })}>{t('Show the running game')}</Button>
+      {:else if launch}
+        <PlayButton state="installing" detail={launch.label} progress={launch.total ? (launch.done / launch.total) * 100 : undefined} />
+      {:else}
+        <PlayButton label={t('Play again')} detail={playDetail} aria-label={t('Play {name} again', { name })} onclick={playAgain} />
+      {/if}
     </div>
-  </section>
-
-  <div class="play">
-    {#if running}
-      <Button icon="terminal" onclick={() => app.navigate({ name: 'running', id })}>{t('Show the running game')}</Button>
-    {:else if launch}
-      <PlayButton state="installing" detail={launch.label} progress={launch.total ? (launch.done / launch.total) * 100 : undefined} />
-    {:else}
-      <PlayButton label={t('Play again')} detail={playDetail} aria-label={t('Play {name} again', { name })} onclick={playAgain} />
-    {/if}
-  </div>
+    <InspectorSection title={t('What Cubby checked')}>
+      {#if logLines}
+        <ul class="cb-ins-rows">
+          {#each [...checks].sort((a, b) => Number(b.bad) - Number(a.bad)) as c (c.label)}
+            <li class="cb-ins-row">
+              <div class="cb-ins-row__txt">
+                <span class="cb-ins-row__t">{c.label}</span>
+                {#if c.detail}<span class="cb-ins-row__s" title={c.detail}>{c.detail}</span>{/if}
+              </div>
+              <span class={['state', c.bad ? 'is-bad' : 'is-ok']}><Icon name={c.bad ? 'error' : 'check'} size={18} />{c.word}</span>
+            </li>
+          {/each}
+        </ul>
+        <p class="cb-ins-hint">{t('Cubby looked for these in the last {n} of the game log.', { n: plural(d.checkedLines, 'line', 'lines') })}</p>
+      {:else}
+        <p class="cb-ins-hint">{t('The game wrote nothing to its log, so there was nothing to check.')}</p>
+      {/if}
+    </InspectorSection>
+    <InspectorSection title={t('Crash report')}>
+      {#if d.reportPath || d.jvmReportPath}
+        <dl class="cb-ins-facts">
+          <InspectorPath path={d.reportPath ? `crash-reports/${fileNameOf(d.reportPath)}` : fileNameOf(d.jvmReportPath ?? '')} openLabel={t('Open folder')} onopen={openReports} />
+        </dl>
+        {#if !d.reportPath}<p class="cb-ins-hint">{t('Java wrote this report in the game folder.')}</p>{/if}
+      {:else}
+        <p class="cb-ins-hint">{t('The game didn’t write a crash report. The log has the details.')}</p>
+      {/if}
+      <div class="cb-ins-acts">
+        <Button icon="copy" onclick={onCopyReport}>{t('Copy report')}</Button>
+        <Button icon="folder" onclick={openReports}>{t('Open folder')}</Button>
+      </div>
+    </InspectorSection>
+  </Inspector>
 </aside>
 
 <style>
-  h2,
   p,
   ul {
     margin: 0;
-  }
-  .muted {
-    color: var(--ink-muted);
   }
   .aside {
     flex: none;
     min-height: 0;
     overflow: auto;
     width: var(--size-inspector);
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-    padding: var(--space-6) var(--space-5);
     background: var(--bg-chrome);
     border-inline-start: var(--border-chrome) solid var(--edge);
   }
-  .block {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-  }
-  .checks {
-    list-style: none;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-    padding: var(--space-3) var(--space-4);
-    background: var(--surface);
-    border: var(--border-block) solid var(--edge);
-    box-shadow: var(--shadow-block-sm);
-  }
-  .check {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-  .check-row {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-  }
-  .check-label {
-    flex: 1;
-    min-width: 0;
-  }
   .state {
+    flex: none;
     display: inline-flex;
     align-items: center;
     gap: var(--space-1);
-    text-align: end;
+    font-size: 14px;
+    font-weight: 500;
   }
   .state.is-ok {
     color: var(--grass-text);
   }
   .state.is-bad {
     color: var(--redstone-text);
-  }
-  .path {
-    overflow-wrap: anywhere;
-  }
-  .stack {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-  }
-  .stack > :global(.cb-btn) {
-    width: 100%;
-  }
-  .play {
-    margin-top: auto;
-    display: flex;
-    flex-direction: column;
-  }
-  .play > :global(.cb-play),
-  .play > :global(.cb-btn) {
-    width: 100%;
   }
 </style>

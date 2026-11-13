@@ -23,6 +23,8 @@ pub fn run() {
     }));
     builder
         .plugin(tauri_plugin_deep_link::init())
+        // Reopens the window at the size and place it had when Cubby closed.
+        .plugin(tauri_plugin_window_state::Builder::default().build())
         .plugin(
             tauri_plugin_log::Builder::default()
                 .level(if cfg!(debug_assertions) {
@@ -55,6 +57,7 @@ pub fn run() {
             commands::instances::duplicate_instance,
             commands::instances::delete_instance,
             commands::instances::open_folder,
+            commands::instances::create_desktop_shortcut,
             commands::instances::list_versions,
             commands::instances::list_loader_versions,
             commands::content::list_mods,
@@ -82,6 +85,8 @@ pub fn run() {
             commands::settings::list_java,
             commands::prism::list_prism_instances,
             commands::prism::import_prism,
+            commands::prism::list_launcher_instances,
+            commands::prism::import_launcher_instances,
             commands::launch::repair_instance,
             commands::content::delete_screenshot,
             commands::content::list_packs,
@@ -89,6 +94,7 @@ pub fn run() {
             commands::content::set_shader_pack,
             commands::content::list_servers,
             commands::content::save_servers,
+            commands::content::copy_options,
             commands::content::ping_server,
             commands::settings::data_folders,
             commands::settings::open_data_folder,
@@ -126,6 +132,17 @@ pub fn run() {
             packs::import_pack_url,
             packs::blocked_files,
             packs::find_blocked_files,
+            commands::discover::list_update_backups,
+            commands::discover::undo_update,
+            commands::export::export_candidates,
+            commands::export::export_instance,
+            commands::export::reveal_file,
+            commands::datapacks::list_datapacks,
+            commands::datapacks::set_datapack_enabled,
+            commands::datapacks::remove_datapack,
+            commands::datapacks::add_datapack_files,
+            commands::datapacks::install_datapack,
+            commands::datapacks::render_world_map,
         ])
         .build(tauri::generate_context!())
         .expect("error while building Cubby")

@@ -8,6 +8,14 @@ import type {
   BlockedFile,
   ContentUpdate,
   DataFolder,
+  WorldMapImage,
+  OptionsCopy,
+  ForeignInstance,
+  ExportCandidate,
+  ExportRequest,
+  ExportResult,
+  UpdateBackup,
+  Datapack,
   InstallPlan,
   SkinProfile,
   DefaultSkin,
@@ -79,6 +87,8 @@ export const api = {
   killInstance: (id: string) => call<void>('kill_instance', { id }),
   runningGames: () => call<RunningGame[]>('running_games'),
   gameLog: (id: string) => call<LogLine[]>('game_log', { id }),
+  /** Puts a shortcut on the Desktop that starts the instance (cubby://play/<id>); returns its path. */
+  createDesktopShortcut: (id: string) => call<string>('create_desktop_shortcut', { id }),
   openFolder: (id: string, sub?: string) => call<void>('open_folder', { id, sub: sub ?? null }),
 
   listVersions: () => call<GameVersion[]>('list_versions'),
@@ -103,6 +113,8 @@ export const api = {
   /** Replaces the whole servers.dat list, in this order. */
   saveServers: (id: string, servers: Server[]) => call<void>('save_servers', { id, servers }),
   /** `instanceId`: ask with that instance's Minecraft protocol, so `compatible` says whether the server takes it. */
+  /** Copies options, key bindings and/or the server list from instance `from`; returns what it copied. */
+  copyOptions: (id: string, from: string, what: OptionsCopy) => call<OptionsCopy>('copy_options', { id, from, what }),
   pingServer: (address: string, instanceId?: string) => call<ServerStatus>('ping_server', { address, instanceId: instanceId ?? null }),
 
   dataFolders: () => call<DataFolder[]>('data_folders'),
@@ -164,6 +176,11 @@ export const api = {
   /** Replaces each file by its latest compatible version (task `update:<instanceId>`). Backs up the old files into <instance>/backups/content-<date>/. */
   applyUpdates: (instanceId: string, fileNames: string[]) => call<void>('apply_updates', { instanceId, fileNames }),
 
+  /** Updates that can be undone, newest first. */
+  listUpdateBackups: (instanceId: string) => call<UpdateBackup[]>('list_update_backups', { instanceId }),
+  /** Puts back the files an update replaced; returns how many came back. */
+  undoUpdate: (instanceId: string, name: string) => call<number>('undo_update', { instanceId, name }),
+
   // Worlds
   backupWorld: (instanceId: string, folder: string) => call<WorldBackup>('backup_world', { instanceId, folder }),
   listBackups: (instanceId: string) => call<WorldBackup[]>('list_backups', { instanceId }),
@@ -194,8 +211,31 @@ export const api = {
   /** Looks in the Downloads folder, moves matches into place and returns the updated list. */
   findBlockedFiles: (instanceId: string) => call<BlockedFile[]>('find_blocked_files', { instanceId }),
 
+  /** Draws the map around a world's spawn (task `map:<id>`), or returns the one already drawn since it last changed. */
+  renderWorldMap: (id: string, world: string) => call<WorldMapImage>('render_world_map', { id, world }),
+
+  // Exports
+  exportCandidates: (id: string) => call<ExportCandidate[]>('export_candidates', { id }),
+  /** Asks where to save, then writes the pack (task `export:<id>`); null when cancelled. */
+  exportInstance: (id: string, request: ExportRequest) => call<ExportResult | null>('export_instance', { id, request }),
+  revealFile: (path: string) => call<void>('reveal_file', { path }),
+
+  // Datapacks of a world
+  listDatapacks: (id: string, world: string) => call<Datapack[]>('list_datapacks', { id, world }),
+  setDatapackEnabled: (id: string, world: string, fileName: string, enabled: boolean) => call<void>('set_datapack_enabled', { id, world, fileName, enabled }),
+  /** Moves the datapack to the instance's trash folder. */
+  removeDatapack: (id: string, world: string, fileName: string) => call<void>('remove_datapack', { id, world, fileName }),
+  /** Asks for .zip files and copies them into the world; returns the names added (empty when cancelled). */
+  addDatapackFiles: (id: string, world: string) => call<string[]>('add_datapack_files', { id, world }),
+  /** Downloads a version (else the newest for the instance's Minecraft version) into the world; returns its file name. */
+  installDatapack: (id: string, world: string, projectId: string, versionId: string | null = null) => call<string>('install_datapack', { id, world, projectId, versionId }),
+
   listPrismInstances: () => call<PrismInstance[]>('list_prism_instances'),
   importPrism: (paths: string[]) => call<Instance[]>('import_prism', { paths }),
+  /** Instances of every launcher Cubby knows, from their usual folders. */
+  listLauncherInstances: () => call<ForeignInstance[]>('list_launcher_instances'),
+  /** Copies them into new instances (by the `path` the listing gave). */
+  importLauncherInstances: (paths: string[]) => call<Instance[]>('import_launcher_instances', { paths }),
   openUrl: (url: string) => call<void>('open_url', { url }),
 }
 

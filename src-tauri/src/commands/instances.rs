@@ -23,7 +23,40 @@ pub(crate) fn to_dto(core: &Core, inst: &Instance) -> InstanceDto {
     let installed = std::fs::read_to_string(dir.join(INSTALLED_MARKER))
         .is_ok_and(|k| k.trim() == version_key(inst));
     let blocked = cubby_packinstall::install::count_missing(&dir, &core.store.game_dir(inst));
-    InstanceDto::new(inst, &dir, installed, blocked)
+    let mut dto = InstanceDto::new(inst, &dir, installed, blocked);
+    dto.recommended_memory_mb = recommended_memory(core, inst);
+    dto
+}
+
+/// The computer's memory in MB (0 when it can't be read).
+pub(crate) fn total_memory_mb() -> u64 {
+    let mut sys = sysinfo::System::new();
+    sys.refresh_memory();
+    sys.total_memory() / (1024 * 1024)
+}
+
+/// What "Set memory automatically" gives this instance, from its mods and the computer's memory.
+pub(crate) fn recommended_memory(core: &Core, inst: &Instance) -> u32 {
+    let mods = cubby_instance::count_enabled_mods(&core.store.game_dir(inst));
+    cubby_instance::recommended_memory_mb(core.total_memory_mb, mods)
+}
+
+/// Minimum and maximum heap for a launch: the instance's own values, else the automatic amount when the
+/// global settings ask for it, else the global values.
+pub(crate) fn memory_for(core: &Core, inst: &Instance, settings: &Settings) -> (u32, u32) {
+    let max = inst.java.max_memory_mb.unwrap_or_else(|| {
+        if settings.java.auto_memory {
+            recommended_memory(core, inst)
+        } else {
+            settings.java.max_memory_mb
+        }
+    });
+    let min = inst
+        .java
+        .min_memory_mb
+        .unwrap_or(settings.java.min_memory_mb)
+        .min(max);
+    (min, max)
 }
 
 #[tauri::command]
@@ -165,4 +198,39 @@ pub async fn list_loader_versions(
     cubby_meta::loader_versions(&core.http, loader_kind(&kind)?, &game)
         .await
         .msg()
+}
+
+/// Cubby's own icon, for a desktop shortcut: the app executable on Windows (it holds the icon), the bundle's
+/// `.icns` on macOS, an installed PNG on Linux. `None` in development builds without a bundle.
+fn app_icon() -> Option<PathBuf> {
+    let exe = std::env::current_exe().ok()?;
+    if cfg!(target_os = "windows") {
+        return Some(exe);
+    }
+    if cfg!(target_os = "macos") {
+        let resources = exe.parent()?.parent()?.join("Resources");
+        return std::fs::read_dir(resources)
+            .ok()?
+            .flatten()
+            .map(|e| e.path())
+            .find(|p| p.extension().is_some_and(|e| e == "icns"));
+    }
+    ["/usr/share/icons/hicolor/128x128/apps/cubby.png", "/usr/share/pixmaps/cubby.png"]
+        .iter()
+        .map(PathBuf::from)
+        .find(|p| p.is_file())
+}
+
+/// Puts a shortcut on the Desktop that starts this instance. Returns its path.
+#[tauri::command]
+pub fn create_desktop_shortcut(
+    app: AppHandle,
+    core: State<'_, Core>,
+    id: String,
+) -> CmdResult<String> {
+    let inst = core.store.get(&id).msg()?;
+    let desktop = app.path().desktop_dir().map_err(|e| e.to_string())?;
+    let path = cubby_instance::shortcut::create_shortcut(&desktop, &inst.id, &inst.name, app_icon().as_deref())
+        .msg()?;
+    Ok(path.to_string_lossy().into_owned())
 }

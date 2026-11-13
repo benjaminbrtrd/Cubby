@@ -2,7 +2,7 @@
   import { t } from '../../i18n.svelte'
   import { tick } from 'svelte'
   import { api } from '../../api'
-  import { Banner, Button, Icon, IconButton, InstanceIcon, StatusTag } from '../../cubby'
+  import { Banner, Button, Icon, IconButton, Inspector, InspectorHead, InspectorPath, InspectorSection, InspectorStatus, InstanceIcon, MetaChip } from '../../cubby'
   import { bytes, num, relativeTime } from '../../format'
   import { projectArt } from '../../icon'
   import { app } from '../../state.svelte'
@@ -67,6 +67,18 @@
     void persist([...on.filter((x) => x.fileName !== p.fileName), { ...p, enabled: false }, ...off])
   }
 
+  async function removePack(p: Pack) {
+    try {
+      await api.removePack(id, 'resource', p.fileName)
+      app.forgetFile(id, p.fileName)
+      if (selected === p.fileName) selected = null
+      app.toast(t('{name} moved to the instance’s trash folder.', { name: p.name }), 'success')
+    } catch (e) {
+      app.error(e)
+    }
+    await data.loadPacks()
+  }
+
   const describe = (p: Pack) => `${p.isDir ? t('Folder') : t('Zip file')} · ${bytes(p.size)}`
 </script>
 
@@ -77,12 +89,12 @@
   {/if}
 {/snippet}
 
-{#snippet art(p: Pack, raised = false)}
+{#snippet art(p: Pack, raised = false, size = 32)}
   {@const src = data.source(p.fileName)}
   {#if src?.iconUrl}
-    <InstanceIcon src={src.iconUrl} size={32} {raised} />
+    <InstanceIcon src={src.iconUrl} {size} {raised} />
   {:else}
-    <InstanceIcon {...projectArt(src?.slug ?? p.name)} size={32} {raised} />
+    <InstanceIcon {...projectArt(src?.slug ?? p.name)} {size} {raised} />
   {/if}
 {/snippet}
 
@@ -177,46 +189,52 @@
 </div>
 
 <aside class="ip-aside" aria-label={t('Pack details')}>
-  <div class="ip-aside__inner">
+  <Inspector class="ip-aside__inner" danger={sel ? { label: t('Remove'), hint: t('Moves the pack to the instance’s trash.'), disabled: locked, onclick: () => sel && void removePack(sel) } : null}>
     {#if sel}
-      <div class="who">
-        {@render art(sel, true)}
-        <div class="who__text">
-          <h2 class="text-heading">{sel.name}</h2>
-          <p class="text-small muted">{sel.enabled ? t('On · number {n} in load order', { n: num(rank) }) : t('Off')}</p>
-        </div>
-      </div>
-      <div>
-        {#if sel.enabled}<StatusTag state="ready">{t('On')}</StatusTag>{:else}<StatusTag state="disabled">{t('Off')}</StatusTag>{/if}
-      </div>
-      <dl class="facts">
-        <dt class="text-small muted">{t('Size')}</dt>
-        <dd class="text-body">{bytes(sel.size)}</dd>
-        <dt class="text-small muted">{t('Kind')}</dt>
-        <dd class="text-body">{sel.isDir ? t('Folder') : t('Zip file')}</dd>
-        {#if sel.modified}
-          <dt class="text-small muted">{t('Changed')}</dt>
-          <dd class="text-body">{relativeTime(sel.modified)}</dd>
+      {@const up = data.update(sel.fileName)}
+      {@const i = on.findIndex((p) => p.fileName === sel.fileName)}
+      {#snippet packMedia()}<span class="cb-ins-media" style:opacity={sel.enabled ? undefined : 0.5}>{@render art(sel, false, 52)}</span>{/snippet}
+      {#snippet packMeta()}
+        {#if selSource?.versionNumber}<MetaChip>{selSource.versionNumber}</MetaChip>{/if}
+        {#if sel.enabled}<InspectorStatus tone="ok">{t('On · {n} of {n2}', { n: num(rank), n2: num(on.length) })}</InspectorStatus>{:else}<InspectorStatus tone="off">{t('Off')}</InspectorStatus>{/if}
+        {#if up}<InspectorStatus tone="update">{t('Update available')}</InspectorStatus>{/if}
+      {/snippet}
+      <InspectorHead eyebrow={t('Resource pack')} title={selSource?.title ?? sel.name} sub={selSource ? null : describe(sel)} media={packMedia} meta={packMeta} />
+      <div class="cb-ins-acts">
+        {#if up}
+          <Button variant="primary" class="wide" icon="update" busy={updating} disabled={updating || locked} onclick={() => data.applyUpdates([up.fileName])}>{t('Update to {latestVersion}', { latestVersion: up.latestVersion })}</Button>
         {/if}
-        <dt class="text-small muted">{t('Source')}</dt>
-        <dd class="text-body">{selSource ? 'Modrinth' : t('Not found on Modrinth')}</dd>
-        <dt class="text-small muted full">{t('File')}</dt>
-        <dd class="text-mono full wrap">{sel.fileName}</dd>
-      </dl>
-      <div class="actions">
-        {#if selSource}<Button size="sm" icon="globe" onclick={() => selSource && data.project(selSource.slug, 'resourcepack')}>{t('Open page')}</Button>{/if}
         {#if sel.enabled}
-          <Button size="sm" icon="minimize" disabled={locked} onclick={() => sel && turnOff(sel)}>{t('Turn off')}</Button>
+          <Button icon="minimize" disabled={locked} onclick={() => sel && turnOff(sel)}>{t('Turn off')}</Button>
         {:else}
-          <Button size="sm" icon="plus" disabled={locked} onclick={() => sel && turnOn(sel)}>{t('Turn on')}</Button>
+          <Button variant={up ? 'secondary' : 'primary'} class={up ? undefined : 'wide'} icon="check" disabled={locked} onclick={() => sel && turnOn(sel)}>{t('Turn on')}</Button>
+        {/if}
+        {#if selSource}<Button icon="globe" onclick={() => selSource && data.project(selSource.slug, 'resourcepack')}>{t('Open page')}</Button>{/if}
+        {#if sel.enabled && on.length > 1}
+          <Button icon="update" disabled={i === 0 || locked} onclick={() => move(i, i - 1)}>{t('Move up')}</Button>
+          <Button icon="download" disabled={i === on.length - 1 || locked} onclick={() => move(i, i + 1)}>{t('Move down')}</Button>
         {/if}
       </div>
-      <p class="text-small muted">{t('Changes apply the next time you start the game.')}</p>
+      <p class="cb-ins-hint">{locked ? t('Close the game to change resource packs.') : sel.enabled && on.length > 1 ? t('The pack on top wins. Changes apply the next time you start the game.') : t('Changes apply the next time you start the game.')}</p>
+      <InspectorSection title={t('Details')}>
+        <dl class="cb-ins-facts">
+          <dt>{t('Kind')}</dt><dd><span>{sel.isDir ? t('Folder') : t('Zip file')}</span></dd>
+          <dt>{t('Source')}</dt><dd><span>{selSource ? 'Modrinth' : t('Not found on Modrinth')}</span></dd>
+          {#if sel.modified}<dt>{t('Changed')}</dt><dd><span>{relativeTime(sel.modified)}</span></dd>{/if}
+          <dt>{t('Size')}</dt><dd><span>{bytes(sel.size)}</span></dd>
+          <InspectorPath path={sel.fileName} openLabel={t('Open folder')} onopen={() => data.openFolder('resourcepacks')} />
+        </dl>
+      </InspectorSection>
     {:else}
-      <p class="text-label muted">{t('Pack details')}</p>
-      <p class="text-body muted">{t('Add a resource pack to see it here.')}</p>
+      {#snippet emptyMedia()}<span class="cb-ins-media cb-ins-media--empty"><Icon name="captures" size={27} /></span>{/snippet}
+      <InspectorHead eyebrow={t('Resource pack')} title={t('No resource packs')} sub={t('This instance uses the game’s textures')} media={emptyMedia} empty />
+      <p class="cb-ins-hint">{t('Resource packs change textures, sounds and fonts, without mods.')}</p>
+      <div class="cb-ins-acts">
+        <Button variant="primary" icon="search" onclick={() => data.discover('resourcepack')}>{t('Find resource packs')}</Button>
+        <Button icon="folder" class="wide" onclick={() => data.openFolder('resourcepacks')}>{t('Open folder')}</Button>
+      </div>
     {/if}
-  </div>
+  </Inspector>
 </aside>
 
 <style>
@@ -237,9 +255,6 @@
   .icon {
     display: inline-flex;
     flex: none;
-  }
-  .wrap {
-    overflow-wrap: anywhere;
   }
   .note {
     display: flex;
@@ -375,30 +390,5 @@
     align-items: center;
     gap: var(--space-2);
     margin-top: var(--space-1);
-  }
-  .who {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-  }
-  .who__text {
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-  .who__text h2 {
-    overflow-wrap: anywhere;
-  }
-  .facts {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    gap: var(--space-2) var(--space-4);
-    padding: var(--space-4);
-    background: var(--surface);
-    border: var(--border-block) solid var(--edge);
-  }
-  .facts .full {
-    grid-column: 1 / -1;
   }
 </style>

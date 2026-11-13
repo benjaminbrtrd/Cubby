@@ -5,9 +5,11 @@
 mod api;
 mod browse;
 mod client;
+mod export;
 mod manifest;
 mod plan;
 
 pub use browse::{CfLinks, CfProject, CfScreenshot, ResourceCategory, ResourceKind, ResourceQuery};
 pub use client::{api_key_from_env, api_key_with_source, ApiKeySource, CurseForgeClient, API_BASE, GAME_ID, MODPACK_CLASS_ID, MOD_CLASS_ID, RESOURCE_PACK_CLASS_ID, SHADER_CLASS_ID};
+pub use export::{export_curseforge, fingerprint, CfExportSpec};
 pub use manifest::{parse_manifest, read_manifest, CfManifest, CfManifestFile, CfMinecraft, CfModLoader};

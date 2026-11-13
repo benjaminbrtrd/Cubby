@@ -3,7 +3,7 @@
   import { date, timeOfDay } from '../../format'
   import { t } from '../../i18n.svelte'
   import { app } from '../../state.svelte'
-  import type { ContentSource, ContentUpdate, Instance, ModFile, Pack, ProjectKind, Screenshot, Server, World, WorldBackup } from '../../types'
+  import type { ContentSource, ContentUpdate, Instance, ModFile, Pack, ProjectKind, Screenshot, Server, World, UpdateBackup, WorldBackup } from '../../types'
 
   // Helpers shared by the tabs of this folder (plain hoisted functions, safe to import from the tabs).
 
@@ -51,6 +51,8 @@
     screenshots = $state<Screenshot[] | null>(null)
     servers = $state<Server[] | null>(null)
     backups = $state<WorldBackup[] | null>(null)
+    /** Content updates that can be undone, newest first. */
+    updateBackups = $state<UpdateBackup[] | null>(null)
     checkingUpdates = $state(false)
     duplicating = $state(false)
 
@@ -186,6 +188,16 @@
       } catch (e) {
         app.error(e)
       }
+      void this.loadUpdateBackups()
+    }
+
+    async loadUpdateBackups() {
+      try {
+        this.updateBackups = await api.listUpdateBackups(this.id)
+      } catch (e) {
+        this.updateBackups ??= []
+        app.error(e)
+      }
     }
 
     openFolder(sub?: string) {
@@ -236,6 +248,7 @@
 </script>
 
 <script lang="ts">
+  import ExportDialog from './ExportDialog.svelte'
   import { tick, untrack } from 'svelte'
   import { Banner, Button, Icon, IconButton, InstanceIcon, MetaChip, PlayButton, Tabs, type IconName, type TabItem } from '../../cubby'
   import { floating } from '../../cubby/floating'
@@ -363,6 +376,17 @@
     }),
   )
 
+  let exporting = $state(false)
+
+  async function addShortcut() {
+    try {
+      await api.createDesktopShortcut(id)
+      app.toast(t('A shortcut to {name} is on your desktop. Double-click it to play.', { name: instance?.name ?? '' }), 'success')
+    } catch (e) {
+      app.error(e)
+    }
+  }
+
   // More actions menu
   let menuOpen = $state(false)
   let moreEl: HTMLDivElement | undefined = $state()
@@ -374,6 +398,8 @@
     { id: 'offline', label: t('Play offline'), icon: 'offline', disabled: busy, run: () => void app.launch(id, true) },
     { id: 'log', label: t('Game log'), icon: 'terminal', run: () => app.navigate({ name: 'running', id }) },
     { id: 'folder', label: t('Open folder'), icon: 'folder', run: () => data.openFolder() },
+    { id: 'shortcut', label: t('Add to desktop'), icon: 'play', run: () => void addShortcut() },
+    { id: 'export', label: t('Export as a modpack file'), icon: 'download', run: () => (exporting = true) },
     { id: 'duplicate', label: t('Duplicate'), icon: 'copy', disabled: data.duplicating, run: () => instance && void data.duplicate(instance) },
     { id: 'repair', label: t('Repair'), icon: 'wrench', disabled: busy, run: () => void data.repair() },
     { id: 'delete', label: t('Delete'), icon: 'trash', danger: true, disabled: !!startedAt, run: () => (app.deletingId = id) },
@@ -523,6 +549,10 @@
   </div>
 {/if}
 
+{#if exporting && instance}
+  <ExportDialog {instance} onClose={() => (exporting = false)} />
+{/if}
+
 {#if blockedOpen && instance}
   <BlockedFilesDialog {instance} onClose={() => (blockedOpen = false)} />
 {/if}
@@ -580,14 +610,10 @@
     background: var(--bg-chrome);
     border-inline-start: var(--border-chrome) solid var(--edge);
   }
+  /* The panel's content is an Inspector (src/styles/inspector.css): this only makes it scroll on its own. */
   .layout > :global(.ip-aside) > :global(.ip-aside__inner) {
-    box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
     height: 100%;
     overflow-y: auto;
-    padding: var(--space-6) var(--space-5);
   }
   @media (max-width: 1099px) {
     .page {

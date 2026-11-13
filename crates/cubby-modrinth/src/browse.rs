@@ -197,7 +197,18 @@ impl Modrinth {
     pub async fn search(&self, query: &SearchQuery) -> Result<SearchResults> {
         let response = self.search_raw(&search_params(query)).await?;
         Ok(SearchResults {
-            hits: response.hits.into_iter().map(hit_from_search).collect(),
+            // Modrinth calls most datapacks "mod" projects (many are mods too): keep the kind that was searched.
+            hits: response
+                .hits
+                .into_iter()
+                .map(hit_from_search)
+                .map(|mut h| {
+                    if query.kind == ProjectKind::Datapack {
+                        h.kind = ProjectKind::Datapack;
+                    }
+                    h
+                })
+                .collect(),
             total: response.total_hits,
             offset: response.offset,
             limit: response.limit,
@@ -377,7 +388,7 @@ mod tests {
         assert_eq!(hits[0].loaders, ["fabric", "quilt"]);
         assert_eq!(hits[0].featured_image.as_deref(), Some("https://cdn/g.png"));
         assert_eq!((hits[0].client_side, hits[0].server_side), (Side::Required, Side::Unsupported));
-        assert_eq!((hits[1].slug.as_str(), hits[1].kind, hits[1].client_side), ("x", ProjectKind::Mod, Side::Unknown));
+        assert_eq!((hits[1].slug.as_str(), hits[1].kind, hits[1].client_side), ("x", ProjectKind::Datapack, Side::Unknown));
 
         let project: api::Project = serde_json::from_str(
             r##"{"id":"P1","slug":"pack","project_type":"modpack","title":"Pack","description":"d","body":"# Hi",

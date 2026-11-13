@@ -3,7 +3,7 @@
 <script lang="ts">
   import { t } from '../../i18n.svelte'
   import { api } from '../../api'
-  import { Banner, Button, Dialog, Icon, IconButton, SegmentedControl, StatusTag, TextField } from '../../cubby'
+  import { Banner, Button, Dialog, Icon, IconButton, InspectorSection, InspectorStatus, SegmentedControl, StatusTag, TextField } from '../../cubby'
   import { app } from '../../state.svelte'
   import { getSkin, normalizeSkin, studio, type Model } from '../../skins.svelte'
   import CapeThumb from './CapeThumb.svelte'
@@ -187,24 +187,35 @@
     </div>
 
     <aside class="aside" aria-label={t('Preview')}>
-      <div class="stage">
-        <Player3D skin={studio.previewUrl} model={studio.draft.model} cape={draftCape?.url ?? null} {walking} width={296} height={380} label={t('{name} wearing {skin}', { name: account?.username ?? '', skin: skin.name })} />
+      <div class="cb-ins-head">
+        <p class="cb-ins-eyebrow">{t('Preview')}</p>
+        <div class="stage">
+          <Player3D skin={studio.previewUrl} model={studio.draft.model} cape={draftCape?.url ?? null} {walking} width={296} height={380} label={t('{name} wearing {skin}', { name: account?.username ?? '', skin: skin.name })} />
+        </div>
+        <div class="cb-ins-meta">
+          {#if studio.changed}<InspectorStatus tone="update">{t('Not applied yet')}</InspectorStatus>{:else}<InspectorStatus tone="ok">{t('What you wear now')}</InspectorStatus>{/if}
+        </div>
       </div>
-      <SegmentedControl label={t('Pose')} options={poses} value={walking ? 'walking' : 'still'} onChange={(v) => (walking = v === 'walking')} />
       <div class="field">
-        <span class="text-label muted">{t('Arms')}</span>
+        <span class="text-body-strong">{t('Pose')}</span>
+        <SegmentedControl label={t('Pose')} options={poses} value={walking ? 'walking' : 'still'} onChange={(v) => (walking = v === 'walking')} />
+      </div>
+      <div class="field">
+        <span class="text-body-strong">{t('Arms')}</span>
         <SegmentedControl label={t('Arms')} options={models} value={studio.draft.model} onChange={(v) => (studio.draft = { ...studio.draft, model: v as Model })} />
       </div>
-      <dl class="facts">
-        <dt class="text-small muted">{t('Skin')}</dt>
-        <dd class="text-body">{studio.draft.skinId === 'current' ? t('Current skin') : skin.name}</dd>
-        <dt class="text-small muted">{t('Cape')}</dt>
-        <dd class="text-body">{draftCape?.name ?? t('No cape')}</dd>
-      </dl>
-      <div class="actions">
-        <Button variant="primary" size="lg" icon="check" busy={studio.applying} disabled={!studio.changed || studio.applying} onclick={apply} class="wide">{t('Apply')}</Button>
-        <Button variant="ghost" disabled={!studio.changed || studio.applying} onclick={() => studio.revert()} class="wide">{t('Revert')}</Button>
+      <InspectorSection title={t('Details')}>
+        <dl class="cb-ins-facts">
+          <dt>{t('Skin')}</dt><dd><span>{studio.draft.skinId === 'current' ? t('Current skin') : skin.name}</span></dd>
+          <dt>{t('Cape')}</dt><dd><span>{draftCape?.name ?? t('No cape')}</span></dd>
+          {#if account}<dt>{t('Account')}</dt><dd><span>{account.username}</span></dd>{/if}
+        </dl>
+      </InspectorSection>
+      <div class="cb-ins-acts">
+        <Button variant="primary" icon="check" busy={studio.applying} disabled={!studio.changed || studio.applying} onclick={apply}>{t('Apply')}</Button>
+        <Button disabled={!studio.changed || studio.applying} onclick={() => studio.revert()}>{t('Revert')}</Button>
       </div>
+      <p class="cb-ins-hint">{t('Changes show in game and on servers within a minute.')}</p>
     </aside>
   </div>
 </div>
@@ -351,7 +362,7 @@
     overflow: auto;
     display: flex;
     flex-direction: column;
-    gap: var(--space-4);
+    gap: var(--space-6);
     padding: var(--space-6) var(--space-5);
     background: var(--bg-chrome);
     border-inline-start: var(--border-chrome) solid var(--edge);
@@ -368,22 +379,5 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
-  }
-  .facts {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    gap: var(--space-2) var(--space-4);
-    padding: var(--space-3) var(--space-4);
-    background: var(--surface);
-    border: var(--border-block) solid var(--edge);
-  }
-  .actions {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-    margin-top: auto;
-  }
-  .actions :global(.wide) {
-    width: 100%;
   }
 </style>

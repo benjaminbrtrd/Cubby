@@ -31,11 +31,19 @@ export { default as InstanceRow } from './InstanceRow.svelte';
 /* Content */
 export { default as ModRow } from './ModRow.svelte';
 export { default as ServerRow } from './ServerRow.svelte';
+export { default as Motd } from './Motd.svelte';
 export { default as LogViewer } from './LogViewer.svelte';
 /* Feedback */
 export { default as Banner } from './Banner.svelte';
 export { default as Dialog } from './Dialog.svelte';
 export { default as Tooltips } from './Tooltips.svelte';
+/* Side panels */
+export { default as Inspector } from './Inspector.svelte';
+export { default as InspectorHead } from './InspectorHead.svelte';
+export { default as InspectorSection } from './InspectorSection.svelte';
+export { default as InspectorStatus } from './InspectorStatus.svelte';
+export { default as InspectorNotice } from './InspectorNotice.svelte';
+export { default as InspectorPath } from './InspectorPath.svelte';
 
 /* Data and helpers */
 export {

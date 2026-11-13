@@ -106,6 +106,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           # Optional: without them, CurseForge search is off and only the demo can be played.
           CUBBY_CURSEFORGE_API_KEY: ${{ secrets.CUBBY_CURSEFORGE_API_KEY }}
+          CUBBY_DISCORD_CLIENT_ID: ${{ vars.CUBBY_DISCORD_CLIENT_ID }}
           CUBBY_MSA_CLIENT_ID: ${{ vars.CUBBY_MSA_CLIENT_ID }}
         with:
           tauriScript: npm run tauri

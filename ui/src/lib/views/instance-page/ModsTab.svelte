@@ -7,14 +7,15 @@
 
 <script lang="ts">
   import { t } from '../../i18n.svelte'
-  import { tick } from 'svelte'
+  import { tick, untrack } from 'svelte'
   import { api } from '../../api'
-  import { Banner, Button, Dialog, Icon, InstanceIcon, MetaChip, ModRow, ProgressBar, SegmentedControl, StatusTag, TextField } from '../../cubby'
+  import { Banner, Button, Dialog, Icon, Inspector, InspectorHead, InspectorNotice, InspectorPath, InspectorSection, InspectorStatus, InstanceIcon, MetaChip, ModRow, ProgressBar, SegmentedControl, TextField } from '../../cubby'
   import { bytes, fold, num, plural, relativeTime } from '../../format'
   import { projectArt } from '../../icon'
   import { app } from '../../state.svelte'
   import type { ContentSource, ContentUpdate, Instance, ModFile } from '../../types'
-  import { baseFile, modName, type InstanceData } from './InstancePage.svelte'
+  import { baseFile, modName, when, type InstanceData } from './InstancePage.svelte'
+  import Markdown from '../discover/Markdown.svelte'
 
   let { instance, data }: { instance: Instance; data: InstanceData } = $props()
 
@@ -124,8 +125,37 @@
     }
   }
 
+  // Updating: the review lists each new version with its changelog before anything changes.
+  let reviewing = $state(false)
+  const pending = $derived(rows.filter((r) => r.update))
+
   function updateAll() {
-    void data.applyUpdates(rows.filter((r) => r.update).map((r) => r.update!.fileName))
+    reviewing = false
+    void data.applyUpdates(pending.map((r) => r.update!.fileName))
+  }
+
+  // Undoing the last update
+  untrack(() => {
+    if (!data.updateBackups) void data.loadUpdateBackups()
+  })
+  const lastUpdate = $derived(data.updateBackups?.[0] ?? null)
+  let undoing = $state(false)
+  let undoBusy = $state(false)
+
+  async function undo() {
+    const b = lastUpdate
+    if (!b) return
+    undoBusy = true
+    try {
+      const n = await api.undoUpdate(id, b.name)
+      undoing = false
+      app.toast(t('Put back {n} from before the update.', { n: plural(n, 'file', 'files') }), 'success')
+      await Promise.all([data.loadMods(), data.loadPacks(), data.loadUpdateBackups(), data.checkUpdates(true)])
+    } catch (e) {
+      app.error(e)
+    } finally {
+      undoBusy = false
+    }
   }
 
   function clear() {
@@ -165,13 +195,25 @@
   })
 
   /** A Markdown changelog as short plain lines. */
+  /** Changelog lines as plain text: Markdown links keep their text ("([#3916](https://…))" → "(#3916)"), bare URLs go. */
   function notes(md: string): string[] {
     return md
       .split('\n')
-      .map((l) => l.replace(/^\s*(#+|[-*+]|\d+\.)\s*/, '').replace(/[*_`]/g, '').trim())
+      .map((l) =>
+        l
+          .replace(/^\s*(#+|[-*+]|\d+\.)\s*/, '')
+          .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
+          .replace(/\(?\s*https?:\/\/\S+?\s*\)?(?=\s|$)/g, '')
+          .replace(/[*_`]/g, '')
+          .replace(/\(\s*\)/g, '')
+          .trim(),
+      )
       .filter(Boolean)
-      .slice(0, 8)
   }
+
+  const NOTES_SHOWN = 4
+  /** The selected mod whose whole changelog is shown. */
+  let notesOpen = $state<string | null>(null)
 
   const authors = (m: ModFile) => (m.authors.length ? `by ${m.authors.join(', ')}` : undefined)
 </script>
@@ -187,8 +229,11 @@
   <div class="toolbar">
     <SegmentedControl label={t('Show')} options={filters} value={filter} onChange={(v) => ((filter = v as Filter), (limit = 60))} />
     <span class="grow"></span>
+    {#if lastUpdate && !updateTask}
+      <Button variant="ghost" icon="clock" disabled={running} onclick={() => (undoing = true)}>{t('Undo last update')}</Button>
+    {/if}
     {#if counts.updates}
-      <Button icon="update" busy={!!updateTask} disabled={!!updateTask || running} onclick={updateAll}>{t('Update all ({n})', { n: num(counts.updates) })}</Button>
+      <Button icon="update" busy={!!updateTask} disabled={!!updateTask || running} onclick={() => (reviewing = true)}>{t('Update all ({n})', { n: num(counts.updates) })}</Button>
     {:else if data.checkingUpdates}
       <Button icon="update" busy disabled>{t('Checking for updates')}</Button>
     {:else if !data.updates}
@@ -267,81 +312,85 @@
 </div>
 
 <aside class="ip-aside" aria-label={t('Mod details')}>
-  <div class="ip-aside__inner">
-    <p class="text-label muted">{t('Selected mod')}</p>
+  <Inspector class="ip-aside__inner" danger={sel ? { label: t('Remove'), hint: t('Moves the file to the instance’s trash.'), onclick: () => sel && (removing = sel.mod) } : null}>
     {#if sel}
       {@const m = sel.mod}
-      <div class="who">
-        {#if sel.source?.iconUrl}
-          <InstanceIcon src={sel.source.iconUrl} size={64} raised />
-        {:else}
-          <InstanceIcon {...projectArt(sel.source?.slug ?? sel.name)} size={64} raised />
-        {/if}
-        <div class="who__text">
-          <h2 class="text-heading" tabindex="-1" bind:this={asideTitle}>{sel.name}</h2>
-          {#if m.authors.length}<p class="muted text-small">{authors(m)}</p>{/if}
-        </div>
-      </div>
-      <div class="chips">
-        {#if m.version}<MetaChip>{m.version}</MetaChip>{/if}
-        {#if !m.enabled}
-          <StatusTag state="disabled">{t('Off')}</StatusTag>
-        {:else if sel.update}
-          <StatusTag state="update">{t('On · update ready')}</StatusTag>
-        {:else if data.updates && sel.source}
-          <StatusTag state="ready">{t('On · up to date')}</StatusTag>
-        {:else}
-          <StatusTag state="ready">{t('On')}</StatusTag>
-        {/if}
-      </div>
-      <section class="part">
-        <h3 class="text-label muted">{t('What it does')}</h3>
-        <p class="text-body">{m.description || project?.summary || t('This file doesn’t describe itself.')}</p>
-      </section>
-      <dl class="facts">
-        {#if kind}
-          <dt class="text-small muted">{t('Type')}</dt>
-          <dd class="text-body">{kind}</dd>
-        {/if}
-        <dt class="text-small muted">{t('Source')}</dt>
-        <dd class="text-body">{sel.source ? 'Modrinth' : t('Not found on Modrinth')}</dd>
-        {#if project}
-          <dt class="text-small muted">{t('Updated')}</dt>
-          <dd class="text-body">{relativeTime(project.updated)}</dd>
-        {/if}
-        <dt class="text-small muted">{t('Size')}</dt>
-        <dd class="text-body">{bytes(m.size)}</dd>
-        <dt class="text-small muted full">{t('File')}</dt>
-        <dd class="text-mono full wrap">{m.fileName}</dd>
-      </dl>
-      {#if sel.twins}
-        <p class="warn text-small flag"><Icon name="warning" size={18} label={t('Warning')} /><span>{t('Also loaded from')} <span class="text-mono">{sel.twins.map((t) => t.fileName).join(', ')}</span>{t('. Keep one.')}</span></p>
-      {/if}
-      {#if sel.update}
-        <section class="part">
-          <h3 class="text-label muted">{t('New in {latestVersion}', { latestVersion: sel.update.latestVersion })}</h3>
-          {#if notes(sel.update.changelog).length}
-            <ul class="changes text-small">
-              {#each notes(sel.update.changelog) as line, i (i)}<li>{line}</li>{/each}
-            </ul>
+      {#snippet modMedia()}
+        <span class="cb-ins-media" style:opacity={m.enabled ? undefined : 0.5}>
+          {#if sel.source?.iconUrl}
+            <InstanceIcon src={sel.source.iconUrl} size={52} />
           {:else}
-            <p class="muted text-small">{t('No changelog for this version.')}</p>
+            <InstanceIcon {...projectArt(sel.source?.slug ?? sel.name)} size={52} />
           {/if}
-        </section>
-      {/if}
-      <div class="actions">
-        {#if sel.source}<Button size="sm" icon="globe" onclick={() => sel.source && data.project(sel.source.slug, 'mod')}>{t('Open page')}</Button>{/if}
+        </span>
+      {/snippet}
+      {#snippet modMeta()}
+        {#if m.version}<MetaChip>{m.version}</MetaChip>{/if}
+        {#if m.enabled}<InspectorStatus tone="ok">{t('On')}</InspectorStatus>{:else}<InspectorStatus tone="off">{t('Off')}</InspectorStatus>{/if}
         {#if sel.update}
-          <Button size="sm" icon="update" busy={!!updateTask} disabled={!!updateTask || running} onclick={() => sel.update && data.applyUpdates([sel.update.fileName])}>{t('Update')}</Button>
+          <InspectorStatus tone="update">{t('Update available')}</InspectorStatus>
+        {:else if data.updates && sel.source}
+          <InspectorStatus tone="off">{t('Up to date')}</InspectorStatus>
         {/if}
-        <Button size="sm" icon={m.enabled ? 'minimize' : 'check'} onclick={() => toggle(sel, !m.enabled)}>{m.enabled ? t('Turn off') : t('Turn on')}</Button>
-        <Button size="sm" variant="danger" icon="trash" onclick={() => (removing = m)}>{t('Remove')}</Button>
+      {/snippet}
+      <InspectorHead eyebrow={t('Mod')} title={sel.name} sub={authors(m)} media={modMedia} meta={modMeta} bind:titleEl={asideTitle} />
+      {#if sel.twins}
+        <InspectorNotice>
+          <strong>{t('Installed twice.')}</strong> {t('Also loaded from')} <span class="text-mono">{sel.twins.map((x) => x.fileName).join(', ')}</span>{t('. Keep one.')}
+        </InspectorNotice>
+      {/if}
+      <div class="cb-ins-acts">
+        {#if sel.update}
+          <Button variant="primary" class="wide" icon="update" busy={!!updateTask} disabled={!!updateTask || running} onclick={() => sel.update && data.applyUpdates([sel.update.fileName])}>{t('Update to {latestVersion}', { latestVersion: sel.update.latestVersion })}</Button>
+        {:else if !m.enabled}
+          <Button variant="primary" class="wide" icon="check" onclick={() => toggle(sel, true)}>{t('Turn on')}</Button>
+        {/if}
+        {#if m.enabled}<Button icon="minimize" onclick={() => toggle(sel, false)}>{t('Turn off')}</Button>{/if}
+        {#if sel.source}<Button icon="globe" onclick={() => sel.source && data.project(sel.source.slug, 'mod')}>{t('Open page')}</Button>{/if}
       </div>
+      {#if sel.update}
+        {@const lines = notes(sel.update.changelog)}
+        {@const all = notesOpen === sel.key}
+        <InspectorSection title={t('What’s new')} count={sel.update.latestVersion}>
+          {#if lines.length}
+            <ul class="cb-ins-list">
+              {#each all ? lines : lines.slice(0, NOTES_SHOWN) as line, i (i)}<li>{line}</li>{/each}
+            </ul>
+            {#if lines.length > NOTES_SHOWN}
+              <div>
+                <Button size="sm" variant="ghost" icon={all ? 'minimize' : 'chevron-down'} onclick={() => (notesOpen = all ? null : sel.key)}>
+                  {all ? t('Show less') : t('Show all {n} changes', { n: num(lines.length) })}
+                </Button>
+              </div>
+            {/if}
+          {:else}
+            <p class="cb-ins-hint">{t('No changelog for this version.')}</p>
+          {/if}
+        </InspectorSection>
+      {/if}
+      <InspectorSection title={t('What it does')}>
+        <p class="cb-ins-text">{m.description || project?.summary || t('This file doesn’t describe itself.')}</p>
+      </InspectorSection>
+      <InspectorSection title={t('Details')}>
+        <dl class="cb-ins-facts">
+          {#if kind}<dt>{t('Type')}</dt><dd><span>{kind}</span></dd>{/if}
+          <dt>{t('Source')}</dt><dd><span>{sel.source ? 'Modrinth' : t('Not found on Modrinth')}</span></dd>
+          {#if project}<dt>{t('Updated')}</dt><dd><span>{relativeTime(project.updated)}</span></dd>{/if}
+          <dt>{t('Size')}</dt><dd><span>{bytes(m.size)}</span></dd>
+          <InspectorPath path={m.fileName} openLabel={t('Open folder')} onopen={() => data.openFolder('mods')} />
+        </dl>
+      </InspectorSection>
     {:else}
-      <p class="muted text-body">{t('Pick a mod to see what it does and its file.')}</p>
+      {#snippet emptyMedia()}<span class="cb-ins-media cb-ins-media--empty"><Icon name="mods" size={27} /></span>{/snippet}
+      <InspectorHead eyebrow={t('Mod')} title={t('No mod selected')} sub={plural(rows.length, 'mod', 'mods')} media={emptyMedia} empty />
+      <p class="cb-ins-hint">{t('Pick a mod in the list to see what it does, its version and its file.')}</p>
+      {#if counts.updates}
+        <div class="cb-ins-acts">
+          <Button icon="update" busy={!!updateTask} disabled={!!updateTask || running} onclick={updateAll}>{t('Update all ({n})', { n: num(counts.updates) })}</Button>
+        </div>
+      {/if}
     {/if}
-
-  </div>
+  </Inspector>
 </aside>
 
 {#if removing}
@@ -356,7 +405,80 @@
   </Dialog>
 {/if}
 
+{#if reviewing}
+  {#snippet reviewActions()}
+    <Button variant="ghost" onclick={() => (reviewing = false)}>{t('Cancel')}</Button>
+    <Button variant="primary" icon="update" disabled={!!updateTask || running || !pending.length} onclick={updateAll}>{t('Update {n}', { n: plural(pending.length, 'file', 'files') })}</Button>
+  {/snippet}
+  <Dialog wide icon="update" title={t('What’s new')} onClose={() => (reviewing = false)} actions={reviewActions}>
+    <p class="text-small muted">{t('Cubby keeps the old files, so you can undo the update if something breaks.')}</p>
+    <div class="review">
+      {#each pending as r (r.key)}
+        {@const u = r.update!}
+        <details class="review__item">
+          <summary>
+            <span class="text-body-strong">{r.name}</span>
+            <span class="text-small muted text-mono">{u.currentVersion} → {u.latestVersion}</span>
+          </summary>
+          {#if u.changelog.trim()}
+            <div class="review__notes text-small"><Markdown source={u.changelog} level={4} /></div>
+          {:else}
+            <p class="text-small muted">{t('No changelog for this version.')}</p>
+          {/if}
+        </details>
+      {/each}
+    </div>
+  </Dialog>
+{/if}
+
+{#if undoing && lastUpdate}
+  {@const b = lastUpdate}
+  {#snippet undoActions()}
+    <Button variant="ghost" onclick={() => (undoing = false)}>{t('Cancel')}</Button>
+    <Button variant="primary" icon="clock" busy={undoBusy} disabled={undoBusy || running} onclick={undo}>{t('Undo update')}</Button>
+  {/snippet}
+  <Dialog tone="warning" icon="clock" title={t('Undo the update from {when}?', { when: when(b.created, true) })} onClose={() => (undoing = false)} actions={undoActions}>
+    <p>{t('These files go back to the version you had before. The newer files move to the instance’s trash folder.')}</p>
+    <ul class="undo text-small">
+      {#each b.files as f (f.folder + f.old)}
+        <li><span class="text-mono">{f.new}</span> → <span class="text-mono">{f.old}</span></li>
+      {/each}
+    </ul>
+  </Dialog>
+{/if}
+
 <style>
+  .review {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    max-height: 55vh;
+    overflow-y: auto;
+    min-width: min(600px, 80vw);
+  }
+  .review__item {
+    padding: var(--space-2) var(--space-3);
+    background: var(--surface);
+    border: var(--border-hair) solid var(--line);
+  }
+  .review__item summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-2);
+    cursor: pointer;
+  }
+  .review__notes {
+    margin-top: var(--space-2);
+    overflow-wrap: anywhere;
+  }
+  .undo {
+    margin: var(--space-2) 0 0;
+    padding-left: var(--space-4);
+    max-height: 40vh;
+    overflow-y: auto;
+    overflow-wrap: anywhere;
+  }
   .toolbar {
     display: flex;
     flex-wrap: wrap;
@@ -371,20 +493,12 @@
     flex: 1;
   }
   p,
-  h2,
-  h3,
   dl,
   dd {
     margin: 0;
   }
   .muted {
     color: var(--ink-muted);
-  }
-  .warn {
-    color: var(--gold-text);
-  }
-  .wrap {
-    overflow-wrap: anywhere;
   }
 
   .list {
@@ -440,57 +554,5 @@
   }
   .empty :global(.cb-btn) {
     margin-top: var(--space-2);
-  }
-
-  .who {
-    display: flex;
-    align-items: center;
-    gap: var(--space-4);
-  }
-  .who__text {
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-  .who__text h2 {
-    overflow-wrap: anywhere;
-    outline: none;
-  }
-  .chips,
-  .actions {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-2);
-  }
-  .part {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-  .facts {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    gap: var(--space-2) var(--space-4);
-    padding: var(--space-4);
-    background: var(--surface);
-    border: var(--border-block) solid var(--edge);
-  }
-  .facts .full {
-    grid-column: 1 / -1;
-  }
-  .flag {
-    display: flex;
-    align-items: flex-start;
-    gap: var(--space-2);
-  }
-  .changes {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-    margin: 0;
-    padding-inline-start: 20px;
-    list-style: square;
   }
 </style>

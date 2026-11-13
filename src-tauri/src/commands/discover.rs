@@ -435,8 +435,35 @@ pub async fn apply_updates(
                 .await
                 .msg()?;
             selection.follow(&game_dir, &applied.renamed);
+            let renamed: Vec<(String, String, String)> = applied
+                .renamed
+                .iter()
+                .map(|r| (r.folder.as_str().to_string(), r.old.clone(), r.new.clone()))
+                .collect();
+            if let Err(e) = cubby_instance::record_update(&backup_dir, &renamed) {
+                log::warn!("couldn't record the update in {}: {e}", backup_dir.display());
+            }
             applied.into_result().msg().map(|_| ())
         },
     )
     .await
+}
+
+/// Updates of the instance that can be undone, newest first.
+#[tauri::command]
+pub fn list_update_backups(
+    core: State<'_, Core>,
+    instance_id: String,
+) -> CmdResult<Vec<cubby_instance::UpdateBackup>> {
+    core.store.list_update_backups(&instance_id).msg()
+}
+
+/// Puts back the files an update replaced; returns how many came back.
+#[tauri::command]
+pub fn undo_update(core: State<'_, Core>, instance_id: String, name: String) -> CmdResult<usize> {
+    ensure_stopped(&core, &instance_id)?;
+    if core.tasks.lock().expect("tasks lock").contains(&format!("update:{instance_id}")) {
+        return Err("Wait for the update to finish.".into());
+    }
+    core.store.undo_update(&instance_id, &name).msg()
 }

@@ -33,6 +33,8 @@ pub enum OnLaunch {
 pub struct JavaSettings {
     /// Pick or download a suitable runtime automatically.
     pub auto: bool,
+    /// Give each instance the memory its mods need (see [`crate::recommended_memory_mb`]) instead of `max_memory_mb`.
+    pub auto_memory: bool,
     pub min_memory_mb: u32,
     pub max_memory_mb: u32,
     pub jvm_args: String,
@@ -40,7 +42,7 @@ pub struct JavaSettings {
 
 impl Default for JavaSettings {
     fn default() -> Self {
-        Self { auto: true, min_memory_mb: 1024, max_memory_mb: 4096, jvm_args: String::new() }
+        Self { auto: true, auto_memory: true, min_memory_mb: 1024, max_memory_mb: 4096, jvm_args: String::new() }
     }
 }
 
@@ -156,6 +158,8 @@ pub struct Settings {
     pub curseforge_api_key: Option<String>,
     /// The first-run onboarding has been completed.
     pub onboarded: bool,
+    /// Show the instance being played on the player's Discord profile.
+    pub discord_presence: bool,
 }
 
 impl Default for Settings {
@@ -180,6 +184,7 @@ impl Default for Settings {
             updates: UpdateSettings::default(),
             curseforge_api_key: None,
             onboarded: false,
+            discord_presence: true,
         }
     }
 }

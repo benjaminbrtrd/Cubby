@@ -62,7 +62,8 @@
     }
   })
 
-  const kind = $derived(project?.kind ?? routeKind)
+  // Modrinth calls most datapacks "mod" projects: a page opened as a datapack stays one.
+  const kind = $derived(routeKind === 'datapack' ? 'datapack' : (project?.kind ?? routeKind))
   const words = $derived(KINDS[kind])
   const target = $derived(kind === 'modpack' ? undefined : app.target)
 
@@ -202,7 +203,7 @@
     width: var(--size-inspector);
     display: flex;
     flex-direction: column;
-    gap: var(--space-5);
+    gap: var(--space-6);
     padding: var(--space-6) var(--space-5);
     background: var(--bg-chrome);
     border-inline-start: var(--border-chrome) solid var(--edge);

@@ -284,7 +284,7 @@
   </div>
 
   <aside class="aside" aria-label={t('Install {name}', { name: summary.name })}>
-    <h2 class="text-heading">{t('Install')}</h2>
+    <p class="cb-ins-eyebrow">{t('Install')}</p>
     <p class="text-small muted">{t('It becomes a new instance, with its own Minecraft version, loader and settings. Your other instances stay as they are.')}</p>
 
     <div class="field">
@@ -320,7 +320,7 @@
     </div>
 
     {#if chosen}
-      <dl class="req">
+      <dl class="cb-ins-facts">
         <dt class="text-small muted">Minecraft</dt>
         <dd class="text-mono">{chosen.minecraft ?? '—'}</dd>
         <dt class="text-small muted">{t('Loader')}</dt>
@@ -330,7 +330,7 @@
 
     {#if provider.id === 'atlauncher' && chosen}
       <section class="optional" aria-labelledby="pk-opt">
-        <h3 id="pk-opt" class="text-label muted">{t('Optional mods')}</h3>
+        <h3 id="pk-opt" class="cb-ins-eyebrow">{t('Optional mods')}</h3>
         {#if optionalError}
           <p class="text-small bad line"><Icon name="error" size={18} />{t('Couldn\'t load the optional mods. {optionalError}', { optionalError })}</p>
           <Button size="sm" icon="update" onclick={() => optTries++}>{t('Try again')}</Button>
@@ -412,7 +412,7 @@
     overflow: auto;
     display: flex;
     flex-direction: column;
-    gap: var(--space-4);
+    gap: var(--space-6);
     padding: var(--space-6) var(--space-5);
     background: var(--bg-chrome);
     border-inline-start: var(--border-chrome) solid var(--edge);
@@ -629,15 +629,6 @@
   .placeholder.tall {
     height: 96px;
   }
-  .req {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: var(--space-2) var(--space-4);
-    padding: var(--space-3) var(--space-4);
-    background: var(--surface);
-    border: var(--border-block) solid var(--edge);
-    box-shadow: var(--shadow-block-sm);
-  }
   .optional {
     padding-top: var(--space-3);
     border-top: var(--border-hair) solid var(--line);
@@ -680,5 +671,4 @@
   .aside :global(.wide) {
     width: 100%;
   }
-
 </style>

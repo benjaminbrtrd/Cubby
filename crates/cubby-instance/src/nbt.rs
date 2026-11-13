@@ -18,8 +18,12 @@ pub(crate) enum Tag {
     String(String),
     List(Vec<Tag>),
     Compound(Vec<(String, Tag)>),
-    /// Byte, int or long array.
+    /// Byte array (its payload is skipped).
     Array,
+    /// Int array: kept, `level.dat` stores the spawn point in one since Minecraft 26.1.
+    IntArray(Vec<i32>),
+    /// Long array: kept, the world map reads block states and heightmaps from them.
+    LongArray(Vec<i64>),
 }
 
 impl Tag {
@@ -33,6 +37,27 @@ impl Tag {
     pub(crate) fn as_str(&self) -> Option<&str> {
         match self {
             Tag::String(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub(crate) fn as_list(&self) -> Option<&[Tag]> {
+        match self {
+            Tag::List(items) => Some(items),
+            _ => None,
+        }
+    }
+
+    pub(crate) fn as_longs(&self) -> Option<&[i64]> {
+        match self {
+            Tag::LongArray(values) => Some(values),
+            _ => None,
+        }
+    }
+
+    pub(crate) fn as_ints(&self) -> Option<&[i32]> {
+        match self {
+            Tag::IntArray(values) => Some(values),
             _ => None,
         }
     }
@@ -77,7 +102,7 @@ pub(crate) fn parse_root(data: &[u8]) -> Option<Tag> {
 ///
 /// Strings are written as plain UTF-8, which equals Java's modified UTF-8 for text without NUL or
 /// supplementary characters; longer strings are truncated to the 65535-byte limit on a char boundary.
-/// Arrays (which the reader does not keep) cannot be written and are emitted as empty arrays.
+/// Byte arrays (which the reader does not keep) cannot be written and are emitted as empty arrays.
 pub(crate) fn write_root(root: &Tag) -> Vec<u8> {
     let mut out = vec![10];
     write_name(&mut out, "");
@@ -94,6 +119,8 @@ fn tag_id(tag: &Tag) -> u8 {
         Tag::Float(_) => 5,
         Tag::Double(_) => 6,
         Tag::Array => 7,
+        Tag::IntArray(_) => 11,
+        Tag::LongArray(_) => 12,
         Tag::String(_) => 8,
         Tag::List(_) => 9,
         Tag::Compound(_) => 10,
@@ -118,6 +145,18 @@ fn write_payload(out: &mut Vec<u8>, tag: &Tag) {
         Tag::Float(v) => out.extend(v.to_be_bytes()),
         Tag::Double(v) => out.extend(v.to_be_bytes()),
         Tag::Array => out.extend(0i32.to_be_bytes()),
+        Tag::IntArray(values) => {
+            out.extend((values.len() as i32).to_be_bytes());
+            for v in values {
+                out.extend(v.to_be_bytes());
+            }
+        }
+        Tag::LongArray(values) => {
+            out.extend((values.len() as i32).to_be_bytes());
+            for v in values {
+                out.extend(v.to_be_bytes());
+            }
+        }
         Tag::String(s) => write_name(out, s),
         Tag::List(items) => {
             out.push(items.first().map(tag_id).unwrap_or(0));
@@ -212,10 +251,15 @@ impl Reader<'_> {
                 }
                 Tag::Compound(items)
             }
-            11 | 12 => {
+            11 => {
                 let n = self.len()?;
-                self.take(n.checked_mul(if ty == 11 { 4 } else { 8 })?)?;
-                Tag::Array
+                let bytes = self.take(n.checked_mul(4)?)?;
+                Tag::IntArray(bytes.as_chunks::<4>().0.iter().map(|c| i32::from_be_bytes(*c)).collect())
+            }
+            12 => {
+                let n = self.len()?;
+                let bytes = self.take(n.checked_mul(8)?)?;
+                Tag::LongArray(bytes.as_chunks::<8>().0.iter().map(|c| i64::from_be_bytes(*c)).collect())
             }
             _ => return None,
         })

@@ -3,6 +3,7 @@
 // that appear as installed. Add `?onboarding` to the URL to see the first-launch assistant.
 
 import { pixelArt, svgUrl } from './pixelart'
+import { handleDatapackProject, handleExtra, NOT_HANDLED } from './mockExtra'
 import { OPTIONAL_MODS, PACKS, PACK_DESCRIPTION, PACK_MARKDOWN, PROVIDERS, SORTERS, morePacks, type MockPackDef } from './mockPacks'
 import type {
   Account,
@@ -118,6 +119,7 @@ const inst = (p: Partial<Instance> & Pick<Instance, 'id' | 'name' | 'icon' | 'mi
   notes: null,
   modpack: null,
   blockedFiles: 0,
+  recommendedMemoryMb: 3072,
   ...p,
 })
 
@@ -168,12 +170,13 @@ let settings: Settings = {
   accent: '#8bd450',
   frameMode: 'none',
   frameColor: '#1e1b18',
-  java: { auto: true, minMemoryMb: 1024, maxMemoryMb: 4096, jvmArgs: '' },
+  java: { auto: true, autoMemory: true, minMemoryMb: 1024, maxMemoryMb: 4096, jvmArgs: '' },
   game: { width: 1280, height: 720, fullscreen: false },
   onLaunch: 'minimize',
   downloadConcurrency: 4,
   msaClientId: null,
   trackPlayTime: true,
+  discordPresence: true,
   showPlayTime: true,
   proxy: { mode: 'system', url: '' },
   updates: { mode: 'ask', channel: 'preview', skipped: null },
@@ -541,10 +544,12 @@ function packSummary(provider: ProviderId, d: MockPackDef): PackSummary {
 const capeState = { active: 'cape-migrator' as string | null }
 
 export async function handle(command: string, args: Record<string, any>): Promise<unknown> {
+  const datapack = handleDatapackProject(command, args)
+  if (datapack !== NOT_HANDLED) return datapack
   await sleep(60)
   switch (command) {
     case 'app_info':
-      return { version: '0.1.0', dataDir: 'C:\\Users\\Nyx\\AppData\\Roaming\\Cubby', msaConfigured: true, msaSource: 'builtIn', curseforgeKey: settings.curseforgeApiKey ? 'settings' : null, totalMemoryMb: 32768, devBuild: true }
+      return { version: '0.1.0', dataDir: 'C:\\Users\\Nyx\\AppData\\Roaming\\Cubby', msaConfigured: true, msaSource: 'builtIn', curseforgeKey: settings.curseforgeApiKey ? 'settings' : null, totalMemoryMb: 32768, devBuild: true, discord: true }
     case 'list_instances':
       return structuredClone(instances)
     case 'create_instance': {
@@ -640,7 +645,7 @@ export async function handle(command: string, args: Record<string, any>): Promis
       const host = String(args.address)
       if (host.startsWith('192.168.1.42') || host.startsWith('localhost'))
         return { online: false, motd: '', playersOnline: 0, playersMax: 0, version: null, pingMs: null, iconUrl: null }
-      if (host.startsWith('crew')) return { online: true, motd: 'Season 4 · back on Saturday', playersOnline: 5, playersMax: 20, version: '1.21.1', pingMs: 24, iconUrl: SERVER_ICONS.crew }
+      if (host.startsWith('crew')) return { online: true, motd: 'Season 4 · back on Saturday', motdFormatted: '§r§6§l        The Crew §r§7· §aSeason 4\n§r§7      back on §bSaturday §r§8[1.21]', playersOnline: 5, playersMax: 20, version: '1.21.1', pingMs: 24, iconUrl: SERVER_ICONS.crew }
       if (host.includes('createfactory')) return { online: true, motd: 'Create Factory · 24/7 · whitelist on Discord', playersOnline: 87, playersMax: 100, version: '1.20.1', pingMs: 212, iconUrl: SERVER_ICONS.factory }
       return { online: true, motd: 'A Minecraft Server', playersOnline: host.length % 9, playersMax: 20, version: '1.21.1', pingMs: 40 + host.length, iconUrl: null }
     }
@@ -740,9 +745,10 @@ export async function handle(command: string, args: Record<string, any>): Promis
         { path: 'C:\\Users\\Nyx\\AppData\\Roaming\\PrismLauncher\\instances\\Vanilla 1.21', name: 'Vanilla 1.21', minecraft: '1.21', loader: { kind: 'vanilla' }, group: null },
         { path: 'C:\\Users\\Nyx\\AppData\\Roaming\\PrismLauncher\\instances\\Fabulously Optimized', name: 'Fabulously Optimized', minecraft: '1.21.1', loader: { kind: 'fabric', version: '0.16.5' }, group: null },
       ]
-    case 'import_prism': {
+    case 'import_prism':
+    case 'import_launcher_instances': {
       const imported = (args.paths as string[]).map((p) => {
-        const name = p.split('\\').pop()!
+        const name = p.split(/[\\/#]/).pop()!
         return inst({ id: slug(name), name, icon: null, minecraft: '1.21.1', loader: { kind: 'fabric', version: '0.16.5' } })
       })
       instances = [...instances, ...imported.filter((n) => !instances.some((i) => i.id === n.id))]
@@ -1044,8 +1050,11 @@ export async function handle(command: string, args: Record<string, any>): Promis
       return
     case 'delete_world':
       return
-    default:
+    default: {
+      const extra = await handleExtra(command, args)
+      if (extra !== NOT_HANDLED) return extra
       throw `Unknown command: ${command}`
+    }
   }
 }
 

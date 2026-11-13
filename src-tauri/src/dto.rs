@@ -171,6 +171,9 @@ pub struct InstanceDto {
     /// Files of the modpack the player still has to download by hand (0 normally).
     #[serde(default)]
     pub blocked_files: u32,
+    /// The memory Cubby would pick for this instance (MB), from its mods and the computer's memory.
+    #[serde(default)]
+    pub recommended_memory_mb: u32,
 }
 
 impl InstanceDto {
@@ -198,6 +201,7 @@ impl InstanceDto {
             notes: inst.notes.clone(),
             modpack: inst.modpack.as_ref().map(Into::into),
             blocked_files,
+            recommended_memory_mb: 0,
         }
     }
 }
@@ -430,6 +434,8 @@ pub struct AppInfoDto {
     pub total_memory_mb: u64,
     /// Development build: without an account the full game starts offline instead of the demo.
     pub dev_build: bool,
+    /// This build can show the game on Discord (it has a Discord application id).
+    pub discord: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -446,6 +452,8 @@ pub struct DataFolderDto {
 pub struct ServerStatusDto {
     pub online: bool,
     pub motd: String,
+    /// The message of the day with its `§` colour and style codes.
+    pub motd_formatted: String,
     pub players_online: u32,
     pub players_max: u32,
     pub version: Option<String>,
@@ -460,6 +468,7 @@ impl From<cubby_launch::ServerStatus> for ServerStatusDto {
         Self {
             online: s.online,
             motd: s.motd,
+            motd_formatted: s.motd_formatted,
             players_online: s.players_online,
             players_max: s.players_max,
             version: s.version,
@@ -541,6 +550,7 @@ fn project_kind(kind: &str) -> Result<modrinth::ProjectKind, String> {
         "modpack" => Ok(modrinth::ProjectKind::Modpack),
         "shader" => Ok(modrinth::ProjectKind::Shader),
         "resourcepack" => Ok(modrinth::ProjectKind::ResourcePack),
+        "datapack" => Ok(modrinth::ProjectKind::Datapack),
         other => Err(format!("Unknown project type: {other}.")),
     }
 }

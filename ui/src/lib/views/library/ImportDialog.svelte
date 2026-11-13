@@ -4,9 +4,9 @@
   import { api } from '../../api'
   import { app } from '../../state.svelte'
   import { loaderFull, plural } from '../../format'
-  import type { PrismInstance } from '../../types'
+  import type { ForeignInstance } from '../../types'
 
-  let found = $state<PrismInstance[] | null>(null)
+  let found = $state<ForeignInstance[] | null>(null)
   let chosen = $state<Record<string, boolean>>({})
   let failed = $state<string | null>(null)
   let busy = $state(false)
@@ -14,11 +14,12 @@
   $effect(() => {
     let stale = false
     api
-      .listPrismInstances()
+      .listLauncherInstances()
       .then((list) => {
         if (stale) return
         found = list
-        chosen = Object.fromEntries(list.map((p) => [p.path, true]))
+        // Prism and MultiMC instances are ticked: they are what people usually move. Others wait to be picked.
+        chosen = Object.fromEntries(list.map((p) => [p.path, !!p.minecraft && ['prism', 'multiMc', 'polyMc'].includes(p.launcher)]))
       })
       .catch((e) => {
         if (stale) return
@@ -30,8 +31,15 @@
     }
   })
 
-  const picked = $derived((found ?? []).filter((p) => chosen[p.path]))
-  const allOn = $derived(!!found?.length && picked.length === found.length)
+  const importable = $derived((found ?? []).filter((p) => p.minecraft))
+  const picked = $derived(importable.filter((p) => chosen[p.path]))
+  const allOn = $derived(!!importable.length && picked.length === importable.length)
+  /** Instances grouped by launcher, in the order the launchers were found. */
+  const groups = $derived.by(() => {
+    const map = new Map<string, ForeignInstance[]>()
+    for (const p of found ?? []) map.set(p.launcherName, [...(map.get(p.launcherName) ?? []), p])
+    return [...map.entries()]
+  })
 
   function close() {
     app.prismImportOpen = false
@@ -45,17 +53,17 @@
 
   function toggleAll() {
     const on = !allOn
-    chosen = Object.fromEntries((found ?? []).map((p) => [p.path, on]))
+    chosen = Object.fromEntries((found ?? []).map((p) => [p.path, on && !!p.minecraft]))
   }
 
   async function run() {
     if (!picked.length) return
     busy = true
     try {
-      const imported = await api.importPrism(picked.map((p) => p.path))
+      const imported = await api.importLauncherInstances(picked.map((p) => p.path))
       await app.refreshInstances()
       if (imported[0]) app.selected = imported[0].id
-      app.toast(t('Imported {n} from Prism Launcher.', { n: plural(imported.length, 'instance', 'instances') }), 'success')
+      app.toast(t('Imported {n}.', { n: plural(imported.length, 'instance', 'instances') }), 'success')
       close()
     } catch (e) {
       app.error(e)
@@ -76,15 +84,14 @@
   <p class="text-body">{t('Cubby found these on your PC.')} <span class="muted">{t('Pick what to bring over.')}</span></p>
 
   {#if found === null}
-    <p class="text-small muted">{t('Looking for Prism Launcher instances…')}</p>
+    <p class="text-small muted">{t('Looking for other launchers…')}</p>
   {:else if failed}
-    <Banner tone="danger" title={t('Couldn\'t read Prism Launcher\'s instances')}>{failed}</Banner>
+    <Banner tone="danger" title={t('Couldn’t read the other launchers’ instances')}>{failed}</Banner>
   {:else if !found.length}
     <div class="source source--none">
       <div class="source__text">
-        <p class="text-body-strong">Prism Launcher</p>
-        <p class="text-small">{t('Nothing in its usual folder')}</p>
-        <p class="text-mono">%APPDATA%\PrismLauncher\instances</p>
+        <p class="text-body-strong">{t('No other launcher found')}</p>
+        <p class="text-small">{t('Cubby looks for Prism Launcher, MultiMC, PolyMC, CurseForge, ATLauncher, GDLauncher, the Modrinth App and the Minecraft Launcher in their usual folders.')}</p>
       </div>
       <StatusTag state="offline">{t('Not found')}</StatusTag>
     </div>
@@ -92,31 +99,38 @@
     <div class="source">
       <div class="source__text">
         <p class="source__title">
-          <span class="text-body-strong">Prism Launcher</span>
-          <span class="text-small muted">{plural(found.length, 'instance', 'instances')}</span>
+          <span class="text-body-strong">{plural(found.length, 'instance', 'instances')}</span>
+          <span class="text-small muted">{groups.map(([name]) => name).join(', ')}</span>
         </p>
       </div>
       <Button size="sm" variant="ghost" icon={allOn ? 'minimize' : 'check'} onclick={toggleAll}>{allOn ? t('Select none') : t('Select all')}</Button>
     </div>
-    <ul class="found" aria-label={t('Prism Launcher instances')}>
-      {#each found as p (p.path)}
-        <li>
-          <Switch bind:checked={chosen[p.path]} label={t('Import {name}', { name: p.name })} hideLabel disabled={busy} />
-          <div class="item">
-            <p class="item__head">
-              <span class="text-body-strong">{p.name}</span>
-              <MetaChip>{p.minecraft}</MetaChip>
-              <MetaChip>{loaderFull(p.loader)}</MetaChip>
-              {#if p.group}<span class="text-small muted">{p.group}</span>{/if}
-            </p>
-            <p class="text-mono muted path">{p.path}</p>
-          </div>
-        </li>
-      {/each}
-    </ul>
+    {#each groups as [launcher, list] (launcher)}
+      <p class="text-label muted group">{launcher}</p>
+      <ul class="found" aria-label={t('{launcher} instances', { launcher })}>
+        {#each list as p (p.path)}
+          <li>
+            <Switch bind:checked={chosen[p.path]} label={t('Import {name}', { name: p.name })} hideLabel disabled={busy || !p.minecraft} />
+            <div class="item">
+              <p class="item__head">
+                <span class="text-body-strong">{p.name}</span>
+                {#if p.minecraft}
+                  <MetaChip>{p.minecraft}</MetaChip>
+                  <MetaChip>{loaderFull(p.loader)}</MetaChip>
+                {:else}
+                  <span class="text-small muted">{t('Version unknown: export it as a .mrpack from {launcher}, then import the file.', { launcher })}</span>
+                {/if}
+                {#if p.group}<span class="text-small muted">{p.group}</span>{/if}
+              </p>
+              <p class="text-mono muted path">{p.gameDir}</p>
+            </div>
+          </li>
+        {/each}
+      </ul>
+    {/each}
   {/if}
 
-  <p class="text-small muted">{t('Safe: Cubby copies the mods, worlds, screenshots and settings. Prism Launcher stays as it is.')}</p>
+  <p class="text-small muted">{t('Safe: Cubby copies the mods, worlds, screenshots and settings. The other launchers stay as they are.')}</p>
   <p class="later text-small muted">
     <Icon name="import" size={18} />
     <span>
@@ -220,6 +234,9 @@
   .link:focus-visible {
     outline: 2px solid transparent;
     box-shadow: var(--focus-ring);
+  }
+  .group {
+    margin: var(--space-2) 0 var(--space-1);
   }
   .progress {
     margin-top: var(--space-3);

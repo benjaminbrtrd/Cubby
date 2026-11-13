@@ -32,7 +32,7 @@
     <span class="text-label muted">{t('Or')}</span>
     <Button variant="ghost" icon="settings" onclick={custom}>{t('Pick a version and loader')}</Button>
     <Button variant="ghost" icon="discover" onclick={browseModpacks}>{t('Install a modpack')}</Button>
-    <Button variant="ghost" icon="import" onclick={() => (app.prismImportOpen = true)}>{t('Import from Prism Launcher')}</Button>
+    <Button variant="ghost" icon="import" onclick={() => (app.prismImportOpen = true)}>{t('Import from another launcher')}</Button>
   </div>
 </section>
 

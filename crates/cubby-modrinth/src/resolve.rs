@@ -54,6 +54,7 @@ pub(crate) fn compatible(version: &api::Version, target: &Target, kind: ProjectK
             version.loaders.iter().any(|l| allowed.contains(l))
         }
         ProjectKind::ResourcePack | ProjectKind::Shader => matches_loaders(version, &[]),
+        ProjectKind::Datapack => version.loaders.iter().any(|l| l == "datapack"),
     }
 }
 

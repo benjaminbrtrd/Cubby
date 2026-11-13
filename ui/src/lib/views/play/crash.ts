@@ -55,6 +55,9 @@ export interface Diagnosis {
   jvmError: string | null
   /** For `version` read from the loader: the game versions the mod is made for ("1.21 to 1.21.1"). */
   madeFor: string | null
+  /** For `conflict` read from the loader: `culprit` says it doesn't work with these versions of `other`
+   *  ("1.11.7 or earlier"), and `present` is the version installed. */
+  declared: { range: string; present: string | null } | null
   signals: Signals
   /** Crash report file named by the game, if any. */
   reportPath: string | null
@@ -70,7 +73,7 @@ const CLASS_VERSION = /class file version (\d+)(?:\.\d+)?\), this version of the
 const JAVA_WRONG =
   /UnsupportedClassVersionError|compiled by a more recent version of the Java Runtime|requires (?:version )?[^\n]*?\bof (?:mod )?'?java'?\b|requires Java \d+|Java \d+ (?:or (?:newer|later|above)|is required)|Unsupported Java version|wrong version of Java/i
 const RESOLUTION =
-  /Mod resolution (?:failed|encountered an incompatible mod set)|Incompatible mods? (?:set|found)|Some of your mods are incompatible|which is missing|Missing or unsupported mandatory dependencies|Mod ID: '[^']+', Requested by: '[^']+'|Missing Mods:/i
+  /Mod resolution (?:failed|encountered an incompatible mod set)|Incompatible mods? (?:set|found)|is incompatible with .*? of (?:mod )?'|Some of your mods are incompatible|which is missing|Missing or unsupported mandatory dependencies|Mod ID: '[^']+', Requested by: '[^']+'|Missing Mods:/i
 const LINKAGE = /java\.lang\.(NoSuchMethodError|NoSuchFieldError|AbstractMethodError|IncompatibleClassChangeError|NoClassDefFoundError|ClassNotFoundException)\b/
 const MIXIN = /MixinApplyError|InvalidMixinException|InvalidInjectionException|MixinTransformerError|Mixin apply(?:ing)? (?:for|from) mod [\w.-]+ failed|Critical injection failure|mixin\.injection\.throwables/
 const JVM_START =
@@ -230,7 +233,8 @@ function findFirst(tail: string[], re: RegExp, from = 0): number {
  * fail to load, two mods that disagree, the graphics driver or Java itself. Says `unknown` rather than guess.
  */
 export function diagnose(lines: string[], mods: ModFile[], exitCode: number | null = null): Diagnosis {
-  const tail = lines.slice(-TAIL)
+  // A log entry can hold several lines (the loader's error list): look at them one by one.
+  const tail = lines.flatMap((l) => l.split(/\r?\n/)).slice(-TAIL)
   const text = tail.join('\n')
 
   const reportPath = /Crash report saved to:?\s*(?:#@!@#\s*)?(\S.*?\.txt)/.exec(text)?.[1]?.trim() ?? null
@@ -257,6 +261,7 @@ export function diagnose(lines: string[], mods: ModFile[], exitCode: number | nu
     frame,
     jvmError: null,
     madeFor: null,
+    declared: null,
     signals,
     reportPath,
     jvmReportPath,
@@ -272,11 +277,20 @@ export function diagnose(lines: string[], mods: ModFile[], exitCode: number | nu
   }
   // Mods the loader says are made for another version of Minecraft, with the versions they accept.
   const wrongGame: { mod: Party; madeFor: string | null; at: number }[] = []
+  // Mods the loader says don't work together ("Mod 'Sodium' (sodium) 0.9 is incompatible with version 1.11.7 or
+  // earlier of mod 'Iris' (iris), yet a conflicting version is present: 1.11.7!").
+  const clashes: { by: Party; with: Party; range: string; present: string | null; at: number }[] = []
   let resolutionAt = -1
   if (RESOLUTION.test(text)) {
     resolutionAt = findFirst(tail, RESOLUTION)
     for (let i = Math.max(0, resolutionAt - 2); i < tail.length; i++) {
       const msg = messageOf(tail[i])
+      const clash = /Mod '([^']+)' \(([\w.-]+)\)\s*\S*\s+is incompatible with\s+(.*?)\s*\bof\s+(?:mod\s+)?(?:'([^']+)'\s*\(([\w.-]+)\)|'?([\w.-]+)'?)(?:.*?conflicting version is present:\s*([^\s!]+))?/i.exec(msg)
+      if (clash) {
+        const other = partyFromId(clash[5] ?? clash[6], clash[4] ?? null, mods)
+        clashes.push({ by: partyFromId(clash[2], clash[1], mods), with: other, range: clash[3].trim().replace(/^versions?\s+/i, ''), present: clash[7] ?? null, at: i })
+        continue
+      }
       const fab = /Mod '([^']+)' \(([\w.-]+)\)\s*\S*\s+requires\s+(.*?)\bof\s+(?:mod\s+)?(?:'([^']+)'\s*\(([\w.-]+)\)|'?([\w.-]+)'?)/i.exec(msg)
       if (fab) {
         const req = partyFromId(fab[2], fab[1], mods)
@@ -297,6 +311,7 @@ export function diagnose(lines: string[], mods: ModFile[], exitCode: number | nu
       }
     }
     signals.missing = missing.length
+    if (clashes.length) signals.conflict = true
   }
 
   // Two mods that disagree: a missing method or class between them.
@@ -388,6 +403,19 @@ export function diagnose(lines: string[], mods: ModFile[], exitCode: number | nu
       culprit: missing.find((n) => n.by)?.by ?? null,
       other: missing[0].dep,
       evidence: evidence(tail, [resolutionAt, culpritLine, ...extra], culpritLine),
+    }
+  }
+
+  // Two mods the loader says don't work together.
+  if (clashes.length) {
+    const c = clashes[0]
+    return {
+      ...base,
+      kind: 'conflict',
+      culprit: c.by,
+      other: c.with,
+      declared: { range: c.range, present: c.present },
+      evidence: evidence(tail, [resolutionAt, c.at - 1, c.at], c.at),
     }
   }
 

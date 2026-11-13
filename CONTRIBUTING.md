@@ -20,7 +20,7 @@ Open an issue with:
    cargo fmt --all
    cargo clippy --workspace --all-targets
    cargo test --workspace
-   cd ui && npm run check
+   cd ui && npm run check && npm test
    ```
 
 ## Code
@@ -38,6 +38,12 @@ The interface is in English for now. Write it the way the app already speaks:
 - Buttons start with a verb: *Play*, *Install*, *Move to trash*.
 - An error says what happened and what to do about it.
 - Use the game's words: *instance*, *loader*, *mods*, *resource packs*, *shader packs*, *worlds*.
+
+## Releasing
+
+1. Set the version in `Cargo.toml`, `src-tauri/tauri.conf.json` and `ui/package.json`.
+2. Write the notes in `.github/releases/v<version>.md`, with a screenshot of what's new.
+3. Push a tag such as `v2026.11.0`. GitHub Actions builds a draft release.
 
 ## License
 

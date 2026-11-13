@@ -13,6 +13,7 @@ pub fn get_settings(core: State<'_, Core>) -> Settings {
 pub fn save_settings(core: State<'_, Core>, settings: Settings) -> CmdResult<Settings> {
     settings.save(&core.paths).msg()?;
     *core.settings.lock().expect("settings lock") = settings.clone();
+    core.update_presence();
     Ok(settings)
 }
 

@@ -27,6 +27,8 @@ export interface Instance {
   modpack: { projectId: string; versionId: string; title: string; versionNumber: string } | null
   /** Files of a modpack still to download by hand (0 normally). */
   blockedFiles: number
+  /** The memory "Set memory automatically" gives this instance (MB), from its mods and the computer's memory. */
+  recommendedMemoryMb: number
 }
 
 export interface JavaOverrides {
@@ -156,7 +158,8 @@ export interface Settings {
   accent: string
   frameMode: 'instance' | 'fixed' | 'none'
   frameColor: string
-  java: { auto: boolean; minMemoryMb: number; maxMemoryMb: number; jvmArgs: string }
+  /** autoMemory: each instance gets `recommendedMemoryMb` instead of `maxMemoryMb`. */
+  java: { auto: boolean; autoMemory: boolean; minMemoryMb: number; maxMemoryMb: number; jvmArgs: string }
   game: { width: number; height: number; fullscreen: boolean }
   onLaunch: 'minimize' | 'keep' | 'close'
   downloadConcurrency: number
@@ -173,6 +176,8 @@ export interface Settings {
   curseforgeApiKey: string | null
   /** The first-launch assistant was completed or skipped. */
   onboarded: boolean
+  /** Show the instance being played on the player's Discord profile. */
+  discordPresence: boolean
 }
 
 export interface PrismInstance {
@@ -199,6 +204,8 @@ export interface AppInfo {
   totalMemoryMb: number
   /** Development build: without an account the full game starts offline instead of the demo. */
   devBuild: boolean
+  /** This build can show the game on Discord (it has a Discord application id). */
+  discord: boolean
 }
 
 export type CubbyEvent =
@@ -234,6 +241,8 @@ export interface Server {
 export interface ServerStatus {
   online: boolean
   motd: string
+  /** The message of the day with its `§` colour and style codes (draw it with Motd). */
+  motdFormatted?: string
   playersOnline: number
   playersMax: number
   version: string | null
@@ -244,7 +253,7 @@ export interface ServerStatus {
 }
 
 // Discover (Modrinth)
-export type ProjectKind = 'mod' | 'modpack' | 'shader' | 'resourcepack'
+export type ProjectKind = 'mod' | 'modpack' | 'shader' | 'resourcepack' | 'datapack'
 export type ProjectSort = 'relevance' | 'downloads' | 'follows' | 'newest' | 'updated'
 /** Where a project runs, from Modrinth's client_side / server_side. */
 export type SideSupport = 'required' | 'optional' | 'unsupported' | 'unknown'
@@ -521,4 +530,87 @@ export interface PackFileInfo {
   fileCount: number
   /** CurseForge zip and no API key: it can't be installed, and this says why. */
   blockedReason: string | null
+}
+
+/** A datapack of a world (`saves/<world>/datapacks`; turned off ones wait in `datapacks.disabled`). */
+export interface Datapack {
+  fileName: string
+  /** The file name without `.zip`. */
+  name: string
+  isDir: boolean
+  enabled: boolean
+  size: number
+  modified: string | null
+  description: string | null
+}
+
+/** An update that can be undone: its old files are kept in <instance>/backups/<name>/. */
+export interface UpdateBackup {
+  name: string
+  created: string
+  /** folder: "mods", "resourcepacks" or "shaderpacks"; old: the file before, new: the file the update put in. */
+  files: { folder: string; old: string; new: string }[]
+}
+
+/** A top-level file or folder of an instance that an export can include. */
+export interface ExportCandidate {
+  name: string
+  isDir: boolean
+  size: number
+  /** Usually shipped with a pack (config, options.txt...). */
+  suggested: boolean
+}
+
+export interface ExportRequest {
+  format: 'mrpack' | 'curseforge'
+  name: string
+  version: string
+  /** Summary (Modrinth) or author (CurseForge). */
+  note: string
+  include: string[]
+}
+
+export interface ExportResult {
+  path: string
+  /** Files the launcher that opens it downloads. */
+  listed: number
+  /** Files stored inside the pack. */
+  stored: number
+  /** CurseForge without an API key: every mod is stored. */
+  withoutKey: boolean
+}
+
+/** An instance of another launcher (Prism, MultiMC, CurseForge, ATLauncher, GDLauncher, Modrinth App, Minecraft Launcher). */
+export interface ForeignInstance {
+  launcher: 'prism' | 'multiMc' | 'polyMc' | 'curseForge' | 'atLauncher' | 'gdLauncher' | 'modrinthApp' | 'official'
+  launcherName: string
+  /** What importLauncherInstances takes. */
+  path: string
+  name: string
+  /** null when the launcher doesn't say: it can't be imported. */
+  minecraft: string | null
+  loader: Loader
+  group: string | null
+  gameDir: string
+}
+
+/** What copyOptions copies, and what it did copy. */
+export interface OptionsCopy {
+  /** options.txt without the key bindings */
+  options: boolean
+  /** the key_* lines of options.txt */
+  keys: boolean
+  /** servers.dat */
+  servers: boolean
+}
+
+/** A world's map around its spawn, drawn by renderWorldMap. */
+export interface WorldMapImage {
+  url: string
+  /** Block coordinates of the top-left pixel. */
+  minX: number
+  minZ: number
+  /** Width and height, in blocks (one pixel per block). */
+  size: number
+  chunks: number
 }

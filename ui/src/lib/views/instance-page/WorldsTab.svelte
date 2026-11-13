@@ -2,12 +2,14 @@
   import { t } from '../../i18n.svelte'
   import { tick, untrack } from 'svelte'
   import { api } from '../../api'
-  import { Button, Dialog, Icon, IconButton, PlayButton } from '../../cubby'
+  import { Button, Dialog, Icon, IconButton, Inspector, InspectorHead, InspectorNotice, InspectorPath, InspectorSection, InspectorStatus, MetaChip, PlayButton } from '../../cubby'
   import { bytes, plural, relativeTime } from '../../format'
   import { app } from '../../state.svelte'
   import type { Instance, World, WorldBackup } from '../../types'
   import { when, type InstanceData } from './InstancePage.svelte'
   import { opensWorlds } from '../library/Stage.svelte'
+  import WorldDatapacks from './WorldDatapacks.svelte'
+  import WorldMap from './WorldMap.svelte'
 
   let { instance, data }: { instance: Instance; data: InstanceData } = $props()
 
@@ -155,51 +157,73 @@
 </div>
 
 <aside class="ip-aside" aria-label={t('World details')}>
-  <div class="ip-aside__inner">
+  <Inspector class="ip-aside__inner" danger={sel ? { label: t('Delete world'), hint: t('Moves to the trash. Its backups stay.'), disabled: running, onclick: () => (deleting = sel) } : null}>
     {#if sel}
-      {@render thumb(sel, true)}
-      <h2 class="text-heading wrap" tabindex="-1" bind:this={asideTitle}>{sel.name}</h2>
-      <dl class="facts">
-        <dt class="text-small muted">{t('Last played')}</dt>
-        <dd class="text-body">{sel.lastPlayed ? when(sel.lastPlayed) : t('Not yet')}</dd>
-        <dt class="text-small muted">{t('Size')}</dt>
-        <dd class="text-body">{bytes(sel.sizeBytes)}</dd>
-        <dt class="text-small muted full">{t('Folder')}</dt>
-        <dd class="text-mono full wrap">saves/{sel.folder}</dd>
-      </dl>
-
-      <section class="part" aria-labelledby="w-backups">
-        <h3 id="w-backups" class="text-label muted">{t('Backups · {length}', { length: selBackups.length })}</h3>
-        {#if data.backups === null}
-          <p class="text-small muted">{t('Loading backups…')}</p>
-        {:else if !selBackups.length}
-          <p class="text-small muted">{t('No backups of this world yet.')}</p>
+      {#snippet worldMedia()}
+        {#if sel.iconUrl}
+          <span class="cb-ins-media cb-ins-media--wide"><img src={sel.iconUrl} alt="" /></span>
         {:else}
-          {#each selBackups as b (b.fileName)}
-            <div class="backup">
-              <div class="backup__text">
-                <span class="text-body">{when(b.created)}</span>
-                <span class="text-small muted">{bytes(b.sizeBytes)}</span>
-              </div>
-              <Button size="sm" disabled={running} onclick={() => (restoring = b)}>{t('Restore')}</Button>
-            </div>
-          {/each}
+          <span class="cb-ins-media cb-ins-media--wide cb-ins-media--empty"><Icon name="cube" size={36} /></span>
         {/if}
-        <div>
-          <Button icon="copy" busy={backingUp === sel.folder} disabled={!!backingUp} onclick={() => sel && backUp(sel)}>{t('Back up now')}</Button>
-        </div>
-        {#if running}<p class="text-small muted">{t('Close the game to restore or delete a world.')}</p>{/if}
-      </section>
-
-      <div class="danger">
-        <Button variant="danger" icon="trash" disabled={running} onclick={() => (deleting = sel)}>{t('Delete world')}</Button>
-        <p class="text-small muted">{t('Moves to the trash. Its backups stay.')}</p>
+      {/snippet}
+      {#snippet worldMeta()}
+        <MetaChip>{bytes(sel.sizeBytes)}</MetaChip>
+        {#if running}<InspectorStatus tone="ok">{t('Game running')}</InspectorStatus>{/if}
+        <InspectorStatus tone={selBackups.length ? 'ok' : 'off'}>{selBackups.length ? plural(selBackups.length, 'backup', 'backups') : t('No backups')}</InspectorStatus>
+      {/snippet}
+      <InspectorHead eyebrow={t('World')} title={sel.name} sub={sel.lastPlayed ? t('Last played {when}', { when: when(sel.lastPlayed) }) : t('Not played yet')} media={worldMedia} wide meta={worldMeta} bind:titleEl={asideTitle} />
+      <div class="cb-ins-acts">
+        {#if running}
+          <Button class="wide" icon="terminal" onclick={() => app.navigate({ name: 'running', id })}>{t('Show the running game')}</Button>
+        {:else}
+          <Button variant="primary" class="wide" icon="play" disabled={preparing} onclick={() => sel && play(sel.folder)}>{direct ? t('Play this world') : t('Play')}</Button>
+        {/if}
       </div>
+      {#if running}
+        <InspectorNotice tone="info">{t('Close the game to restore a backup, change datapacks or delete this world.')}</InspectorNotice>
+      {:else if !direct}
+        <p class="cb-ins-hint">{t('Minecraft {minecraft} can’t open a world from a launcher: Play starts on the title screen.', { minecraft: instance.minecraft })}</p>
+      {/if}
+      {#snippet backupAction()}
+        <Button size="sm" variant="ghost" icon="copy" busy={backingUp === sel.folder} disabled={!!backingUp} onclick={() => sel && backUp(sel)}>{t('Back up')}</Button>
+      {/snippet}
+      <InspectorSection title={t('Backups')} count={data.backups ? selBackups.length : null} action={backupAction}>
+        {#if data.backups === null}
+          <p class="cb-ins-hint">{t('Loading backups…')}</p>
+        {:else if !selBackups.length}
+          <p class="cb-ins-hint">{t('No backups yet. A backup is a zip of the world you can go back to.')}</p>
+        {:else}
+          <ul class="cb-ins-rows">
+            {#each selBackups as b (b.fileName)}
+              <li class="cb-ins-row">
+                <div class="cb-ins-row__txt">
+                  <span class="cb-ins-row__t">{when(b.created)}</span>
+                  <span class="cb-ins-row__s">{bytes(b.sizeBytes)}</span>
+                </div>
+                <Button size="sm" disabled={running} onclick={() => (restoring = b)}>{t('Restore')}</Button>
+              </li>
+            {/each}
+          </ul>
+        {/if}
+      </InspectorSection>
+      <WorldMap {instance} world={sel} />
+      <WorldDatapacks {instance} world={sel} />
+      <InspectorSection title={t('Details')}>
+        <dl class="cb-ins-facts">
+          <dt>{t('Size')}</dt><dd><span>{bytes(sel.sizeBytes)}</span></dd>
+          <InspectorPath path={`saves/${sel.folder}`} openLabel={t('Open folder')} onopen={() => sel && data.openFolder(`saves/${sel.folder}`)} />
+        </dl>
+      </InspectorSection>
     {:else}
-      <p class="text-label muted">{t('World details')}</p>
-      <p class="text-body muted">{t('Your worlds show up here once you’ve created one.')}</p>
+      {#snippet noWorldMedia()}<span class="cb-ins-media cb-ins-media--wide cb-ins-media--empty"><Icon name="globe" size={36} /></span>{/snippet}
+      <InspectorHead eyebrow={t('World')} title={t('No worlds yet')} sub={instance.name} media={noWorldMedia} wide empty />
+      <p class="cb-ins-hint">{t('Play, then create a world in Singleplayer. It shows up here with its backups, map and datapacks.')}</p>
+      <div class="cb-ins-acts">
+        <Button variant="primary" icon="play" disabled={preparing || running} onclick={() => play()}>{t('Play')}</Button>
+        <Button icon="folder" class="wide" onclick={() => data.openFolder('saves')}>{t('Open saves folder')}</Button>
+      </div>
     {/if}
-  </div>
+  </Inspector>
 </aside>
 
 {#if restoring}
@@ -242,9 +266,6 @@
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
-  }
-  .wrap {
-    overflow-wrap: anywhere;
   }
   .toolbar {
     display: flex;
@@ -350,46 +371,5 @@
     width: 128px;
     height: 128px;
     box-shadow: var(--shadow-block-sm);
-  }
-  .facts {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    align-items: center;
-    gap: var(--space-2) var(--space-4);
-    padding: var(--space-4);
-    background: var(--surface);
-    border: var(--border-block) solid var(--edge);
-  }
-  .facts .full {
-    grid-column: 1 / -1;
-  }
-  .part {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-  }
-  .backup {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-  }
-  .backup__text {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-  }
-  .danger {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 6px;
-    margin-top: var(--space-2);
-    padding-top: var(--space-4);
-    border-top: var(--border-hair) solid var(--line);
-    text-align: end;
-  }
-  h2[tabindex='-1'] {
-    outline: none;
   }
 </style>

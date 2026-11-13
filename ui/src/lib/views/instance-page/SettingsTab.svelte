@@ -18,6 +18,7 @@
 </script>
 
 <script lang="ts">
+  import CopyOptionsDialog from './CopyOptionsDialog.svelte'
   import { t } from '../../i18n.svelte'
   import { osName } from '../../platform'
   import { onDestroy, untrack } from 'svelte'
@@ -128,9 +129,13 @@
     iconOpen = false
   }
 
+  let copyingOptions = $state(false)
+
   // Java and memory
   const o = $derived(instance.javaOverrides)
-  const g = $derived(app.settings?.java ?? { auto: true, minMemoryMb: 1024, maxMemoryMb: 4096, jvmArgs: '' })
+  const g = $derived(app.settings?.java ?? { auto: true, autoMemory: true, minMemoryMb: 1024, maxMemoryMb: 4096, jvmArgs: '' })
+  /** What the global settings give this instance. */
+  const globalMax = $derived(g.autoMemory ? instance.recommendedMemoryMb || g.maxMemoryMb : g.maxMemoryMb)
   const usesGlobal = $derived(o.executable == null && o.minMemoryMb == null && o.maxMemoryMb == null && o.jvmArgs == null)
   const total = $derived(app.info?.totalMemoryMb ?? 8192)
   const memMax = $derived(Math.max(2048, Math.floor(total / 512) * 512))
@@ -142,11 +147,11 @@
 
   function setGlobal(on: boolean) {
     if (on) void save({ javaOverrides: { executable: null, minMemoryMb: null, maxMemoryMb: null, jvmArgs: null } })
-    else void overrides({ minMemoryMb: g.minMemoryMb, maxMemoryMb: g.maxMemoryMb })
+    else void overrides({ minMemoryMb: Math.min(g.minMemoryMb, globalMax), maxMemoryMb: globalMax })
   }
 
   let memDraft = $state<number | null>(null)
-  const mem = $derived(memDraft ?? o.maxMemoryMb ?? g.maxMemoryMb)
+  const mem = $derived(memDraft ?? o.maxMemoryMb ?? globalMax)
   let memTimer: ReturnType<typeof setTimeout> | undefined
 
   function setMemory(v: number) {
@@ -332,7 +337,7 @@
         {#if usesGlobal}
           <div class="setting setting--wide">
             <div>
-              <div class="text-body">{t(g.jvmArgs.trim() ? 'Memory {memory} · Java picked automatically · global JVM arguments' : 'Memory {memory} · Java picked automatically', { memory: megabytes(g.maxMemoryMb) })}</div>
+              <div class="text-body">{t(g.jvmArgs.trim() ? 'Memory {memory} · Java picked automatically · global JVM arguments' : 'Memory {memory} · Java picked automatically', { memory: g.autoMemory ? t('{n}, set from its mods', { n: megabytes(globalMax) }) : megabytes(globalMax) })}</div>
               <div class="text-small muted">{t('The same as every instance that uses the global settings.')}</div>
             </div>
             <Button size="sm" variant="ghost" icon="settings" onclick={() => app.navigate({ name: 'settings', section: 'java' })}>{t('Global settings')}</Button>
@@ -403,6 +408,17 @@
             <div class="text-small muted">{t('Window size and fullscreen are the same for every instance.')}</div>
           </div>
           <Button size="sm" variant="ghost" icon="settings" onclick={() => app.navigate({ name: 'settings', section: 'game' })}>{t('Game settings')}</Button>
+        </div>
+      </section>
+
+      <section class="block" aria-labelledby="is-options">
+        <div class="block__head"><h2 id="is-options" class="text-heading">{t('Game options')}</h2></div>
+        <div class="setting setting--wide">
+          <div>
+            <div class="text-body-strong">{t('Copy from another instance')}</div>
+            <div class="text-small muted">{t('Bring over your key bindings, options or server list, so a new instance feels like home.')}</div>
+          </div>
+          <Button size="sm" icon="copy" disabled={running} onclick={() => (copyingOptions = true)}>{t('Copy')}</Button>
         </div>
       </section>
 
@@ -588,6 +604,10 @@
       </p>
     {/if}
   </Dialog>
+{/if}
+
+{#if copyingOptions}
+  <CopyOptionsDialog {instance} onClose={() => (copyingOptions = false)} />
 {/if}
 
 <style>

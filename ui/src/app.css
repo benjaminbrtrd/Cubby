@@ -49,24 +49,3 @@ a {
   scroll-behavior: auto !important;
 }
 
-/* Side panels: their buttons line up on the right. A row made only of buttons ends on the right edge, a lone
-   button in a column panel does too, and two buttons side by side share the width, half each. Full-width buttons
-   (class "wide") are not touched. */
-aside :where(div, span, p):has(> :is(.cb-btn, .cb-iconbtn)):not(:has(> :not(.cb-btn, .cb-iconbtn))) {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-aside :where(div, span, p):has(> .cb-btn:first-child:nth-last-child(2)):not(:has(> :not(.cb-btn))) {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-2);
-}
-aside :where(div, span, p):has(> .cb-btn:first-child:nth-last-child(2)):not(:has(> :not(.cb-btn))) > .cb-btn {
-  width: 100%;
-  justify-content: center;
-  white-space: nowrap;
-}
-aside > :is(.cb-btn, .cb-iconbtn):not(.wide) {
-  align-self: flex-end;
-}

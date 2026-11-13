@@ -37,6 +37,12 @@ pub struct Core {
     pub atlauncher: AtLauncherClient,
     /// Ids of the background tasks running (`install:<id>`, `modpack:<id>`...), one of each at a time.
     pub tasks: Mutex<HashSet<String>>,
+    /// The computer's memory in MB, read once at start (0 when unknown).
+    pub total_memory_mb: u64,
+    /// Discord Rich Presence, when this build has a Discord application id.
+    pub discord: Option<cubby_discord::Presence>,
+    /// Games running, oldest first, with what Discord shows for each: the newest one is shown.
+    pub playing: Mutex<Vec<(String, cubby_discord::Activity)>>,
 }
 
 impl Core {
@@ -69,6 +75,9 @@ impl Core {
             games: GameManager::new(),
             login: Mutex::new(None),
             tasks: Mutex::new(HashSet::new()),
+            total_memory_mb: crate::commands::total_memory_mb(),
+            discord: cubby_discord::client_id().map(cubby_discord::Presence::new),
+            playing: Mutex::new(Vec::new()),
             paths,
         })
     }
@@ -110,6 +119,15 @@ impl Core {
                 ApiKeySource::BuiltIn => "builtIn",
             })
         })
+    }
+
+    /// Tells Discord what is being played now (the newest game), or clears it when nothing is or the player
+    /// turned it off.
+    pub fn update_presence(&self) {
+        let Some(discord) = &self.discord else { return };
+        let on = self.settings().discord_presence;
+        let current = self.playing.lock().expect("playing lock").last().map(|(_, a)| a.clone());
+        discord.set(current.filter(|_| on));
     }
 
     /// A CurseForge client with the current key (cheap, so built per call: a key saved in the settings

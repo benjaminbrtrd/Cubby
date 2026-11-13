@@ -92,6 +92,19 @@
             <dt class="text-body-strong">{t('Where do I turn it on?')}</dt>
             <dd class="text-body muted">{t('In the instance\'s Shaders tab, or in game: Options, Video settings, Shader packs.')}</dd>
           </div>
+        {:else if kind === 'datapack'}
+          <div>
+            <dt class="text-body-strong">{t('Does it change my worlds?')}</dt>
+            <dd class="text-body muted">{t('Only the world you put it in. New chunks may look different, and its changes stay in that world. Back the world up first.')}</dd>
+          </div>
+          <div>
+            <dt class="text-body-strong">{t('Does it need mods?')}</dt>
+            <dd class="text-body muted">{t('No. Datapacks work in Vanilla too. On a server, the server puts them in its own world.')}</dd>
+          </div>
+          <div>
+            <dt class="text-body-strong">{t('Where do I turn it on?')}</dt>
+            <dd class="text-body muted">{t('In the instance\'s Worlds tab, under the world. It loads the next time you open the world.')}</dd>
+          </div>
         {:else}
           <div>
             <dt class="text-body-strong">{t('Does it change my worlds?')}</dt>

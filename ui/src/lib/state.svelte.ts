@@ -200,6 +200,14 @@ class AppState {
     return [...counts.entries()].map(([name, count]) => ({ name, count }))
   }
 
+  /** The maximum memory the game gets when this instance starts (MB): its own value, else the automatic or global one. */
+  memoryOf(instance: Instance): number {
+    const java = this.settings?.java
+    if (instance.javaOverrides.maxMemoryMb != null) return instance.javaOverrides.maxMemoryMb
+    if ((java?.autoMemory ?? true) && instance.recommendedMemoryMb) return instance.recommendedMemoryMb
+    return java?.maxMemoryMb ?? 4096
+  }
+
   get recent(): Instance[] {
     return [...this.instances].sort((a, b) => (b.lastPlayed ?? '').localeCompare(a.lastPlayed ?? '') || a.name.localeCompare(b.name))
   }
@@ -214,8 +222,22 @@ class AppState {
   }
 
   setTarget(id: string) {
+    if (id !== this.targetId) this.targetWorld = null
     this.targetId = id
     store('targetId', id)
+  }
+
+  /** The world of the target instance datapacks go into (its folder in saves/); null = the most recent one. */
+  targetWorld = $state<string | null>(null)
+
+  /** Discover › Datapacks, installing into this world of this instance. */
+  openDatapacks(instanceId: string, world: string) {
+    this.setTarget(instanceId)
+    this.targetWorld = world
+    this.discover.kind = 'datapack'
+    this.discover.categories = []
+    this.discover.page = 0
+    this.navigate({ name: 'discover' })
   }
 
   setLibraryView(view: 'grid' | 'list') {
@@ -257,10 +279,31 @@ class AppState {
     return unlisten
   }
 
-  /** cubby://pack/<code> links (the "Open in Cubby" button of a shared pack's page) open New instance › From a link. */
+  /** cubby://pack/<code> links (the "Open in Cubby" button of a shared pack's page) open New instance › From a link.
+   *  cubby://play/<id> links (desktop shortcuts) start that instance. */
   private listenForLinks() {
     if (!inTauri) return
-    const open = (urls: string[] | null | undefined) => {
+    const open = (urls: string[] | null | undefined, atStart = false) => {
+      const play = urls?.find((u) => u.toLowerCase().startsWith('cubby://play/'))
+      if (play) {
+        // The link Cubby started with comes back on every page load (a language change reloads): play it once.
+        if (atStart) {
+          try {
+            if (sessionStorage.getItem('cubby.startLink') === play) return
+            sessionStorage.setItem('cubby.startLink', play)
+          } catch {
+            /* no storage: play it */
+          }
+        }
+        const id = decodeURIComponent(play.slice('cubby://play/'.length).replace(/\/+$/, ''))
+        if (this.instance(id)) {
+          this.selected = id
+          void this.launch(id)
+        } else {
+          this.toast(t('That shortcut’s instance isn’t in Cubby anymore.'), 'error')
+        }
+        return
+      }
       const link = urls?.find((u) => u.toLowerCase().startsWith('cubby://pack/'))
       if (!link) return
       this.pendingPackLink = link
@@ -268,7 +311,7 @@ class AppState {
       this.navigate({ name: 'create' })
     }
     void import('@tauri-apps/plugin-deep-link').then(async (m) => {
-      open(await m.getCurrent().catch(() => null))
+      open(await m.getCurrent().catch(() => null), true)
       await m.onOpenUrl(open)
     }).catch((e) => console.warn('deep links unavailable', e))
   }
@@ -592,4 +635,8 @@ class AppState {
   }
 }
 
-export const app = new AppState()
+// One state for the whole app. In development, a hot reload of this module (or of one it imports, like a catalog
+// of texts) would otherwise make a second one: the screens it reloads would read and navigate a state the rest of
+// the window doesn't show (links doing nothing, the account missing). The first one is kept across reloads.
+export const app: AppState = (import.meta.hot?.data.app as AppState | undefined) ?? new AppState()
+if (import.meta.hot) import.meta.hot.data.app = app

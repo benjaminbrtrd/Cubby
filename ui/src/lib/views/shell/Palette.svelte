@@ -76,10 +76,10 @@
       { id: 'a:new', label: t('New instance'), detail: t('Pick a version and a loader'), icon: 'plus', words: 'create add', run: () => app.navigate({ name: 'create' }) },
       {
         id: 'a:import',
-        label: t('Import from Prism Launcher'),
-        detail: t('Copies instances, Prism stays as it is'),
+        label: t('Import from another launcher'),
+        detail: t('Copies instances, the other launcher stays as it is'),
         icon: 'import',
-        words: 'import prism bring',
+        words: 'import prism multimc curseforge atlauncher gdlauncher modrinth bring',
         run: () => (app.prismImportOpen = true),
       },
       {

@@ -59,7 +59,7 @@
     const sm = data.shaderMods
     if (shaderOn && mods && !(sm.iris?.enabled || sm.optifine?.enabled))
       list.push({ ok: false, text: t('A shader pack is on, but Iris isn’t installed or is turned off.'), action: { label: t('See in Shader packs'), run: () => go('shaders') } })
-    const max = instance.javaOverrides.maxMemoryMb ?? app.settings?.java.maxMemoryMb
+    const max = app.memoryOf(instance)
     const total = app.info?.totalMemoryMb
     if (max && total) {
       if (max > total * 0.75) list.push({ ok: false, text: t('Memory is set to {n}, most of your {n2}.', { n: gigabytes(max), n2: gigabytes(total) }), action: { label: t('Change'), run: () => go('settings') } })
@@ -144,7 +144,7 @@
 
   // Details
   const javaPath = $derived(instance.javaOverrides.executable)
-  const memory = $derived(instance.javaOverrides.maxMemoryMb ?? app.settings?.java.maxMemoryMb ?? null)
+  const memory = $derived(app.memoryOf(instance))
   const folder = $derived.by(() => {
     const root = app.info?.dataDir
     if (!root) return null
@@ -234,6 +234,7 @@
           address={server.address}
           iconSrc={status.iconUrl ?? server.iconUrl ?? undefined}
           motd={status.motd}
+          motdFormatted={status.motdFormatted}
           online={status.online}
           players={status.online ? { online: status.playersOnline, max: status.playersMax } : undefined}
           playersLabel={t('players online')}
@@ -254,7 +255,7 @@
           <dd class="text-body">{t('Picked automatically')}</dd>
         {/if}
         <dt class="text-small muted">{t('Memory')}</dt>
-        <dd class="text-body">{memory ? megabytes(memory) : '—'}{instance.javaOverrides.maxMemoryMb == null ? t(' (global)') : ''}</dd>
+        <dd class="text-body">{memory ? megabytes(memory) : '—'}{instance.javaOverrides.maxMemoryMb == null ? (app.settings?.java.autoMemory ? t(' (automatic)') : t(' (global)')) : ''}</dd>
         <dt class="text-small muted">{t('Created')}</dt>
         <dd class="text-body">{date(instance.created)}</dd>
         <dt class="text-small muted">{t('Account')}</dt>

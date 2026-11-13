@@ -22,11 +22,13 @@
   import InstallPanel from './InstallPanel.svelte'
   import Picker from './Picker.svelte'
   import TargetPicker from './TargetPicker.svelte'
+  import WorldPicker from './WorldPicker.svelte'
+  import DatapackInstall from './DatapackInstall.svelte'
   import { CATEGORIES, KINDS, KIND_ORDER, PAGE_SIZE, categoryLabel, hitFit, type Fit } from './discover'
 
   const d = $derived(app.discover)
   /** Where this tab can look: every provider for modpacks, Modrinth and CurseForge for the rest, in the app's order. */
-  const sources = $derived((app.providers ?? []).filter((p) => d.kind === 'modpack' || p.id === 'modrinth' || p.id === 'curseforge'))
+  const sources = $derived((app.providers ?? []).filter((p) => d.kind === 'modpack' || p.id === 'modrinth' || (p.id === 'curseforge' && d.kind !== 'datapack')))
   /** The chosen source, or Modrinth when this tab doesn't offer it. */
   const source = $derived(sources.some((p) => p.id === d.provider) ? d.provider : 'modrinth')
   /** Modpacks of another provider (ATLauncher, CurseForge, FTB, Technic): same grid, searched through the pack commands. */
@@ -165,7 +167,7 @@
   const localFilter = $derived.by(() => {
     const loaders = packProvider ? packLoaders : []
     const versions = packProvider ? packVersions : []
-    const hideIn = d.hideInstalled && target && kind !== 'modpack' && !fromCf ? target.id : null
+    const hideIn = d.hideInstalled && target && kind !== 'modpack' && kind !== 'datapack' && !fromCf ? target.id : null
     if (!loaders.length && !versions.length && !hideIn) return null
     return (h: ProjectHit) =>
       (!loaders.length || h.loaders.some((l) => loaders.includes(l))) &&
@@ -282,8 +284,8 @@
     !results ? 1 : local ? Math.max(1, Math.ceil(matches.length / PAGE_SIZE) + (bufferDone ? 0 : 1)) : Math.max(1, Math.ceil(results.total / PAGE_SIZE)),
   )
   /** Everything read was already installed: only Hide installed emptied the list. */
-  const allInstalled = $derived(local && !!allHits.length && !matches.length && d.hideInstalled && !packLoaders.length && !packVersions.length)
-  const filtered = $derived(d.categories.length > 0 || d.environment !== null || d.hideInstalled || packLoaders.length > 0 || packVersions.length > 0)
+  const allInstalled = $derived(local && !!allHits.length && !matches.length && d.hideInstalled && kind !== 'datapack' && !packLoaders.length && !packVersions.length)
+  const filtered = $derived(d.categories.length > 0 || d.environment !== null || (d.hideInstalled && kind !== 'datapack') || packLoaders.length > 0 || packVersions.length > 0)
   const sourceName = $derived(sources.find((p) => p.id === source)?.name ?? 'Modrinth')
 
   // the last page read can turn out shorter than expected: stay on a page that exists
@@ -374,7 +376,7 @@
   function cardState(h: ProjectHit): CardState {
     if (packProvider) return { fit: hitFit(h, target), action: 'pack', version: null }
     if (fromCf) return { fit: hitFit(h, target), action: 'curseforge', version: null }
-    if (h.kind === 'modpack' || !target) return { fit: hitFit(h, target), action: 'install', version: null }
+    if (h.kind === 'modpack' || h.kind === 'datapack' || !target) return { fit: hitFit(h, target), action: 'install', version: null }
     const busy = pending[h.id] === target.id && !!app.taskFor(`install:${target.id}`)
     if (busy) return { fit: { tone: 'busy', icon: 'download', word: t('Installing') }, action: 'busy', version: null }
     const q = queue.has(h.id, target.id)
@@ -469,6 +471,12 @@
         <span class="text-small muted">{t('Install to')}</span>
         <TargetPicker variant="block" />
       </div>
+      {#if kind === 'datapack'}
+        <div class="target">
+          <span class="text-small muted">{t('Into world')}</span>
+          <WorldPicker variant="block" />
+        </div>
+      {/if}
     {:else}
       <Button icon="plus" onclick={() => app.navigate({ name: 'create' })}>{t('New instance')}</Button>
     {/if}
@@ -588,7 +596,7 @@
         </section>
       {/if}
 
-      {#if kind !== 'modpack' && target && !fromCf}
+      {#if kind !== 'modpack' && kind !== 'datapack' && target && !fromCf}
         <Switch
           checked={d.hideInstalled}
           onChange={(v) => (app.discover.hideInstalled = v)}
@@ -797,11 +805,20 @@
 {#if installing}
   {@const h = installing}
   {#snippet dialogActions()}
-    <Button variant="ghost" iconEnd="chevron-right" onclick={() => ((installing = null), app.openProject(h.slug, h.kind))}>{t('See the full page')}</Button>
+    <Button variant="ghost" iconEnd="chevron-right" onclick={() => {
+        // Read the project before closing: `h` follows `installing`.
+        const p = h
+        installing = null
+        app.openProject(p.slug, p.kind)
+      }}>{t('See the full page')}</Button>
     <Button onclick={() => (installing = null)}>{t('Close')}</Button>
   {/snippet}
   <Dialog wide title={t('Install {title}', { title: h.title })} onClose={() => (installing = null)} actions={dialogActions}>
-    <InstallPanel project={h} compact onLeave={() => (installing = null)} onInstall={(id) => (pending[h.id] = id)} onQueued={() => (installing = null)} />
+    {#if h.kind === 'datapack'}
+      <DatapackInstall project={h} compact onLeave={() => (installing = null)} />
+    {:else}
+      <InstallPanel project={h} compact onLeave={() => (installing = null)} onInstall={(id) => (pending[h.id] = id)} onQueued={() => (installing = null)} />
+    {/if}
   </Dialog>
 {/if}
 

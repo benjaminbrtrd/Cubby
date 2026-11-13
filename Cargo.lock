@@ -734,13 +734,14 @@ checksum = "914a755b7c2d4af2bdcff7ce1739e2db9a1b81a9b07123d8015786ae03c0980d"
 
 [[package]]
 name = "cubby"
-version = "2026.11.0-beta.2"
+version = "2026.11.0"
 dependencies = [
  "chrono",
  "cubby-atlauncher",
  "cubby-auth",
  "cubby-common",
  "cubby-curseforge",
+ "cubby-discord",
  "cubby-ftb",
  "cubby-instance",
  "cubby-java",
@@ -766,6 +767,7 @@ dependencies = [
  "tauri-plugin-opener",
  "tauri-plugin-single-instance",
  "tauri-plugin-updater",
+ "tauri-plugin-window-state",
  "tempfile",
  "tokio",
  "tracing",
@@ -774,7 +776,7 @@ dependencies = [
 
 [[package]]
 name = "cubby-atlauncher"
-version = "2026.11.0-beta.2"
+version = "2026.11.0"
 dependencies = [
  "cubby-common",
  "futures",
@@ -790,7 +792,7 @@ dependencies = [
 
 [[package]]
 name = "cubby-auth"
-version = "2026.11.0-beta.2"
+version = "2026.11.0"
 dependencies = [
  "base64 0.23.1",
  "chrono",
@@ -805,7 +807,7 @@ dependencies = [
 
 [[package]]
 name = "cubby-common"
-version = "2026.11.0-beta.2"
+version = "2026.11.0"
 dependencies = [
  "dirs 6.0.0",
  "futures",
@@ -817,11 +819,12 @@ dependencies = [
  "thiserror 2.0.21",
  "tokio",
  "tracing",
+ "zip 2.6.1",
 ]
 
 [[package]]
 name = "cubby-curseforge"
-version = "2026.11.0-beta.2"
+version = "2026.11.0"
 dependencies = [
  "cubby-common",
  "reqwest 0.12.28",
@@ -833,8 +836,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "cubby-discord"
+version = "2026.11.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "tracing",
+]
+
+[[package]]
 name = "cubby-ftb"
-version = "2026.11.0-beta.2"
+version = "2026.11.0"
 dependencies = [
  "chrono",
  "cubby-common",
@@ -848,11 +860,12 @@ dependencies = [
 
 [[package]]
 name = "cubby-instance"
-version = "2026.11.0-beta.2"
+version = "2026.11.0"
 dependencies = [
  "chrono",
  "cubby-common",
  "flate2",
+ "png",
  "serde",
  "serde_json",
  "tokio",
@@ -863,7 +876,7 @@ dependencies = [
 
 [[package]]
 name = "cubby-java"
-version = "2026.11.0-beta.2"
+version = "2026.11.0"
 dependencies = [
  "cubby-common",
  "futures",
@@ -876,7 +889,7 @@ dependencies = [
 
 [[package]]
 name = "cubby-launch"
-version = "2026.11.0-beta.2"
+version = "2026.11.0"
 dependencies = [
  "chrono",
  "cubby-common",
@@ -890,7 +903,7 @@ dependencies = [
 
 [[package]]
 name = "cubby-meta"
-version = "2026.11.0-beta.2"
+version = "2026.11.0"
 dependencies = [
  "cubby-common",
  "cubby-launch",
@@ -903,7 +916,7 @@ dependencies = [
 
 [[package]]
 name = "cubby-modrinth"
-version = "2026.11.0-beta.2"
+version = "2026.11.0"
 dependencies = [
  "chrono",
  "cubby-common",
@@ -918,7 +931,7 @@ dependencies = [
 
 [[package]]
 name = "cubby-packinstall"
-version = "2026.11.0-beta.2"
+version = "2026.11.0"
 dependencies = [
  "cubby-common",
  "cubby-ftb",
@@ -936,7 +949,7 @@ dependencies = [
 
 [[package]]
 name = "cubby-technic"
-version = "2026.11.0-beta.2"
+version = "2026.11.0"
 dependencies = [
  "cubby-common",
  "reqwest 0.12.28",
@@ -4619,6 +4632,21 @@ dependencies = [
  "url",
  "windows-sys 0.61.2",
  "zip 9.3.0",
+]
+
+[[package]]
+name = "tauri-plugin-window-state"
+version = "2.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5d6815cab7b212f9cfe16a9d79d8d22f9e14159e4a9460f7dec1467167a008e3"
+dependencies = [
+ "bitflags 2.13.2",
+ "log",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-plugin",
+ "thiserror 2.0.21",
 ]
 
 [[package]]

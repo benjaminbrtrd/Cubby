@@ -254,3 +254,28 @@ pub fn delete_world(core: State<'_, Core>, instance_id: String, folder: String) 
     core.store.delete_world(&instance_id, &folder).msg()?;
     Ok(())
 }
+
+/// Copies options, key bindings and/or the server list from another instance into this one.
+/// Returns what was copied (a part the other instance doesn't have is left out).
+#[tauri::command]
+pub fn copy_options(
+    core: State<'_, Core>,
+    id: String,
+    from: String,
+    what: cubby_instance::OptionsCopy,
+) -> CmdResult<CopiedOptionsDto> {
+    if id == from {
+        return Err("Pick another instance to copy from.".into());
+    }
+    ensure_stopped(&core, &id)?;
+    let done = cubby_instance::copy_options(&game_dir(&core, &from)?, &game_dir(&core, &id)?, what).msg()?;
+    Ok(CopiedOptionsDto { options: done.options, keys: done.keys, servers: done.servers })
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CopiedOptionsDto {
+    pub options: bool,
+    pub keys: bool,
+    pub servers: bool,
+}
