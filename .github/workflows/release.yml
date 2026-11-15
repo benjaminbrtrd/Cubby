@@ -98,6 +98,40 @@ jobs:
         working-directory: ui
         run: npm ci
 
+      # Signs the app with the Developer ID certificate and notarizes it with an App Store Connect API key, so
+      # macOS opens it without a warning. Only when the secrets are set: without them the build stays unsigned
+      # (forks, or before the certificate is added). Tauri imports the certificate into a temporary keychain.
+      - name: Apple signing and notarization
+        if: runner.os == 'macOS'
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_PRIVATE_KEY: ${{ secrets.APPLE_API_PRIVATE_KEY }}
+        run: |
+          if [ -z "$APPLE_CERTIFICATE" ] || [ -z "$APPLE_CERTIFICATE_PASSWORD" ] || [ -z "$APPLE_SIGNING_IDENTITY" ]; then
+            echo "::warning::No Apple Developer ID certificate in the secrets: this macOS build is not signed."
+            exit 0
+          fi
+          # Multiline-safe: a value can't end the block early or add another variable.
+          put() { printf '%s<<__CUBBY_ENV__\n%s\n__CUBBY_ENV__\n' "$1" "$2" >> "$GITHUB_ENV"; }
+          # A base64 tool may wrap its output: the certificate must be one line.
+          put APPLE_CERTIFICATE "$(printf '%s' "$APPLE_CERTIFICATE" | tr -d ' \r\n')"
+          put APPLE_CERTIFICATE_PASSWORD "$APPLE_CERTIFICATE_PASSWORD"
+          put APPLE_SIGNING_IDENTITY "$APPLE_SIGNING_IDENTITY"
+          if [ -z "$APPLE_API_ISSUER" ] || [ -z "$APPLE_API_KEY" ] || [ -z "$APPLE_API_PRIVATE_KEY" ]; then
+            echo "::warning::No App Store Connect API key in the secrets: this macOS build is signed but not notarized."
+            exit 0
+          fi
+          key_path="$RUNNER_TEMP/AuthKey_$APPLE_API_KEY.p8"
+          printf '%s\n' "$APPLE_API_PRIVATE_KEY" > "$key_path"
+          chmod 600 "$key_path"
+          put APPLE_API_ISSUER "$APPLE_API_ISSUER"
+          put APPLE_API_KEY "$APPLE_API_KEY"
+          put APPLE_API_KEY_PATH "$key_path"
+
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -114,6 +148,10 @@ jobs:
           releaseId: ${{ needs.draft.outputs.id }}
           # The manifest job writes latest.json once every build is there (four jobs writing it at once lose entries).
           includeUpdaterJson: false
+
+      - name: Remove the App Store Connect key
+        if: always() && runner.os == 'macOS'
+        run: rm -f "$RUNNER_TEMP"/AuthKey_*.p8
 
   # SHA256SUMS.txt for every installer of the release, and a signed build attestation for each one: anyone can
   # check that a file comes from this repository's workflow (gh attestation verify <file> --repo <owner>/<repo>).

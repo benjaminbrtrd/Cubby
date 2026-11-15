@@ -45,6 +45,21 @@ The interface is in English for now. Write it the way the app already speaks:
 2. Write the notes in `.github/releases/v<version>.md`, with a screenshot of what's new.
 3. Push a tag such as `v2026.11.0`. GitHub Actions builds a draft release.
 
+### Signing the macOS app
+
+The release workflow signs the macOS builds with a Developer ID certificate and notarizes them, when these repository secrets exist (without them the builds are unsigned and macOS warns on first launch):
+
+| Secret | What it holds |
+| --- | --- |
+| `APPLE_CERTIFICATE` | The *Developer ID Application* certificate and its private key, exported from Keychain Access as a `.p12`, in base64 (`base64 -i cert.p12 \| pbcopy`). |
+| `APPLE_CERTIFICATE_PASSWORD` | The password chosen when exporting the `.p12`. |
+| `APPLE_SIGNING_IDENTITY` | The certificate's name, e.g. `Developer ID Application: Jane Doe (AB12CD34EF)` (`security find-identity -v -p codesigning`). |
+| `APPLE_API_ISSUER` | App Store Connect › Users and Access › Integrations › App Store Connect API: the *Issuer ID*. |
+| `APPLE_API_KEY` | The *Key ID* of a Team key with the Developer role. |
+| `APPLE_API_PRIVATE_KEY` | The content of that key's `AuthKey_<Key ID>.p8` file (it can be downloaded only once). |
+
+The first three sign; the last three notarize. Check a signed build with `spctl -a -vv /Applications/Cubby.app`: it should say *accepted* and *source=Notarized Developer ID*.
+
 ## License
 
 By contributing, you agree that your work is released under the [GPL-3.0](LICENSE), like the rest of Cubby.
