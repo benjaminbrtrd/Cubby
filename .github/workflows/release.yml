@@ -149,6 +149,34 @@ jobs:
           # The manifest job writes latest.json once every build is there (four jobs writing it at once lose entries).
           includeUpdaterJson: false
 
+      # Tauri notarizes the app, not the disk image around it: notarize and staple the .dmg too, so nothing in the
+      # install shows a warning, then put it in the release in place of the one tauri-action uploaded (the
+      # checksums job runs after this one, so its sums describe the stapled file).
+      - name: Notarize the disk image
+        if: runner.os == 'macOS' && env.APPLE_API_KEY_PATH != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          shopt -s nullglob
+          dmgs=(target/${{ matrix.target }}/release/bundle/dmg/*.dmg)
+          if [ ${#dmgs[@]} -eq 0 ]; then
+            echo "::error::No .dmg was built."
+            exit 1
+          fi
+          for dmg in "${dmgs[@]}"; do
+            result=$(xcrun notarytool submit "$dmg" --key "$APPLE_API_KEY_PATH" --key-id "$APPLE_API_KEY" --issuer "$APPLE_API_ISSUER" --wait --timeout 30m --output-format json)
+            status=$(jq -r '.status' <<< "$result")
+            if [ "$status" != "Accepted" ]; then
+              echo "::error::Apple did not notarize $(basename "$dmg"): $status"
+              xcrun notarytool log "$(jq -r '.id' <<< "$result")" --key "$APPLE_API_KEY_PATH" --key-id "$APPLE_API_KEY" --issuer "$APPLE_API_ISSUER" || true
+              exit 1
+            fi
+            xcrun stapler staple "$dmg"
+            spctl -a -vv -t open --context context:primary-signature "$dmg"
+            gh release upload "$TAG" "$dmg" --clobber
+          done
+
       - name: Remove the App Store Connect key
         if: always() && runner.os == 'macOS'
         run: rm -f "$RUNNER_TEMP"/AuthKey_*.p8
