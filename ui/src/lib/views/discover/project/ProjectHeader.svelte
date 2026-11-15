@@ -14,8 +14,9 @@
 
   const icon = $derived(project.iconUrl ? { src: project.iconUrl } : projectArt(project.slug))
   const featured = $derived(project.featuredImage ?? project.gallery.find((g) => g.featured)?.url ?? project.gallery[0]?.url ?? null)
-  const pageUrl = $derived(modrinthUrl(kind, project.slug))
-  const authorUrl = $derived(`https://modrinth.com/user/${encodeURIComponent(project.author)}`)
+  const cf = $derived(project.source === 'curseforge')
+  const pageUrl = $derived(project.pageUrl ?? modrinthUrl(kind, project.slug))
+  const authorUrl = $derived(cf ? `https://www.curseforge.com/members/${encodeURIComponent(project.author)}` : `https://modrinth.com/user/${encodeURIComponent(project.author)}`)
   const side = $derived(sideText(project.clientSide, project.serverSide))
   const resolution = $derived(resolutionOf(project.categories))
   const packMc = $derived(chosen ? newestMc(chosen.gameVersions) : null)
@@ -58,14 +59,14 @@
     </div>
     <ul class="stats text-small" aria-label={t('Project stats')}>
       <li><Icon name="download" size={18} />{t('{n} downloads', { n: compactNum(project.downloads) })}</li>
-      <li><Icon name="accounts" size={18} />{t('{n} followers', { n: compactNum(project.follows) })}</li>
+      {#if !cf}<li><Icon name="accounts" size={18} />{t('{n} followers', { n: compactNum(project.follows) })}</li>{/if}
       <li><Icon name="clock" size={18} />{t('Updated {never}', { never: lower(relativeTime(project.updated, 'never')) })}</li>
-      <li><Icon name="globe" size={18} />{t('Source: Modrinth')}</li>
+      <li><Icon name="globe" size={18} />{cf ? t('Source: CurseForge') : t('Source: Modrinth')}</li>
     </ul>
   </div>
   <div class="header-actions">
     <IconButton icon="copy" label={t('Copy link')} onclick={copyLink} />
-    <IconButton icon="globe" label={t('Open on Modrinth')} onclick={() => openUrl(pageUrl)} />
+    <IconButton icon="globe" label={cf ? t('Open on CurseForge') : t('Open on Modrinth')} onclick={() => openUrl(pageUrl)} />
   </div>
 </header>
 
@@ -171,7 +172,6 @@
     min-height: 160px;
     aspect-ratio: 16 / 9;
     object-fit: cover;
-    image-rendering: pixelated;
     box-sizing: border-box;
     border: var(--border-block) solid var(--edge);
     box-shadow: var(--shadow-block);

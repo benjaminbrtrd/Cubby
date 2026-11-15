@@ -208,6 +208,56 @@ pub fn extract_overrides(archive: &Path, prefix: &str, game_dir: &Path, mut on_p
     Ok(done)
 }
 
+// Switching versions
+
+/// Folders whose files belong to the pack: an old version's file there that the new version doesn't have is
+/// removed when switching. Configs and the rest are overwritten by the new version's overrides instead.
+const PACK_CONTENT: [&str; 3] = ["mods", "resourcepacks", "shaderpacks"];
+
+/// The files a plan puts in the game directory: downloads, files to get by hand, and its overrides' files.
+pub fn plan_paths(plan: &PackPlan) -> Result<Vec<PathBuf>> {
+    let mut out: Vec<PathBuf> = plan.files.iter().map(|f| f.path.clone()).chain(plan.blocked.iter().map(|b| b.path.clone())).collect();
+    for o in &plan.overrides {
+        let file = fs::File::open(&o.archive).map_err(|e| Error::io(&o.archive, e))?;
+        let mut zip = zip::ZipArchive::new(file).map_err(|e| Error::Other(format!("{} isn't a valid zip file ({e}).", o.archive.display())))?;
+        let mut prefix = o.prefix.replace('\\', "/").trim_start_matches("./").to_string();
+        if !prefix.is_empty() && !prefix.ends_with('/') {
+            prefix.push('/');
+        }
+        for i in 0..zip.len() {
+            let Ok(entry) = zip.by_index(i) else { continue };
+            if entry.is_dir() {
+                continue;
+            }
+            let name = entry.name().replace('\\', "/");
+            if let Some(path) = name.strip_prefix(prefix.as_str()).and_then(safe_relative_path) {
+                out.push(path);
+            }
+        }
+    }
+    Ok(out)
+}
+
+/// The old version's pack files (in mods, resourcepacks, shaderpacks) that the new version doesn't have:
+/// the ones to remove before installing the new version. An optional file turned off (".disabled") counts as
+/// the file itself.
+pub fn switch_removals(old: &[PathBuf], new: &[PathBuf]) -> Vec<PathBuf> {
+    let base = |p: &Path| -> PathBuf {
+        let s = p.to_string_lossy().replace('\\', "/");
+        PathBuf::from(s.strip_suffix(".disabled").unwrap_or(&s))
+    };
+    let keep: HashSet<PathBuf> = new.iter().map(|p| base(p)).collect();
+    let mut out: Vec<PathBuf> = Vec::new();
+    for p in old {
+        let first = p.components().next().map(|c| c.as_os_str().to_string_lossy().to_string()).unwrap_or_default();
+        let b = base(p);
+        if PACK_CONTENT.contains(&first.as_str()) && !keep.contains(&b) && !out.contains(&b) {
+            out.push(b);
+        }
+    }
+    out
+}
+
 // Local files
 
 /// The two kinds of modpack file the player can import.
@@ -416,6 +466,23 @@ fn copy_into_place(source: &Path, target: &Path) -> std::io::Result<()> {
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn switching_removes_old_pack_files_only() {
+        let old = vec![
+            PathBuf::from("mods/a-1.jar"),
+            PathBuf::from("mods/b-1.jar.disabled"),
+            PathBuf::from("mods/kept.jar"),
+            PathBuf::from("config/a.toml"),
+            PathBuf::from("resourcepacks/old.zip"),
+        ];
+        let new = vec![PathBuf::from("mods/a-2.jar"), PathBuf::from("mods/kept.jar.disabled"), PathBuf::from("config/a.toml")];
+        assert_eq!(
+            switch_removals(&old, &new),
+            vec![PathBuf::from("mods/a-1.jar"), PathBuf::from("mods/b-1.jar"), PathBuf::from("resourcepacks/old.zip")]
+        );
+    }
+
     use super::*;
     use cubby_common::events::NoopSink;
 

@@ -215,6 +215,11 @@ pub async fn launch_instance(
         {
             log::warn!("could not record the play session of {id}: {e}");
         }
+        // Datapacks picked for new worlds go into the worlds this session created.
+        let added = crate::extras::apply_world_datapacks(&core, &id).await;
+        if added > 0 {
+            log::info!("added {added} datapack(s) to the new worlds of {id}");
+        }
         // Makes the UI reload the instances with the new play time.
         core.sink.finished(&format!("session:{id}"), None);
         match settings.on_launch {

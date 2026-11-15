@@ -7,6 +7,8 @@
   import type { Project, ProjectKind, ProjectVersion } from '../../../types'
   import InstallPanel from '../InstallPanel.svelte'
   import DatapackInstall from '../DatapackInstall.svelte'
+  import CfInstall from '../CfInstall.svelte'
+  import type { CfFile } from '../../../types'
   import { loaderLabel, mcRange, modLoadersOf, modrinthUrl, sideText } from '../discover'
   import { follow } from './shared'
 
@@ -16,12 +18,25 @@
     versions,
     versionsError,
     versionId = $bindable(),
-  }: { project: Project; kind: ProjectKind; versions: ProjectVersion[] | null; versionsError: string | null; versionId: string | null } = $props()
+    cfFiles,
+  }: {
+    project: Project
+    kind: ProjectKind
+    versions: ProjectVersion[] | null
+    versionsError: string | null
+    versionId: string | null
+    /** A CurseForge project's files (null while loading). */
+    cfFiles?: CfFile[] | null
+  } = $props()
+
+  const cf = $derived(project.source === 'curseforge')
 
   const side = $derived(sideText(project.clientSide, project.serverSide))
 
   const links = $derived.by(() => {
-    const out: { icon: IconName; label: string; url: string }[] = [{ icon: 'globe', label: t('Page on Modrinth'), url: modrinthUrl(kind, project.slug) }]
+    const out: { icon: IconName; label: string; url: string }[] = [
+      cf ? { icon: 'globe', label: t('Page on CurseForge'), url: project.pageUrl ?? '' } : { icon: 'globe', label: t('Page on Modrinth'), url: modrinthUrl(kind, project.slug) },
+    ]
     if (project.links.source) out.push({ icon: 'terminal', label: t('Source code'), url: project.links.source })
     if (project.links.issues) out.push({ icon: 'warning', label: t('Report an issue'), url: project.links.issues })
     if (project.links.wiki) out.push({ icon: 'library', label: 'Wiki', url: project.links.wiki })
@@ -31,7 +46,9 @@
   })
 </script>
 
-{#if kind === 'datapack'}
+{#if cf}
+  <CfInstall {project} pageUrl={project.pageUrl ?? ''} files={cfFiles} filesError={versionsError} bind:fileId={versionId} />
+{:else if kind === 'datapack'}
   <DatapackInstall {project} {versions} {versionsError} />
 {:else}
   <InstallPanel {project} {versions} {versionsError} bind:versionId />
@@ -56,14 +73,14 @@
   <h3 id="pp-details" class="cb-ins-eyebrow">{t('Details')}</h3>
   <dl class="cb-ins-facts">
     {#if project.license}<dt class="text-small muted">{t('License')}</dt><dd class="text-mono">{project.license}</dd>{/if}
-    {#if kind === 'mod' && side}<dt class="text-small muted">{t('Runs on')}</dt><dd class="text-body">{side}</dd>{/if}
+    {#if kind === 'mod' && side && !cf}<dt class="text-small muted">{t('Runs on')}</dt><dd class="text-body">{side}</dd>{/if}
     {#if project.gameVersions.length}<dt class="text-small muted">Minecraft</dt><dd class="text-mono">{mcRange(project.gameVersions)}</dd>{/if}
     {#if project.loaders.length && kind !== 'resourcepack'}
       <dt class="text-small muted">{kind === 'shader' ? t('Runs with') : 'Loaders'}</dt>
       <dd class="text-mono">{(kind === 'shader' ? project.loaders : modLoadersOf(project.loaders)).map(loaderLabel).join(', ') || '—'}</dd>
     {/if}
     <dt class="text-small muted">{t('Versions')}</dt><dd class="text-body">{num(Math.max(project.versionCount, versions?.length ?? 0))}</dd>
-    <dt class="text-small muted">{t('Source')}</dt><dd class="text-body">Modrinth</dd>
+    <dt class="text-small muted">{t('Source')}</dt><dd class="text-body">{cf ? 'CurseForge' : 'Modrinth'}</dd>
     <dt class="text-small muted">{t('Since')}</dt><dd class="text-body">{date(project.published)}</dd>
   </dl>
 </section>

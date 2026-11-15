@@ -600,8 +600,8 @@
             </div>
             {@render switchRow(
               'mod-updates',
-              t('Check mod updates when I open an instance'),
-              t('Looks for new versions on Modrinth. Cubby always asks before updating.'),
+              t('Check mod updates when Cubby starts'),
+              t('Looks for new versions of every instance’s mods and packs on Modrinth, at start and when you open an instance. Cubby tells you, and always asks before updating.'),
               s.checkUpdates,
               (v) => save({ checkUpdates: v }),
             )}

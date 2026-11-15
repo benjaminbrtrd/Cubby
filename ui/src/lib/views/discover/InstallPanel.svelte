@@ -42,6 +42,10 @@
     versionId?: string | null
     /** In a dialog: no title and no "When you install" steps. */
     compact?: boolean
+    /** Add to the download queue instead of installing right away (in a dialog by default). */
+    toQueue?: boolean
+    /** Opened from the instance's own page: no Play button and no links back to its tabs. */
+    inInstance?: boolean
     /** Called when one of the panel's links leaves the current screen (to close a dialog). */
     onLeave?: () => void
     /** Called once an install into an instance has started. */
@@ -50,7 +54,8 @@
     onQueued?: () => void
   }
 
-  let { project, versions: given, versionsError = null, versionId = $bindable(null), compact = false, onLeave, onInstall, onQueued }: Props = $props()
+  let { project, versions: given, versionsError = null, versionId = $bindable(null), compact = false, toQueue, inInstance = false, onLeave, onInstall, onQueued }: Props = $props()
+  const queues = $derived(toQueue ?? compact)
 
   const kind = $derived(project.kind)
   const words = $derived(KINDS[kind])
@@ -331,7 +336,7 @@
   }
 
   /** In the dialog, "Add to queue" replaces "Install": the player installs everything together from the queue. */
-  const queued = $derived(compact && target ? queue.has(project.id, target.id) : undefined)
+  const queued = $derived(queues && target ? queue.has(project.id, target.id) : undefined)
   const inQueue = $derived(queued?.state === 'staged')
 
   function addToQueue() {
@@ -610,8 +615,8 @@
         {:else if kind === 'shader'}{turnedOn ? t('It\'s turned on for the next time you play.') : t('Pick it in the Shaders tab, or in game.')}
         {:else}{turnedOn ? t('It\'s on top of your packs the next time you play.') : t('Turn it on in the Resource packs tab, or in game.')}{/if}
       </Banner>
-      <PlayButton size="md" class="wide" state={playState} label={playState === 'ready' ? t('Play {name}', { name: target.name }) : undefined} detail={played(target.lastPlayed)} onclick={play} />
-      {#if words.tab}<Button onclick={() => openTab(target)} iconEnd="chevron-right">{t('Manage {many} in {name}', { many: words.many, name: target.name })}</Button>{/if}
+      {#if !inInstance}<PlayButton size="md" class="wide" state={playState} label={playState === 'ready' ? t('Play {name}', { name: target.name }) : undefined} detail={played(target.lastPlayed)} onclick={play} />{/if}
+      {#if words.tab && !inInstance}<Button onclick={() => openTab(target)} iconEnd="chevron-right">{t('Manage {many} in {name}', { many: words.many, name: target.name })}</Button>{/if}
     {:else}
       {#if failed}
         <Banner tone="danger" title={t('Couldn\'t install {title}', { title: project.title })}>{failed}</Banner>
@@ -627,7 +632,7 @@
           hint={kind === 'shader' ? t('Used the next time you play') : t('On top of your other packs, so its textures win')}
         />
       {/if}
-      {#if compact && kind !== 'modpack'}
+      {#if queues && kind !== 'modpack'}
         {#if inQueue && queued}
           <Button size="lg" icon="check" onclick={() => (queue.remove(queued.key), onQueued?.())} class="wide">{t('In the queue · remove')}</Button>
         {:else}
@@ -647,10 +652,10 @@
       {@const hint = serverHint(project.clientSide, project.serverSide)}
       <ul class="tips">
         {#if hint}<li class="text-small"><Icon name="servers" size={18} /><span>{hint}</span></li>{/if}
-        <li class="text-small">
+        {#if !inInstance}<li class="text-small">
           <Icon name="info" size={18} />
           <span>{t('Changed your mind? Turn it off or remove it in')} <button type="button" class="link" onclick={() => openTab(target)}>{t('Mods')}</button>{t('. Your worlds stay, but what it added disappears from them.')}</span>
-        </li>
+        </li>{/if}
       </ul>
     {/if}
 

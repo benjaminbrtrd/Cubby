@@ -107,6 +107,19 @@ fn update_loaders(folder: Folder, target: &Target) -> Vec<String> {
     }
 }
 
+/// Every value [`update_channels`] gives.
+const UPDATE_CHANNEL_SETS: [&[&str]; 3] = [&["release"], &["release", "beta"], &[]];
+
+/// The channels an installed version may be updated to: never a less stable one. A release only gets releases, a
+/// beta gets releases and betas, an alpha (or a version Modrinth doesn't describe) gets anything (empty: no filter).
+fn update_channels(current: Option<&api::Version>) -> &'static [&'static str] {
+    match current.map(|v| v.version_type.as_str()) {
+        Some("release") => UPDATE_CHANNEL_SETS[0],
+        Some("beta") => UPDATE_CHANNEL_SETS[1],
+        _ => UPDATE_CHANNEL_SETS[2],
+    }
+}
+
 /// A file with a newer version, and that version's primary file.
 struct PendingUpdate {
     local: LocalFile,
@@ -158,16 +171,26 @@ impl Modrinth {
         Ok(Applied { renamed, error: first_error })
     }
 
-    /// Newest version of each file (by SHA-1) for the target, from `/version_files/update`, one request per folder.
-    async fn latest_for(&self, files: &[&LocalFile], target: &Target) -> Result<HashMap<String, api::Version>> {
+    /// Newest version of each file (by SHA-1) for the target, from `/version_files/update`: one request per
+    /// folder and per channel the file may move to (see [`update_channels`]); `current` is each file's version.
+    async fn latest_for(&self, files: &[&LocalFile], target: &Target, current: &HashMap<String, api::Version>) -> Result<HashMap<String, api::Version>> {
         let mut out = HashMap::new();
         for folder in Folder::ALL {
-            let hashes: Vec<String> = files.iter().filter(|f| f.folder == folder).map(|f| f.sha1.clone()).collect();
             let loaders = update_loaders(folder, target);
-            if hashes.is_empty() || loaders.is_empty() {
+            if loaders.is_empty() {
                 continue;
             }
-            out.extend(self.latest_versions(&hashes, &loaders, std::slice::from_ref(&target.game_version)).await?);
+            for channels in UPDATE_CHANNEL_SETS {
+                let hashes: Vec<String> = files
+                    .iter()
+                    .filter(|f| f.folder == folder && update_channels(current.get(&f.sha1)) == channels)
+                    .map(|f| f.sha1.clone())
+                    .collect();
+                if hashes.is_empty() {
+                    continue;
+                }
+                out.extend(self.latest_versions(&hashes, &loaders, std::slice::from_ref(&target.game_version), channels).await?);
+            }
         }
         Ok(out)
     }
@@ -192,7 +215,7 @@ impl Modrinth {
         let files = self.local_files(game_dir).await;
         let current = self.identify(&files).await?;
         let known: Vec<LocalFile> = files.into_iter().filter(|f| current.contains_key(&f.sha1)).collect();
-        let latest = self.latest_for(&known.iter().collect::<Vec<_>>(), target).await?;
+        let latest = self.latest_for(&known.iter().collect::<Vec<_>>(), target, &current).await?;
         let pending = Self::pending_updates(known, &latest, Some(&current));
         if pending.is_empty() {
             return Ok(Vec::new());
@@ -250,8 +273,10 @@ impl Modrinth {
             }
         }
         let files = self.hash_files(selected).await;
-        let latest = self.latest_for(&files.iter().collect::<Vec<_>>(), target).await?;
-        let pending = Self::pending_updates(files, &latest, None);
+        // the installed versions decide which channels an update may come from
+        let current = self.identify(&files).await?;
+        let latest = self.latest_for(&files.iter().collect::<Vec<_>>(), target, &current).await?;
+        let pending = Self::pending_updates(files, &latest, Some(&current));
         if pending.is_empty() {
             emit(sink, task, "Done", 1, 1);
             return Ok(Applied::default());
@@ -395,6 +420,18 @@ mod tests {
     }
 
     #[test]
+    fn updates_never_go_to_a_less_stable_channel() {
+        let v = |t: &str| api::Version { version_type: t.into(), ..Default::default() };
+        assert_eq!(update_channels(Some(&v("release"))), ["release"]);
+        assert_eq!(update_channels(Some(&v("beta"))), ["release", "beta"]);
+        assert!(update_channels(Some(&v("alpha"))).is_empty(), "an alpha may move to anything");
+        assert!(update_channels(None).is_empty());
+        for t in ["release", "beta", "alpha", ""] {
+            assert!(UPDATE_CHANNEL_SETS.contains(&update_channels(Some(&v(t)))), "every set is asked for");
+        }
+    }
+
+    #[test]
     fn pending_updates_skip_current_versions() {
         let files = vec![
             local(Folder::Mods, "a-1.jar", "h1", true),
@@ -436,8 +473,25 @@ mod tests {
         let current = m.version_files(std::slice::from_ref(&sha1)).await.unwrap();
         assert_eq!(current.get(&sha1).map(|v| v.id.as_str()), Some(oldest.id.as_str()));
         let local = local(Folder::Mods, "lithium.jar", &sha1, true);
-        let latest = m.latest_for(&[&local], &target).await.unwrap();
+        let latest = m.latest_for(&[&local], &target, &current).await.unwrap();
         assert_eq!(latest.get(&sha1).map(|v| v.id.as_str()), Some(newest.id.as_str()));
+    }
+
+    /// A release file is only offered releases, even when the project's newest version is a beta.
+    #[tokio::test]
+    #[ignore = "needs network"]
+    async fn live_release_stays_on_releases() {
+        let m = Modrinth::new(Http::new().unwrap());
+        let target = Target::new("1.21.1", Some("fabric"));
+        let mut versions = m.project_versions_raw("sodium", &target.mod_loaders(), std::slice::from_ref(&target.game_version)).await.unwrap();
+        versions.sort_by_key(|v| v.published_millis());
+        let oldest_release = versions.iter().find(|v| v.version_type == "release").expect("Sodium has releases for 1.21.1");
+        let sha1 = oldest_release.primary_file().unwrap().sha1().unwrap().to_lowercase();
+        let current = m.version_files(std::slice::from_ref(&sha1)).await.unwrap();
+        let local = local(Folder::Mods, "sodium.jar", &sha1, true);
+        let latest = m.latest_for(&[&local], &target, &current).await.unwrap();
+        let newest_release = versions.iter().rev().find(|v| v.version_type == "release").unwrap();
+        assert_eq!(latest.get(&sha1).map(|v| v.id.as_str()), Some(newest_release.id.as_str()));
     }
 
     #[tokio::test]

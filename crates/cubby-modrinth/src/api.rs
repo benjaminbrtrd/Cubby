@@ -66,6 +66,9 @@ pub struct SearchHit {
 pub struct Project {
     #[serde(deserialize_with = "nullable")]
     pub id: String,
+    /// Id of the project's team (`GET /teams?ids=[...]`).
+    #[serde(deserialize_with = "nullable")]
+    pub team: String,
     #[serde(deserialize_with = "nullable")]
     pub slug: String,
     #[serde(deserialize_with = "nullable")]
@@ -131,8 +134,12 @@ pub struct License {
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(default)]
 pub struct GalleryItem {
+    /// A small copy, 350 px wide (`…_350.webp`).
     #[serde(deserialize_with = "nullable")]
     pub url: String,
+    /// The image as uploaded. Absent on older answers.
+    #[serde(deserialize_with = "nullable")]
+    pub raw_url: String,
     pub featured: bool,
     pub title: Option<String>,
     pub description: Option<String>,
@@ -143,6 +150,8 @@ pub struct GalleryItem {
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(default)]
 pub struct TeamMember {
+    #[serde(deserialize_with = "nullable")]
+    pub team_id: String,
     pub user: User,
     #[serde(deserialize_with = "nullable")]
     pub role: String,

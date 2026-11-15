@@ -205,6 +205,10 @@
     color: var(--ink);
     cursor: pointer;
   }
+  /* The tight start padding is for a picker that opens on an emblem (an instance, a world); text gets the usual one. */
+  .trigger:not(.ghost):not(:has(> .content > .cb-instance-icon:first-child, > .content > img:first-child, > .content > .thumb:first-child)) {
+    padding-inline-start: var(--space-3);
+  }
   .trigger.field {
     background: var(--field);
     border: var(--border-block) solid var(--outline);

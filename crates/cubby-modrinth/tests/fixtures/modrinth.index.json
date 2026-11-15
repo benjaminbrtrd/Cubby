@@ -1,0 +1,57 @@
+{
+  "formatVersion": 1,
+  "game": "minecraft",
+  "versionId": "1.4.0",
+  "name": "Fixture Pack",
+  "summary": "A small pack for the contents tests",
+  "files": [
+    {
+      "path": "mods/sodium-fabric-0.5.8+mc1.20.1.jar",
+      "hashes": { "sha1": "a0b6a0b6a0b6a0b6a0b6a0b6a0b6a0b6a0b6a0b6", "sha512": "00" },
+      "env": { "client": "required", "server": "unsupported" },
+      "downloads": ["https://cdn.modrinth.com/data/AANobbMI/versions/IZskON6d/sodium-fabric-0.5.8%2Bmc1.20.1.jar"],
+      "fileSize": 1032140
+    },
+    {
+      "path": "mods/iris-mc1.20.1-1.7.0.jar",
+      "hashes": { "sha1": "b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1" },
+      "env": { "client": "optional", "server": "unsupported" },
+      "downloads": ["https://cdn.modrinth.com/data/YL57xq9U/versions/s5eFLITc/iris-mc1.20.1-1.7.0.jar"],
+      "fileSize": 2253840
+    },
+    {
+      "path": "mods/server-only-tool.jar",
+      "hashes": { "sha1": "c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2" },
+      "env": { "client": "unsupported", "server": "required" },
+      "downloads": ["https://cdn.modrinth.com/data/P7dR8mSH/versions/aaaaaaaa/server-only-tool.jar"],
+      "fileSize": 1000
+    },
+    {
+      "path": "mods/custom-mod.jar",
+      "hashes": { "sha1": "d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3" },
+      "downloads": ["https://github.com/example/custom-mod/releases/download/1.0/custom-mod.jar"],
+      "fileSize": 2000
+    },
+    {
+      "path": "config/sodium-options.json",
+      "hashes": { "sha1": "e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4" },
+      "downloads": ["https://cdn.modrinth.com/data/AANobbMI/versions/IZskON6d/sodium-options.json"],
+      "fileSize": 300
+    },
+    {
+      "path": "resourcepacks/FreshAnimations_v1.9.zip",
+      "hashes": { "sha1": "f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5" },
+      "env": { "client": "required", "server": "unsupported" },
+      "downloads": ["https://cdn.modrinth.com/data/50dA9Sha/versions/u0g7XcV4/FreshAnimations_v1.9.zip"],
+      "fileSize": 4000000
+    },
+    {
+      "path": "shaderpacks/ComplementaryReimagined_r5.2.zip",
+      "hashes": { "sha1": "a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6" },
+      "env": { "client": "required", "server": "unsupported" },
+      "downloads": ["https://cdn.modrinth.com/data/HVnmMxH1/versions/Ffn2RvQn/ComplementaryReimagined_r5.2.zip"],
+      "fileSize": 500000
+    }
+  ],
+  "dependencies": { "minecraft": "1.20.1", "fabric-loader": "0.15.11" }
+}

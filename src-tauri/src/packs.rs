@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
-use cubby_common::packs::{PackChannel, PackLoaderKind, PackPage, PackPlan, PackSort, PackSummary, PackVersion};
+use cubby_common::packs::{ContentSite, PackChannel, PackContentItem, PackLoaderKind, PackPage, PackPlan, PackSort, PackSummary, PackVersion};
 use cubby_curseforge::CurseForgeClient;
 use cubby_instance::{Instance, Loader, ModpackInfo, NewInstance};
 use cubby_modrinth::{ProjectKind, SearchQuery, Sort};
@@ -31,7 +31,7 @@ const LEGACY_TECHNIC_MESSAGE: &str = "This Technic pack uses Minecraft 1.5.2 or 
 
 // Types shared with the UI
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ProviderId {
     Modrinth,
@@ -205,7 +205,9 @@ fn technic_summary(pack: &cubby_technic::TechnicPack) -> PackSummary {
 }
 
 #[tauri::command]
-pub async fn pack_search(core: State<'_, Core>, provider: ProviderId, query: String, sort: PackSort, offset: u32) -> CmdResult<PackPage> {
+/// `filters` (Minecraft versions, loaders, categories) apply to CurseForge, which filters itself; the UI
+/// filters the other sources' results.
+pub async fn pack_search(core: State<'_, Core>, provider: ProviderId, query: String, sort: PackSort, offset: u32, filters: Option<crate::cf_resources::SearchFiltersDto>) -> CmdResult<PackPage> {
     let query = query.trim();
     match provider {
         ProviderId::Modrinth => {
@@ -220,6 +222,8 @@ pub async fn pack_search(core: State<'_, Core>, provider: ProviderId, query: Str
                 kind: ProjectKind::Modpack,
                 game_version: None,
                 loader: None,
+                game_versions: Vec::new(),
+                loaders: Vec::new(),
                 categories: Vec::new(),
                 environment: None,
                 sort,
@@ -229,7 +233,10 @@ pub async fn pack_search(core: State<'_, Core>, provider: ProviderId, query: Str
             let results = core.modrinth.search(&q).await.msg()?;
             Ok(PackPage { total: Some(results.total), hits: results.hits.into_iter().map(modrinth_summary).collect() })
         }
-        ProviderId::Curseforge => require_curseforge(&core)?.search(query, sort, offset, PAGE_SIZE).await.msg(),
+        ProviderId::Curseforge => match filters {
+            Some(filters) => crate::cf_resources::search_modpacks(&core, query, sort, offset, PAGE_SIZE, &filters).await,
+            None => require_curseforge(&core)?.search(query, sort, offset, PAGE_SIZE).await.msg(),
+        },
         ProviderId::Ftb => core.ftb.search(query, sort, offset, PAGE_SIZE).await.msg(),
         ProviderId::Atlauncher => {
             let page = core.atlauncher.search(query, sort).await.msg()?;
@@ -388,6 +395,98 @@ pub async fn pack_optional_mods(core: State<'_, Core>, provider: ProviderId, id:
             warning: m.warning.filter(|w| !w.is_empty()),
         })
         .collect())
+}
+
+// What a pack version contains
+
+/// Pack versions whose contents are remembered (they don't change once published).
+const CONTENTS_CACHE_SIZE: usize = 40;
+const SINGLE_ZIP_MESSAGE: &str = "This pack is a single download that doesn't list its mods. You'll see them in the instance once it's installed.";
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PackContentsDto {
+    items: Vec<PackContentItem>,
+    /// Why there is no list, for a pack whose source doesn't give one.
+    unavailable: Option<String>,
+}
+
+type ContentsKey = (ProviderId, String, String);
+
+fn contents_cache() -> &'static std::sync::Mutex<Vec<(ContentsKey, PackContentsDto)>> {
+    static CACHE: std::sync::OnceLock<std::sync::Mutex<Vec<(ContentsKey, PackContentsDto)>>> = std::sync::OnceLock::new();
+    CACHE.get_or_init(Default::default)
+}
+
+fn cached_contents(key: &ContentsKey) -> Option<PackContentsDto> {
+    let cache = contents_cache().lock().unwrap_or_else(|e| e.into_inner());
+    cache.iter().find(|(k, _)| k == key).map(|(_, v)| v.clone())
+}
+
+fn remember_contents(key: ContentsKey, value: PackContentsDto) {
+    let mut cache = contents_cache().lock().unwrap_or_else(|e| e.into_inner());
+    cache.retain(|(k, _)| *k != key);
+    if cache.len() >= CONTENTS_CACHE_SIZE {
+        cache.remove(0);
+    }
+    cache.push((key, value));
+}
+
+/// Describes the CurseForge projects in `items` (FTB and ATLauncher packs name them by id): name (when `rename`,
+/// the items being named after their files), icon, page, summary, authors. Without a CurseForge key, or when the
+/// call fails, the items stay as they are.
+async fn describe_curseforge_items(core: &Core, items: &mut [PackContentItem], rename: bool) {
+    if !items.iter().any(|i| i.site == Some(ContentSite::Curseforge)) {
+        return;
+    }
+    let Some(client) = core.curseforge() else { return };
+    if let Err(e) = client.describe_contents(items, rename).await {
+        log::warn!("couldn't describe the CurseForge projects of a pack: {e}");
+    }
+}
+
+async fn contents_inner(core: &Core, provider: ProviderId, pack_id: &str, version_id: &str) -> CmdResult<PackContentsDto> {
+    let listed = |items| PackContentsDto { items, unavailable: None };
+    match provider {
+        ProviderId::Modrinth => Ok(listed(core.modrinth.pack_contents(version_id, &cache_dir(core, "contents")?).await.msg()?)),
+        ProviderId::Curseforge => {
+            let client = require_curseforge(core)?;
+            let items = client.pack_contents(parse_id(pack_id, "CurseForge pack")?, parse_id(version_id, "CurseForge file")?, &cache_dir(core, "contents")?).await.msg()?;
+            Ok(listed(items))
+        }
+        ProviderId::Ftb => {
+            let mut items = core.ftb.contents(pack_id, version_id).await.msg()?;
+            describe_curseforge_items(core, &mut items, true).await;
+            Ok(listed(items))
+        }
+        ProviderId::Atlauncher => {
+            let manifest = core.atlauncher.manifest(pack_id, version_id).await.msg()?;
+            let mut items = cubby_atlauncher::manifest_contents(&manifest);
+            describe_curseforge_items(core, &mut items, false).await;
+            Ok(listed(items))
+        }
+        ProviderId::Technic => Ok(match core.technic.contents(pack_id, version_id).await.msg()? {
+            Some(items) => listed(items),
+            None => PackContentsDto { items: Vec::new(), unavailable: Some(SINGLE_ZIP_MESSAGE.to_string()) },
+        }),
+    }
+}
+
+/// The mods, resource packs and shader packs one version of a pack installs, from the cheapest data its source
+/// has: a Modrinth `.mrpack` index or a CurseForge `manifest.json` (the pack file is downloaded, read and
+/// deleted), an FTB version, an ATLauncher manifest, a Technic Solder build. Remembered per version.
+#[tauri::command]
+pub async fn pack_contents(core: State<'_, Core>, provider: ProviderId, pack_id: String, version_id: String) -> CmdResult<PackContentsDto> {
+    let key = (provider, pack_id.trim().to_string(), version_id.trim().to_string());
+    if key.2.is_empty() {
+        return Err("Choose a version of the pack.".into());
+    }
+    if let Some(hit) = cached_contents(&key) {
+        return Ok(hit);
+    }
+    let contents = contents_inner(&core, provider, &key.1, &key.2).await?;
+    remember_contents(key, contents.clone());
+    Ok(contents)
 }
 
 // Installing
@@ -579,6 +678,138 @@ async fn install_source(core: &Core, task: &str, id: &str, source: Source, name_
         core.sink.progress(task, &format!("{missing} file(s) must be downloaded by hand"), 1, 1);
     }
     Ok(())
+}
+
+// Switching the pack version of an instance
+
+fn provider_of(name: &str) -> CmdResult<ProviderId> {
+    match name {
+        "modrinth" | "" => Ok(ProviderId::Modrinth),
+        "curseforge" => Ok(ProviderId::Curseforge),
+        "ftb" => Ok(ProviderId::Ftb),
+        "atlauncher" => Ok(ProviderId::Atlauncher),
+        "technic" => Ok(ProviderId::Technic),
+        other => Err(format!("Unknown modpack source: {other}.")),
+    }
+}
+
+/// A version of a pack as an install plan, whatever the provider (a Modrinth `.mrpack` is downloaded, then
+/// planned like a file). The plan owns its archives: remove them with `remove_plan_archives` when not installed.
+async fn plan_version(core: &Core, provider: ProviderId, pack_id: &str, version_id: &str) -> CmdResult<PackPlan> {
+    if provider != ProviderId::Modrinth {
+        return plan_provider(core, provider, pack_id, version_id, None).await;
+    }
+    let pack = core.modrinth.fetch_modpack(version_id, &cache_dir(core, "modrinth")?).await.msg()?;
+    let archive = pack.archive.clone();
+    let mut plan = match blocking(move || pack_install::plan_from_mrpack(&archive).msg()).await {
+        Ok(plan) => plan,
+        Err(e) => {
+            let _ = std::fs::remove_file(&pack.archive);
+            return Err(e);
+        }
+    };
+    plan.provider = "modrinth".into();
+    plan.pack_id = pack.project_id;
+    plan.version_id = pack.version_id;
+    plan.title = pack.title;
+    plan.version_name = pack.version_number;
+    plan.icon_url = pack.icon_url;
+    Ok(plan)
+}
+
+/// Moves a file of the game directory to `<game dir>/.trash/<into>/<its path>`.
+fn trash_into(game_dir: &Path, into: &str, rel: &Path) -> std::io::Result<()> {
+    let src = game_dir.join(rel);
+    if !src.is_file() {
+        return Ok(());
+    }
+    let dest = game_dir.join(".trash").join(into).join(rel);
+    if let Some(parent) = dest.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    std::fs::rename(&src, &dest)
+}
+
+/// Switches an instance installed from a modpack to another version of that pack, older or newer (task
+/// `modpack:<id>`). The old version's mods, resource packs and shader packs that the new one doesn't have go to
+/// `<game dir>/.trash/modpack-<date>/`, then the new version installs over the instance: its files, its
+/// Minecraft version and loader, and its overrides (pack configs are replaced). Worlds, screenshots and the files
+/// the player added stay. Returns when done.
+#[tauri::command]
+pub async fn change_pack_version(app: AppHandle, core: State<'_, Core>, instance_id: String, version_id: String) -> CmdResult<()> {
+    let inst = core.store.get(&instance_id).msg()?;
+    let info = inst.modpack.clone().ok_or_else(|| "This instance wasn't installed from a modpack.".to_string())?;
+    let provider = provider_of(info.provider.as_deref().unwrap_or("modrinth"))?;
+    let version_id = version_id.trim().to_string();
+    if version_id.is_empty() || version_id == info.version_id {
+        return Err("This version of the pack is the one installed.".into());
+    }
+    if provider == ProviderId::Curseforge {
+        require_curseforge(&core)?;
+    }
+    commands::ensure_stopped(&core, &inst.id)?;
+    commands::run_task(&app, format!("modpack:{}", inst.id), move |app, task| async move {
+        let core = app.state::<Core>();
+        core.sink.progress(&task, "Preparing the modpack", 0, 3);
+        let new = plan_version(&core, provider, &info.project_id, &version_id).await?;
+        core.sink.progress(&task, "Comparing with the installed version", 1, 3);
+        // The installed version's files: a version gone from the provider leaves them where they are.
+        let old_paths = match plan_version(&core, provider, &info.project_id, &info.version_id).await {
+            Ok(old) => {
+                let paths = pack_install::plan_paths(&old);
+                pack_install::remove_plan_archives(&old);
+                paths.unwrap_or_else(|e| {
+                    log::warn!("couldn't list the files of the installed pack version: {e}");
+                    Vec::new()
+                })
+            }
+            Err(e) => {
+                log::warn!("couldn't read the installed version {} of the pack: {e}", info.version_id);
+                Vec::new()
+            }
+        };
+        let new_paths = match pack_install::plan_paths(&new) {
+            Ok(p) => p,
+            Err(e) => {
+                pack_install::remove_plan_archives(&new);
+                return Err(dto_message(e));
+            }
+        };
+        let mut inst = core.store.get(&inst.id).msg()?;
+        let game_dir = core.store.game_dir(&inst);
+        let stamp = cubby_instance::backup_stamp();
+        let into = format!("modpack-{stamp}");
+        for rel in pack_install::switch_removals(&old_paths, &new_paths) {
+            for path in [rel.clone(), PathBuf::from(format!("{}.disabled", rel.to_string_lossy()))] {
+                if let Err(e) = trash_into(&game_dir, &into, &path) {
+                    log::warn!("couldn't move {} to the trash: {e}", path.display());
+                }
+            }
+        }
+        core.sink.progress(&task, "Installing the new version", 2, 3);
+        inst.minecraft = new.minecraft.clone();
+        inst.loader = loader_of(&new.loader);
+        inst.modpack = Some(ModpackInfo {
+            provider: Some(new.provider.clone()),
+            project_id: if new.pack_id.is_empty() { info.project_id.clone() } else { new.pack_id.clone() },
+            version_id: new.version_id.clone(),
+            title: if new.title.trim().is_empty() { info.title.clone() } else { new.title.clone() },
+            version_number: new.version_name.clone(),
+        });
+        core.store.save(&inst).msg()?;
+        let installed = pack_install::install_pack_plan(&core.http, &new, &game_dir, download_concurrency(&core), true, core.sink.as_ref(), &task).await.msg()?;
+        let missing = installed.blocked.iter().filter(|b| !b.found(&game_dir)).count();
+        pack_install::save_blocked(&core.paths.instance(&inst.id), &installed.blocked).map_err(|e| format!("Couldn't save the list of files to download by hand: {e}"))?;
+        if missing > 0 {
+            core.sink.progress(&task, &format!("{missing} file(s) must be downloaded by hand"), 1, 1);
+        }
+        Ok(())
+    })
+    .await
+}
+
+fn dto_message(e: cubby_common::Error) -> String {
+    crate::dto::message(e)
 }
 
 async fn plan_provider(core: &Core, provider: ProviderId, pack_id: &str, version_id: &str, optional: Option<Vec<String>>) -> CmdResult<PackPlan> {

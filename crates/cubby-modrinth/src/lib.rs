@@ -4,6 +4,7 @@
 pub mod api;
 mod browse;
 mod client;
+mod contents;
 mod datapacks;
 mod export;
 mod install;
@@ -13,6 +14,8 @@ pub mod mrpack;
 mod resolve;
 
 pub use browse::{facets, search_params};
+pub use contents::{ids_from_cdn_url, index_contents};
+pub use datapacks::FileProject;
 pub use export::{pack_dependencies, ExportSpec, ExportSummary};
 pub use client::{Modrinth, API_BASE, USER_AGENT};
 pub use model::*;

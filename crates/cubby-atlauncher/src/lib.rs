@@ -2,6 +2,7 @@
 //! and its optional mods, and turn it into a [`PackPlan`](cubby_common::packs::PackPlan).
 
 mod client;
+mod contents;
 mod index;
 mod model;
 mod modtypes;
@@ -10,6 +11,7 @@ mod plan;
 #[cfg(test)]
 mod plan_tests;
 
+pub use contents::manifest_contents;
 pub use client::{AtLauncherClient, AtlPlan, ATL_BASE};
 pub use index::safe_name;
 pub use model::{AtlLibrary, AtlManifest, AtlMod, LoaderMetadata, ManifestConfigs, ManifestLoader, ManifestMessages};

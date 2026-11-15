@@ -569,6 +569,8 @@ impl TryFrom<ProjectQueryDto> for modrinth::SearchQuery {
             kind: project_kind(&q.kind)?,
             game_version: q.game_version.filter(|v| !v.trim().is_empty()),
             loader: q.loader.filter(|l| !l.trim().is_empty()),
+            game_versions: Vec::new(),
+            loaders: Vec::new(),
             categories: q.categories,
             environment,
             sort: modrinth::Sort::parse(&q.sort),
@@ -650,7 +652,10 @@ impl From<modrinth::SearchResults> for SearchResultsDto {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GalleryImageDto {
+    /// Full size.
     pub url: String,
+    /// A small copy for thumbnails.
+    pub thumb_url: Option<String>,
     pub title: Option<String>,
     pub description: Option<String>,
     pub featured: bool,
@@ -695,6 +700,7 @@ impl From<modrinth::Project> for ProjectDto {
                 .into_iter()
                 .map(|g| GalleryImageDto {
                     url: g.url,
+                    thumb_url: g.thumb_url,
                     title: g.title,
                     description: g.description,
                     featured: g.featured,
@@ -891,6 +897,7 @@ pub struct ContentSourceDto {
     pub title: String,
     pub icon_url: Option<String>,
     pub version_number: String,
+    pub categories: Vec<String>,
 }
 
 impl From<modrinth::ContentSource> for ContentSourceDto {
@@ -903,6 +910,7 @@ impl From<modrinth::ContentSource> for ContentSourceDto {
             title: s.title,
             icon_url: s.icon_url,
             version_number: s.version_number,
+            categories: s.categories,
         }
     }
 }

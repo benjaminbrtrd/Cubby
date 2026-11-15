@@ -33,9 +33,10 @@ button.cb-ins-media { padding: 0; cursor: zoom-in; }
 button.cb-ins-media:focus-visible { box-shadow: var(--focus-ring); }
 
 /* Status line: one line, never wraps */
-.cb-ins-meta { display: flex; gap: var(--space-3); align-items: center; flex-wrap: nowrap; white-space: nowrap; overflow: hidden; min-height: 24px; }
-.cb-ins-meta > * { flex: none; }
-.cb-ins-meta .cb-chip { max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
+/* Wraps instead of cutting: a long version gets its own line, the statuses go on the next one. */
+.cb-ins-meta { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-3); align-items: center; white-space: nowrap; min-height: 24px; min-width: 0; }
+.cb-ins-meta > * { flex: none; max-width: 100%; }
+.cb-ins-meta .cb-chip { overflow: hidden; text-overflow: ellipsis; }
 .cb-ins-st { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; line-height: 18px; font-weight: 500; flex: none; }
 .cb-ins-st::before { content: ''; width: 8px; height: 8px; background: currentColor; flex: none; }
 .cb-ins-st--ok { color: var(--grass-text); }
@@ -50,6 +51,9 @@ button.cb-ins-media:focus-visible { box-shadow: var(--focus-ring); }
 .cb-ins-acts > .flip > .cb-icon:first-child, .cb-ins-acts > .flip > svg:first-child { transform: rotate(180deg); }
 .cb-ins-acts > .cb-btn .cb-btn__label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cb-ins-acts > .wide, .cb-ins-acts > .cb-play, .cb-ins-acts > :only-child { grid-column: 1 / -1; }
+/* A full-width button shows its whole label (a long version number), on two lines if needed. */
+.cb-ins-acts > .wide.cb-btn { height: auto; }
+.cb-ins-acts > .wide.cb-btn .cb-btn__label { white-space: normal; overflow-wrap: anywhere; text-align: center; }
 
 /* Sections */
 .cb-ins-sec { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
@@ -92,9 +96,10 @@ button.cb-ins-media:focus-visible { box-shadow: var(--focus-ring); }
 .cb-ins-notice__body strong { font-weight: 500; }
 
 /* Footer: the destructive action, always last */
-.cb-ins-foot { margin-top: auto; padding-top: var(--space-4); border-top: var(--border-hair) solid var(--line); display: flex; align-items: center; gap: var(--space-3); }
-.cb-ins-foot > .cb-btn { flex: none; }
-.cb-ins-foot > .cb-ins-hint { flex: 1; font-size: 12px; line-height: 17px; }
+/* The button, then its hint on its own line below: the panel is too narrow for both side by side. */
+.cb-ins-foot { margin-top: auto; padding-top: var(--space-4); border-top: var(--border-hair) solid var(--line); display: flex; flex-direction: column; align-items: stretch; gap: var(--space-2); }
+.cb-ins-foot > .cb-btn { flex: none; width: 100%; }
+.cb-ins-foot > .cb-ins-hint { margin: 0; font-size: 12px; line-height: 17px; text-wrap: pretty; }
 
 /* Loading */
 .cb-ins-skel { display: block; height: 12px; background: var(--surface); }

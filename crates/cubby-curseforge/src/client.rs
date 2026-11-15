@@ -19,6 +19,8 @@ pub const MOD_CLASS_ID: u32 = 6;
 pub const RESOURCE_PACK_CLASS_ID: u32 = 12;
 /// "Shaders" class of Minecraft.
 pub const SHADER_CLASS_ID: u32 = 6552;
+/// "Data Packs" class of Minecraft.
+pub const DATAPACK_CLASS_ID: u32 = 6945;
 
 const RATE_LIMIT_RETRIES: usize = 2;
 const KEY_VARIABLE: &str = "CUBBY_CURSEFORGE_API_KEY";

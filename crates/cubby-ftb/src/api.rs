@@ -158,6 +158,12 @@ pub struct File {
     pub size: Option<u64>,
     #[serde(default)]
     pub serveronly: bool,
+    /// The player may leave it out.
+    #[serde(default)]
+    pub optional: bool,
+    /// "mod", "resource", "config", "script"…
+    #[serde(default, rename = "type", deserialize_with = "null_default")]
+    pub kind: String,
     #[serde(default)]
     pub curseforge: Option<CurseForgeRef>,
 }

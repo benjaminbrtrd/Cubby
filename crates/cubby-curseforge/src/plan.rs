@@ -16,7 +16,7 @@ use crate::api;
 use crate::client::CurseForgeClient;
 use crate::manifest::{read_manifest, zip_has_folder, CfManifest};
 
-const IDS_PER_REQUEST: usize = 500;
+pub(crate) const IDS_PER_REQUEST: usize = 500;
 const SITE: &str = "https://www.curseforge.com/minecraft";
 
 /// Game folder where a project of this class goes, and the class slug used on the website.
@@ -137,14 +137,14 @@ pub(crate) fn build_plan(manifest: &CfManifest, files: &[api::File], projects: &
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-struct FileIds<'a> {
-    file_ids: &'a [u64],
+pub(crate) struct FileIds<'a> {
+    pub(crate) file_ids: &'a [u64],
 }
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-struct ModIds<'a> {
-    mod_ids: &'a [u64],
+pub(crate) struct ModIds<'a> {
+    pub(crate) mod_ids: &'a [u64],
 }
 
 impl CurseForgeClient {
@@ -221,7 +221,7 @@ impl CurseForgeClient {
     }
 }
 
-fn unique(ids: impl Iterator<Item = u64>) -> Vec<u64> {
+pub(crate) fn unique(ids: impl Iterator<Item = u64>) -> Vec<u64> {
     let mut seen = HashSet::new();
     ids.filter(|id| seen.insert(*id)).collect()
 }

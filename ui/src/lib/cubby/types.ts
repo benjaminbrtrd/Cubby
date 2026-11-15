@@ -52,6 +52,8 @@ export interface TitleBarProps {
   onMaximize?: () => void;
   onClose?: () => void;
   children?: Snippet;
+  /** Back and Forward, after the logo. */
+  nav?: Snippet;
   class?: ClassValue;
 }
 
@@ -239,6 +241,10 @@ export interface ModRowProps {
   toggleLabel?: string;
   update?: string;
   warning?: string;
+  /** What kind of mod it is (content, library, performance), as an icon and a word. */
+  kind?: { icon: IconName; label: string };
+  /** Where the file comes from, shown at the end of the name line. */
+  source?: { label: string; tone: 'modrinth' | 'curseforge' | 'local' };
   actions?: Renderable;
   moreLabel?: string;
   /** Click on the default ⋯ button (when no `actions` are given). */

@@ -7,8 +7,11 @@
   import { app, type InstanceTab } from '../../state.svelte'
   import type { Instance, ServerStatus } from '../../types'
   import { baseFile, gigabytes, modName, when, type InstanceData } from './InstancePage.svelte'
+  import PackVersionDialog from './PackVersionDialog.svelte'
 
   let { instance, data }: { instance: Instance; data: InstanceData } = $props()
+  /** The modpack's Versions dialog is open. */
+  let packVersions = $state(false)
 
   const id = $derived(instance.id)
   const go = (tab: InstanceTab) => app.openInstance(id, tab)
@@ -153,7 +156,7 @@
   })
 </script>
 
-<div class="ip-body" role="tabpanel" id="instance-panel" aria-label={t('Overview')}>
+<div class="ip-body" data-keep-scroll role="tabpanel" id="instance-panel" aria-label={t('Overview')}>
 <div class="overview">
   <div class="col">
     <section class="block continue" aria-labelledby="ov-continue">
@@ -263,8 +266,13 @@
         {#if instance.modpack}
           <dt class="text-small muted">{t('Modpack')}</dt>
           <dd class="text-body span">
-            <button type="button" class="link text-body" onclick={() => instance.modpack && data.project(instance.modpack.projectId, 'modpack')}>{instance.modpack.title}</button>
+            {#if (instance.modpack.provider ?? 'modrinth') === 'modrinth'}
+              <button type="button" class="link text-body" onclick={() => instance.modpack && data.project(instance.modpack.projectId, 'modpack', instance.modpack.title)}>{instance.modpack.title}</button>
+            {:else}
+              <span class="text-body">{instance.modpack.title}</span>
+            {/if}
             <span class="text-mono muted">{instance.modpack.versionNumber}</span>
+            <Button size="sm" variant="ghost" icon="clock" disabled={!!app.running[instance.id] || !!app.instanceTask(instance.id)} onclick={() => (packVersions = true)}>{t('Versions')}</Button>
           </dd>
         {/if}
         <dt class="text-small muted">{t('Folder')}</dt>
@@ -381,6 +389,10 @@
   </div>
 </div>
 </div>
+
+{#if packVersions && instance.modpack}
+  <PackVersionDialog {instance} onClose={() => (packVersions = false)} />
+{/if}
 
 <style>
   .overview {

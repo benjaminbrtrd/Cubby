@@ -1,0 +1,46 @@
+{
+  "minecraft": "1.12.2",
+  "forge": null,
+  "java": "1.8",
+  "memory": "4096",
+  "mods": [
+    {
+      "id": 12,
+      "name": "forge",
+      "version": "1.12.2-14.23.5.2860",
+      "md5": "2d5a8a1b1c5e8b4f0f3a8d4a3c9b2e10",
+      "filesize": 4500000,
+      "url": "https://mirror.example.net/mods/forge/forge-1.12.2-14.23.5.2860.zip",
+      "pretty_name": "Minecraft Forge",
+      "author": "LexManos",
+      "description": "",
+      "link": "https://files.minecraftforge.net",
+      "donate": null
+    },
+    {
+      "id": 40,
+      "name": "appliedenergistics2",
+      "version": "rv6-stable-7",
+      "md5": "f4d7c6a2e9b0c1d2e3f4a5b6c7d8e9f0",
+      "filesize": 4800000,
+      "url": "https://mirror.example.net/mods/appliedenergistics2/appliedenergistics2-rv6-stable-7.zip",
+      "pretty_name": "Applied Energistics 2",
+      "author": "AlgorithmX2",
+      "description": "A mod about matter, energy and using them to conjure items.",
+      "link": "https://appliedenergistics.org",
+      "donate": null
+    },
+    {
+      "id": 41,
+      "name": "jei",
+      "version": "1.12.2-4.16.1.302",
+      "md5": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6",
+      "filesize": 600000,
+      "url": "https://mirror.example.net/mods/jei/jei-1.12.2-4.16.1.302.zip",
+      "pretty_name": "",
+      "author": "mezz",
+      "link": "javascript:alert(1)",
+      "donate": null
+    }
+  ]
+}

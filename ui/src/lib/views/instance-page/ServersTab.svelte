@@ -181,7 +181,7 @@
   const versionDiffers = $derived(selStatus?.compatible != null ? selStatus.compatible === false : !!selStatus?.version && !selStatus.version.includes(instance.minecraft))
 </script>
 
-<div class="ip-body" role="tabpanel" id="instance-panel" aria-label={t('Servers')}>
+<div class="ip-body" data-keep-scroll role="tabpanel" id="instance-panel" aria-label={t('Servers')}>
   <div class="toolbar">
     <div class="toolbar__title">
       <h2 class="text-heading">{data.servers ? plural(servers.length, 'server', 'servers') : t('Servers')}</h2>

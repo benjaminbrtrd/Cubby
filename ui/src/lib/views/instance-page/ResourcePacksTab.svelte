@@ -2,7 +2,7 @@
   import { t } from '../../i18n.svelte'
   import { tick } from 'svelte'
   import { api } from '../../api'
-  import { Banner, Button, Icon, IconButton, Inspector, InspectorHead, InspectorPath, InspectorSection, InspectorStatus, InstanceIcon, MetaChip } from '../../cubby'
+  import { Banner, Button, Icon, IconButton, Inspector, InspectorHead, InspectorPath, InspectorSection, InspectorStatus, InstanceIcon, MetaChip, SourceMark } from '../../cubby'
   import { bytes, num, relativeTime } from '../../format'
   import { projectArt } from '../../icon'
   import { app } from '../../state.svelte'
@@ -98,7 +98,7 @@
   {/if}
 {/snippet}
 
-<div class="ip-body" role="tabpanel" id="instance-panel" aria-label={t('Resource packs')} bind:this={list}>
+<div class="ip-body" data-keep-scroll role="tabpanel" id="instance-panel" aria-label={t('Resource packs')} bind:this={list}>
   <div class="note">
     <span class="info icon"><Icon name="info" size={18} /></span>
     <div class="note__text">
@@ -129,7 +129,7 @@
               {@render art(p)}
               <div class="pack__body">
                 <button type="button" class="pack__name text-body-strong" aria-pressed={sel?.fileName === p.fileName} onclick={() => (selected = p.fileName)}>{p.name}</button>
-                <p class="text-small muted">{describe(p)}</p>
+                <p class="text-small muted with-mark"><SourceMark tone={data.sourceTone(p.fileName)} label={data.sourceName(p.fileName)} size={14} />{describe(p)}</p>
                 <div class="pack__tools">
                   <IconButton icon="update" size="sm" label={t('Move {name} up', { name: p.name })} data-focus={`${p.fileName}:up`} disabled={i === 0 || locked} onclick={() => move(i, i - 1)} />
                   <IconButton icon="download" size="sm" label={t('Move {name} down', { name: p.name })} data-focus={`${p.fileName}:down`} disabled={i === on.length - 1 || locked} onclick={() => move(i, i + 1)} />
@@ -166,7 +166,7 @@
                 {@render art(p)}
                 <div class="pack__body">
                   <button type="button" class="pack__name text-body-strong" aria-pressed={sel?.fileName === p.fileName} onclick={() => (selected = p.fileName)}>{p.name}</button>
-                  <p class="text-small muted">{describe(p)}</p>
+                  <p class="text-small muted with-mark"><SourceMark tone={data.sourceTone(p.fileName)} label={data.sourceName(p.fileName)} size={14} />{describe(p)}</p>
                   <div class="pack__tools">
                     <Button size="sm" icon="plus" disabled={locked} onclick={() => turnOn(p)}>{t('Turn on')}</Button>
                     {@render updateButton(p)}
@@ -205,11 +205,17 @@
           <Button variant="primary" class="wide" icon="update" busy={updating} disabled={updating || locked} onclick={() => data.applyUpdates([up.fileName])}>{t('Update to {latestVersion}', { latestVersion: up.latestVersion })}</Button>
         {/if}
         {#if sel.enabled}
-          <Button icon="minimize" disabled={locked} onclick={() => sel && turnOff(sel)}>{t('Turn off')}</Button>
+          <Button class="wide" icon="minimize" disabled={locked} onclick={() => sel && turnOff(sel)}>{t('Turn off')}</Button>
         {:else}
-          <Button variant={up ? 'secondary' : 'primary'} class={up ? undefined : 'wide'} icon="check" disabled={locked} onclick={() => sel && turnOn(sel)}>{t('Turn on')}</Button>
+          <Button variant={up ? 'secondary' : 'primary'} class="wide" icon="check" disabled={locked} onclick={() => sel && turnOn(sel)}>{t('Turn on')}</Button>
         {/if}
-        {#if selSource}<Button icon="globe" onclick={() => selSource && data.project(selSource.slug, 'resourcepack')}>{t('Open page')}</Button>{/if}
+        {#if data.versionTarget(sel.fileName, 'resourcepack', sel.name)}
+          <div class="cb-ins-acts wide">
+            {#if selSource && !data.cfSource(sel.fileName)}<Button icon="globe" onclick={() => selSource && data.project(selSource.slug, 'resourcepack', selSource.title)}>{t('Open page')}</Button>{/if}
+            {#if data.cfSource(sel.fileName)}<Button icon="globe" onclick={() => sel && data.cfProject(data.cfSource(sel.fileName)!.projectId, 'resourcepack', sel.name)}>{t('Open page')}</Button>{/if}
+            <Button icon="clock" disabled={locked} onclick={() => sel && (data.versionsOf = data.versionTarget(sel.fileName, 'resourcepack', sel.name))}>{t('Versions')}</Button>
+          </div>
+        {/if}
         {#if sel.enabled && on.length > 1}
           <Button icon="update" disabled={i === 0 || locked} onclick={() => move(i, i - 1)}>{t('Move up')}</Button>
           <Button icon="download" disabled={i === on.length - 1 || locked} onclick={() => move(i, i + 1)}>{t('Move down')}</Button>
@@ -219,7 +225,7 @@
       <InspectorSection title={t('Details')}>
         <dl class="cb-ins-facts">
           <dt>{t('Kind')}</dt><dd><span>{sel.isDir ? t('Folder') : t('Zip file')}</span></dd>
-          <dt>{t('Source')}</dt><dd><span>{selSource ? 'Modrinth' : t('Not found on Modrinth')}</span></dd>
+          <dt>{t('Source')}</dt><dd><span class="with-mark"><SourceMark tone={data.sourceTone(sel.fileName)} label={data.sourceName(sel.fileName)} />{data.sourceName(sel.fileName)}</span></dd>
           {#if sel.modified}<dt>{t('Changed')}</dt><dd><span>{relativeTime(sel.modified)}</span></dd>{/if}
           <dt>{t('Size')}</dt><dd><span>{bytes(sel.size)}</span></dd>
           <InspectorPath path={sel.fileName} openLabel={t('Open folder')} onopen={() => data.openFolder('resourcepacks')} />
@@ -390,5 +396,10 @@
     align-items: center;
     gap: var(--space-2);
     margin-top: var(--space-1);
+  }
+  .with-mark {
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }
 </style>

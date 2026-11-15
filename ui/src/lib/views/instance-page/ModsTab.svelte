@@ -9,11 +9,12 @@
   import { t } from '../../i18n.svelte'
   import { tick, untrack } from 'svelte'
   import { api } from '../../api'
-  import { Banner, Button, Dialog, Icon, Inspector, InspectorHead, InspectorNotice, InspectorPath, InspectorSection, InspectorStatus, InstanceIcon, MetaChip, ModRow, ProgressBar, SegmentedControl, TextField } from '../../cubby'
+  import { Banner, Button, Dialog, Icon, Inspector, InspectorHead, InspectorNotice, InspectorPath, InspectorSection, InspectorStatus, InstanceIcon, MetaChip, ModRow, ProgressBar, SegmentedControl, TextField, SourceMark } from '../../cubby'
   import { bytes, fold, num, plural, relativeTime } from '../../format'
   import { projectArt } from '../../icon'
   import { app } from '../../state.svelte'
-  import type { ContentSource, ContentUpdate, Instance, ModFile } from '../../types'
+  import type { IconName } from '../../cubby'
+  import type { CfInstalled, ContentSource, ContentUpdate, Instance, ModFile } from '../../types'
   import { baseFile, modName, when, type InstanceData } from './InstancePage.svelte'
   import Markdown from '../discover/Markdown.svelte'
 
@@ -22,15 +23,21 @@
   const id = $derived(instance.id)
   type Filter = 'all' | 'updates' | 'warnings' | 'disabled'
 
-  let query = $state('')
-  let filter = $state<Filter>('all')
-  let selected = $state<string | null>(null)
+  // Back to the instance shows the tab as it was left: the search, the filter and the mod selected.
+  let query = $state(untrack(() => app.recall<string>('query') ?? ''))
+  let filter = $state<Filter>(untrack(() => app.recall<Filter>('filter') ?? 'all'))
+  let selected = $state<string | null>(untrack(() => app.recall<string | null>('selected') ?? null))
+  $effect(() => {
+    app.keep('query', query)
+    app.keep('filter', filter)
+    app.keep('selected', selected)
+  })
   let limit = $state(60)
   let removing = $state<ModFile | null>(null)
   let removeBusy = $state(false)
   let asideTitle: HTMLElement | undefined = $state()
 
-  type Row = { mod: ModFile; key: string; name: string; search: string; source?: ContentSource; update?: ContentUpdate; twins?: ModFile[] }
+  type Row = { mod: ModFile; key: string; name: string; search: string; source?: ContentSource; cf?: CfInstalled; update?: ContentUpdate; twins?: ModFile[] }
 
   // Recomputed when the files, sources or updates change, not on each keystroke.
   // A row keeps its key (the file name without ".disabled") when the mod is turned on or off, so focus stays on it;
@@ -49,6 +56,7 @@
           name,
           search: fold(`${name} ${mod.fileName} ${mod.description ?? ''} ${mod.authors.join(' ')}`),
           source: data.source(mod.fileName),
+          cf: data.cfSource(mod.fileName),
           update: data.update(mod.fileName),
           twins: data.twins.get(mod.fileName),
         }
@@ -79,10 +87,38 @@
   )
   const visible = $derived(shown.slice(0, limit))
 
-  const sel = $derived(rows.find((r) => r.key === selected) ?? null)
+  /** The selected mod's project: an update renames its file, and the selection follows it to the new one. */
+  let selectedProject: string | null = null
+  /** The last row shown in the panel, kept while its renamed file is being identified. */
+  let lastSel: Row | null = null
+  const found = $derived(rows.find((r) => r.key === selected) ?? null)
+  const sel = $derived(found ?? (selected ? lastSel : null))
+  $effect(() => {
+    if (found) {
+      lastSel = found
+      selectedProject = found.source?.projectId ?? found.cf?.projectId ?? selectedProject
+      return
+    }
+    const pid = selectedProject
+    const again = pid ? rows.find((r) => (r.source?.projectId ?? r.cf?.projectId) === pid) : undefined
+    if (again) selected = again.key
+  })
   const updateTask = $derived(app.tasks[`update:${id}`])
   const installTask = $derived(app.tasks[`install:${id}`])
   const running = $derived(!!app.running[id])
+
+  /** What a mod is, from its Modrinth categories: a library other mods need, a performance mod, or content. */
+  function modKind(categories: string[]): { icon: IconName; label: string } {
+    if (categories.includes('library')) return { icon: 'wrench', label: t('Library') }
+    if (categories.includes('optimization')) return { icon: 'memory', label: t('Performance') }
+    return { icon: 'cube', label: t('Content') }
+  }
+
+  /** Where a file comes from: Modrinth, CurseForge, or neither (added by hand, or from a pack). */
+  function sourceTag(r: Row): { label: string; tone: 'modrinth' | 'curseforge' | 'local' } {
+    const tone = data.origin(r.mod.fileName)
+    return { label: data.sourceName(r.mod.fileName), tone }
+  }
 
   function select(r: Row) {
     selected = r.key
@@ -218,7 +254,7 @@
   const authors = (m: ModFile) => (m.authors.length ? `by ${m.authors.join(', ')}` : undefined)
 </script>
 
-<div class="ip-body" role="tabpanel" id="instance-panel" aria-label={t('Mods')}>
+<div class="ip-body" data-keep-scroll role="tabpanel" id="instance-panel" aria-label={t('Mods')}>
   <div class="toolbar">
     <div class="search">
       <TextField label={t('Search mods')} hideLabel icon="search" placeholder={t('Search {n}', { n: plural(rows.length, 'mod', 'mods') })} bind:value={query} oninput={() => (limit = 60)} />
@@ -298,6 +334,8 @@
             toggleLabel={t('Load {name} when you play', { name: r.name })}
             update={r.update ? t('Update to {latestVersion}', { latestVersion: r.update.latestVersion }) : undefined}
             warning={r.twins ? t('Installed twice') : undefined}
+            source={sourceTag(r)}
+            kind={r.source ? modKind(r.source.categories) : undefined}
           />
         </div>
       {/each}
@@ -345,8 +383,14 @@
         {:else if !m.enabled}
           <Button variant="primary" class="wide" icon="check" onclick={() => toggle(sel, true)}>{t('Turn on')}</Button>
         {/if}
-        {#if m.enabled}<Button icon="minimize" onclick={() => toggle(sel, false)}>{t('Turn off')}</Button>{/if}
-        {#if sel.source}<Button icon="globe" onclick={() => sel.source && data.project(sel.source.slug, 'mod')}>{t('Open page')}</Button>{/if}
+        {#if m.enabled}<Button class="wide" icon="minimize" onclick={() => toggle(sel, false)}>{t('Turn off')}</Button>{/if}
+        {#if sel.source || sel.cf}
+          <div class="cb-ins-acts wide">
+            {#if sel.source && !sel.cf}<Button icon="globe" onclick={() => sel.source && data.project(sel.source.slug, 'mod', sel.name)}>{t('Open page')}</Button>{/if}
+            {#if sel.cf}<Button icon="globe" onclick={() => sel.cf && data.cfProject(sel.cf.projectId, 'mod', sel.name)}>{t('Open page')}</Button>{/if}
+            <Button icon="clock" disabled={running} onclick={() => (data.versionsOf = data.versionTarget(m.fileName, 'mod', sel.name))}>{t('Versions')}</Button>
+          </div>
+        {/if}
       </div>
       {#if sel.update}
         {@const lines = notes(sel.update.changelog)}
@@ -373,8 +417,11 @@
       </InspectorSection>
       <InspectorSection title={t('Details')}>
         <dl class="cb-ins-facts">
-          {#if kind}<dt>{t('Type')}</dt><dd><span>{kind}</span></dd>{/if}
-          <dt>{t('Source')}</dt><dd><span>{sel.source ? 'Modrinth' : t('Not found on Modrinth')}</span></dd>
+          {#if sel.source}
+            {@const k = modKind(sel.source.categories)}
+            <dt>{t('Type')}</dt><dd><span class="with-icon"><Icon name={k.icon} size={18} />{kind ?? k.label}</span></dd>
+          {:else if kind}<dt>{t('Type')}</dt><dd><span>{kind}</span></dd>{/if}
+          <dt>{t('Source')}</dt><dd><span class="with-icon"><SourceMark tone={data.origin(m.fileName)} label={data.sourceName(m.fileName)} />{sel.source || sel.cf ? data.sourceName(m.fileName) : t('Not found on Modrinth or CurseForge')}</span></dd>
           {#if project}<dt>{t('Updated')}</dt><dd><span>{relativeTime(project.updated)}</span></dd>{/if}
           <dt>{t('Size')}</dt><dd><span>{bytes(m.size)}</span></dd>
           <InspectorPath path={m.fileName} openLabel={t('Open folder')} onopen={() => data.openFolder('mods')} />
@@ -554,5 +601,10 @@
   }
   .empty :global(.cb-btn) {
     margin-top: var(--space-2);
+  }
+  .with-icon {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
   }
 </style>

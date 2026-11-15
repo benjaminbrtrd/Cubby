@@ -5,7 +5,7 @@ use super::*;
 // Discover (Modrinth)
 
 /// Game version and loader of an instance, as Modrinth sees them.
-pub(super) fn target_of(inst: &Instance) -> Target {
+pub(crate) fn target_of(inst: &Instance) -> Target {
     Target::new(
         inst.minecraft.clone(),
         Some(dto::LoaderDto::from(&inst.loader).kind.as_str()),
@@ -13,13 +13,13 @@ pub(super) fn target_of(inst: &Instance) -> Target {
 }
 
 /// Active resource packs and shader pack, carried over when an install or update renames their files.
-pub(super) struct PackSelection {
+pub(crate) struct PackSelection {
     resource: Vec<String>,
     shader: Option<String>,
 }
 
 impl PackSelection {
-    fn capture(game_dir: &Path) -> Self {
+    pub(crate) fn capture(game_dir: &Path) -> Self {
         Self {
             resource: cubby_instance::list_packs(game_dir, PackKind::Resource)
                 .into_iter()
@@ -33,7 +33,7 @@ impl PackSelection {
         }
     }
 
-    fn follow(&self, game_dir: &Path, renamed: &[Renamed]) {
+    pub(crate) fn follow(&self, game_dir: &Path, renamed: &[Renamed]) {
         let new_name = |folder: Folder, old: &str| {
             renamed
                 .iter()
@@ -80,11 +80,17 @@ impl PackSelection {
 }
 
 #[tauri::command]
+/// `filters`: several Minecraft versions and loaders, used instead of the query's own version and loader.
 pub async fn search_projects(
     core: State<'_, Core>,
     query: ProjectQueryDto,
+    filters: Option<crate::cf_resources::SearchFiltersDto>,
 ) -> CmdResult<SearchResultsDto> {
-    let query = SearchQuery::try_from(query)?;
+    let mut query = SearchQuery::try_from(query)?;
+    if let Some(f) = filters {
+        query.game_versions = f.game_versions;
+        query.loaders = f.loaders;
+    }
     Ok(core.modrinth.search(&query).await.msg()?.into())
 }
 
@@ -167,6 +173,8 @@ pub async fn install_version(
                 .await
                 .msg()?;
             selection.follow(&game_dir, &applied.renamed);
+            let files: Vec<(&str, &str)> = plan.items.iter().filter(|i| i.download).map(|i| (i.folder.as_str(), i.file_name.as_str())).collect();
+            crate::origins::record(&core.paths.instance(&inst.id), &files, "modrinth");
             applied.into_result().msg().map(|_| ())
         },
     )
@@ -237,6 +245,8 @@ pub async fn install_versions(
                 .await
                 .msg()?;
             selection.follow(&game_dir, &applied.renamed);
+            let files: Vec<(&str, &str)> = plan.items.iter().filter(|i| i.download).map(|i| (i.folder.as_str(), i.file_name.as_str())).collect();
+            crate::origins::record(&core.paths.instance(&inst.id), &files, "modrinth");
             applied.into_result().msg().map(|_| ())
         },
     )

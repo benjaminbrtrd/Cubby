@@ -5,6 +5,8 @@
 
   /** The "Popular modpacks" and "Make it look better" picks, loaded once per session. */
   let picks: Promise<{ pack: ProjectHit | null; shader: ProjectHit | null; resource: ProjectHit | null }> | null = null
+  /** Minecraft releases, newest first, for the version filters; loaded once per session. */
+  let releases: Promise<string[]> | null = null
 </script>
 
 <script lang="ts">
@@ -15,26 +17,34 @@
   import { projectArt } from '../../icon'
   import { app } from '../../state.svelte'
   import { queue } from '../../queue.svelte'
-  import type { PackSort, PackSummary, ProjectKind, ProjectQuery, ProjectSort, SearchResults } from '../../types'
+  import type { SearchFilters, PackSort, PackSummary, ProjectKind, ProjectQuery, ProjectSort, SearchResults } from '../../types'
   import QueueTray from './QueueTray.svelte'
-  import PackPage from '../create/PackPage.svelte'
   import ProviderMark from '../create/ProviderMark.svelte'
   import InstallPanel from './InstallPanel.svelte'
   import Picker from './Picker.svelte'
   import TargetPicker from './TargetPicker.svelte'
   import WorldPicker from './WorldPicker.svelte'
   import DatapackInstall from './DatapackInstall.svelte'
-  import { CATEGORIES, KINDS, KIND_ORDER, PAGE_SIZE, categoryLabel, hitFit, type Fit } from './discover'
+  import CfInstall from './CfInstall.svelte'
+  import { CATEGORIES, KINDS, KIND_ORDER, PAGE_SIZE, categoryLabel, hitFit, loaderLabel, type Fit } from './discover'
 
   const d = $derived(app.discover)
   /** Where this tab can look: every provider for modpacks, Modrinth and CurseForge for the rest, in the app's order. */
-  const sources = $derived((app.providers ?? []).filter((p) => d.kind === 'modpack' || p.id === 'modrinth' || (p.id === 'curseforge' && d.kind !== 'datapack')))
+  const sources = $derived((app.providers ?? []).filter((p) => d.kind === 'modpack' || p.id === 'modrinth' || p.id === 'curseforge'))
   /** The chosen source, or Modrinth when this tab doesn't offer it. */
   const source = $derived(sources.some((p) => p.id === d.provider) ? d.provider : 'modrinth')
   /** Modpacks of another provider (ATLauncher, CurseForge, FTB, Technic): same grid, searched through the pack commands. */
   const packProvider = $derived(d.kind === 'modpack' && source !== 'modrinth' ? (sources.find((p) => p.id === source) ?? null) : null)
-  /** Mods, shader packs and resource packs searched on CurseForge (Modrinth's categories and filters don't apply). */
+  /** Mods, shader packs, resource packs and datapacks searched on CurseForge (Modrinth's categories and filters don't apply). */
   const fromCf = $derived(d.kind !== 'modpack' && source === 'curseforge')
+  /** CurseForge modpacks: CurseForge filters them itself, unlike the other pack sources. */
+  const cfPacks = $derived(packProvider?.id === 'curseforge')
+  /** CurseForge's own categories, versions and loaders apply. */
+  const cfFiltering = $derived(fromCf || cfPacks)
+  /** Searched on Modrinth itself (any tab, modpacks included). */
+  const fromModrinth = $derived(!packProvider && source === 'modrinth')
+  /** The source filters versions and loaders itself (CurseForge, Modrinth); Cubby filters the other pack sources' results. */
+  const sourceFiltering = $derived(cfFiltering || fromModrinth)
   $effect(() => {
     if (!app.providers && !app.providersError) void app.loadProviders()
   })
@@ -95,7 +105,7 @@
   let cfCategories = $state<Record<string, { id: string; name: string }[]>>({})
   $effect(() => {
     const k = d.kind
-    if (!fromCf || cfCategories[k]) return
+    if (!cfFiltering || cfCategories[k]) return
     api
       .curseforgeCategories(k)
       .then((list) => (cfCategories[k] = list))
@@ -104,10 +114,35 @@
 
   /** What a pack search returned, to open a pack page from its card. */
   const packRaw = new Map<string, PackSummary>()
-  let openPack = $state<PackSummary | null>(null)
-  /** Loader and Minecraft version filters of the pack sources (the providers can't filter, so Cubby does). */
+  /** Loader and Minecraft version filters: CurseForge applies them itself, Cubby filters the other pack sources' results. */
   let packLoaders = $state<string[]>([])
   let packVersions = $state<string[]>([])
+  /** The version filter lists every version, not just the newest ones. */
+  let allVersions = $state(false)
+  /** Minecraft releases for CurseForge's version filter. */
+  let releaseList = $state<string[]>([])
+  $effect(() => {
+    if (!sourceFiltering || releaseList.length) return
+    releases ??= api
+      .listVersions()
+      .then((list) =>
+        list
+          .filter((v) => v.kind === 'release')
+          .sort((a, b) => b.releaseTime.localeCompare(a.releaseTime))
+          .map((v) => v.id),
+      )
+      .catch((e) => {
+        releases = null
+        throw e
+      })
+    releases.then((list) => (releaseList = list)).catch(() => {})
+  })
+  /** The version and loader filters the source applies, when the results aren't limited to the target instance. */
+  const cfFilters = $derived.by((): SearchFilters | null => {
+    if (cfPacks) return { gameVersions: [...packVersions], loaders: [...packLoaders], categories: [...d.categories] }
+    if (!(fromCf || fromModrinth) || scoped) return null
+    return { gameVersions: [...packVersions], loaders: kind === 'mod' || kind === 'modpack' ? [...packLoaders] : [], categories: [] }
+  })
 
   function toHit(p: PackSummary): ProjectHit {
     return {
@@ -139,17 +174,18 @@
       const wanted = PACK_SORT[d.sort]
       const sort = provider.sorts.includes(wanted) ? wanted : (provider.sorts[0] ?? 'relevance')
       const offset = provider.paged ? q.offset : 0
-      return api.packSearch(provider.id, d.query, sort, offset).then((page) => {
+      return api.packSearch(provider.id, d.query, sort, offset, provider.id === 'curseforge' ? cfFilters : null).then((page) => {
         for (const p of page.hits) packRaw.set(p.id, p)
         return { hits: page.hits.map(toHit), total: provider.paged ? (page.total ?? page.hits.length) : page.hits.length, offset, limit: PAGE_SIZE }
       })
     }
-    return fromCf ? api.curseforgeSearch(q) : api.searchProjects(q)
+    return fromCf ? api.curseforgeSearch(q, cfFilters) : api.searchProjects(q, cfFilters)
   }
 
+  /** A pack of another provider opens its own page (route `pack`): Back from one of its mods comes back to it. */
   function openPackOf(h: ProjectHit) {
     const raw = packRaw.get(h.id)
-    if (raw) openPack = raw
+    if (raw && packProvider) app.openPack(packProvider.id, raw)
   }
 
   $effect(() => {
@@ -158,21 +194,22 @@
     void d.kind
     packLoaders = []
     packVersions = []
-    openPack = null
+    allVersions = false
     packRaw.clear()
     app.discover.categories = []
   })
 
   /** Filters Cubby applies itself, on top of what the source searched: pack loaders and versions, Hide installed. */
   const localFilter = $derived.by(() => {
-    const loaders = packProvider ? packLoaders : []
-    const versions = packProvider ? packVersions : []
-    const hideIn = d.hideInstalled && target && kind !== 'modpack' && kind !== 'datapack' && !fromCf ? target.id : null
+    const loaders = packProvider && !cfPacks ? packLoaders : []
+    const versions = packProvider && !cfPacks ? packVersions : []
+    const hideIn = d.hideInstalled && target && kind !== 'modpack' && kind !== 'datapack' ? target.id : null
+    const cf = fromCf
     if (!loaders.length && !versions.length && !hideIn) return null
     return (h: ProjectHit) =>
       (!loaders.length || h.loaders.some((l) => loaders.includes(l))) &&
       (!versions.length || h.gameVersions.some((v) => versions.includes(v))) &&
-      (!hideIn || !app.installedIn(hideIn, h.id))
+      (!hideIn || !(cf ? app.cfInstalledIn(hideIn, h.id) : app.installedIn(hideIn, h.id)))
   })
   /** Sources that return everything at once (ATLauncher, Technic). */
   const clientPaged = $derived(!!packProvider && !packProvider.paged)
@@ -201,13 +238,14 @@
       kind,
       gameVersion: scoped ? targetMc : null,
       loader: scoped && kind === 'mod' ? targetLoader : null,
-      categories: [...d.categories],
+      categories: cfPacks ? [] : [...d.categories],
       environment: kind === 'mod' && !fromCf ? d.environment : null,
       sort: d.sort,
       offset: 0,
       limit: PAGE_SIZE,
     }
     const page = d.page
+    void cfFilters
     const isLocal = local
     const filter = localFilter
     void retries
@@ -230,7 +268,7 @@
       return
     }
 
-    const key = JSON.stringify([source, base])
+    const key = JSON.stringify([source, base, cfFilters])
     if (buffer.key !== key) buffer = { key, hits: [], next: 0, total: 0, done: false }
     const buf = buffer
     // one more than the page, to know whether a next page exists
@@ -267,15 +305,34 @@
   $effect(() => {
     if (targetId) void app.loadSources(targetId)
   })
+  $effect(() => {
+    if (targetId && fromCf && kind !== 'datapack') void app.loadCfInstalled(targetId)
+  })
 
   const offline = $derived(!!error && (/(network|connect|dns|resolve|timed? ?out|offline|unreachable|socket|tls|fetch)/i.test(error) || !navigator.onLine))
   const allHits = $derived(results?.hits ?? [])
-  /** Loaders and Minecraft versions found in this source's results, for the filters (the chosen ones always stay). */
-  const packLoaderChoices = $derived([...new Set([...packLoaders, ...allHits.flatMap((h) => h.loaders)])].sort())
-  const packVersionChoices = $derived.by(() => {
-    const newest = [...new Set(allHits.flatMap((h) => h.gameVersions))].sort((a, b) => b.localeCompare(a, undefined, { numeric: true })).slice(0, 12)
-    return [...new Set([...packVersions, ...newest])].sort((a, b) => b.localeCompare(a, undefined, { numeric: true }))
+  /** Loaders for the filter: the main ones when the source filters itself, else the ones found in this source's results (the chosen ones always stay). */
+  const CF_LOADERS = ['fabric', 'forge', 'neoforge', 'quilt']
+  const packLoaderChoices = $derived(sourceFiltering ? CF_LOADERS : [...new Set([...packLoaders, ...allHits.flatMap((h) => h.loaders)])].sort())
+  /** Minecraft versions for the filter: every release when the source filters itself, else the ones found in this source's results. */
+  const versionChoices = $derived.by(() => {
+    const byNewest = (a: string, b: string) => b.localeCompare(a, undefined, { numeric: true })
+    const list = sourceFiltering && releaseList.length ? releaseList : [...new Set(allHits.flatMap((h) => h.gameVersions))].sort(byNewest)
+    return [...new Set([...packVersions.filter((v) => !list.includes(v)), ...list])]
   })
+  /** How many versions the filter shows before "Show all". */
+  const FEW_VERSIONS = 10
+  const packVersionChoices = $derived(
+    allVersions ? versionChoices : [...versionChoices.slice(0, FEW_VERSIONS), ...packVersions.filter((v) => versionChoices.indexOf(v) >= FEW_VERSIONS)],
+  )
+  /** CurseForge never reports or pages past 10,000 results: a total that reaches it means "at least". */
+  const CF_WINDOW = 10_000
+  const cfCapped = $derived(cfFiltering && !!results && results.total >= CF_WINDOW)
+  /** CurseForge takes 4 versions and 10 categories at most. */
+  const MAX_CF_VERSIONS = 4
+  const MAX_CF_CATEGORIES = 10
+  /** The filters of the loader and the version show: pack sources, and CurseForge or Modrinth when the results aren't limited to the target. */
+  const showPickFilters = $derived(!!packProvider || ((fromCf || fromModrinth) && !scoped))
   /** Results that pass Cubby's own filters (all of them in server paging). */
   const matches = $derived(local && localFilter ? allHits.filter(localFilter) : allHits)
   const shown = $derived(local ? matches.slice(d.page * PAGE_SIZE, (d.page + 1) * PAGE_SIZE) : matches)
@@ -284,7 +341,7 @@
     !results ? 1 : local ? Math.max(1, Math.ceil(matches.length / PAGE_SIZE) + (bufferDone ? 0 : 1)) : Math.max(1, Math.ceil(results.total / PAGE_SIZE)),
   )
   /** Everything read was already installed: only Hide installed emptied the list. */
-  const allInstalled = $derived(local && !!allHits.length && !matches.length && d.hideInstalled && kind !== 'datapack' && !packLoaders.length && !packVersions.length)
+  const allInstalled = $derived(local && !!allHits.length && !matches.length && d.hideInstalled && kind !== 'datapack' && (sourceFiltering || (!packLoaders.length && !packVersions.length)))
   const filtered = $derived(d.categories.length > 0 || d.environment !== null || (d.hideInstalled && kind !== 'datapack') || packLoaders.length > 0 || packVersions.length > 0)
   const sourceName = $derived(sources.find((p) => p.id === source)?.name ?? 'Modrinth')
 
@@ -369,13 +426,13 @@
 
   interface CardState {
     fit: Fit
-    action: 'install' | 'other' | 'installed' | 'update' | 'busy' | 'curseforge' | 'pack' | 'queued'
+    action: 'install' | 'other' | 'installed' | 'update' | 'busy' | 'pack' | 'queued'
     version: string | null
   }
 
   function cardState(h: ProjectHit): CardState {
     if (packProvider) return { fit: hitFit(h, target), action: 'pack', version: null }
-    if (fromCf) return { fit: hitFit(h, target), action: 'curseforge', version: null }
+    if (fromCf) return cfCardState(h)
     if (h.kind === 'modpack' || h.kind === 'datapack' || !target) return { fit: hitFit(h, target), action: 'install', version: null }
     const busy = pending[h.id] === target.id && !!app.taskFor(`install:${target.id}`)
     if (busy) return { fit: { tone: 'busy', icon: 'download', word: t('Installing') }, action: 'busy', version: null }
@@ -393,16 +450,33 @@
     return { fit, action: fit.tone === 'ok' ? 'install' : 'other', version: null }
   }
 
-  /** The project's page on CurseForge, where it can be downloaded. */
+  /** A CurseForge card: installed (by fingerprint), being installed, or ready to install. */
+  function cfCardState(h: ProjectHit): CardState {
+    if (h.kind === 'datapack' || !target) return { fit: hitFit(h, target), action: 'install', version: null }
+    if (pending[h.id] === target.id && app.taskFor(`install:${target.id}`)) return { fit: { tone: 'busy', icon: 'download', word: t('Installing') }, action: 'busy', version: null }
+    if (app.cfInstalledIn(target.id, h.id)) return { fit: { tone: 'have', icon: 'check', word: t('In {name}', { name: target.name }) }, action: 'installed', version: null }
+    const fit = hitFit(h, target)
+    return { fit, action: fit.tone === 'ok' ? 'install' : 'other', version: null }
+  }
+
+  /** The project's page on CurseForge. */
   function cfUrl(h: ProjectHit): string {
-    const section = h.kind === 'shader' ? 'shaders' : h.kind === 'resourcepack' ? 'texture-packs' : 'mc-mods'
+    const section = h.kind === 'shader' ? 'shaders' : h.kind === 'resourcepack' ? 'texture-packs' : h.kind === 'datapack' ? 'data-packs' : 'mc-mods'
     return `https://www.curseforge.com/minecraft/${section}/${h.slug}`
+  }
+
+  /** Where the install dialog's project comes from. */
+  let installingCf = $state(false)
+
+  function startInstall(h: ProjectHit) {
+    installingCf = fromCf
+    installing = h
   }
 
   function open(h: ProjectHit) {
     if (packProvider) openPackOf(h)
-    else if (fromCf) api.openUrl(cfUrl(h)).catch((e) => app.error(e))
-    else app.openProject(h.slug, h.kind)
+    else if (fromCf) app.openProject(h.id, h.kind, 'curseforge', h.title)
+    else app.openProject(h.slug, h.kind, undefined, h.title)
   }
 
   function art(h: ProjectHit) {
@@ -435,7 +509,7 @@
 {/snippet}
 
 {#snippet pickCard(h: ProjectHit)}
-  <button type="button" class="pick" onclick={() => app.openProject(h.slug, h.kind)}>
+  <button type="button" class="pick" onclick={() => app.openProject(h.slug, h.kind, undefined, h.title)}>
     <InstanceIcon {...art(h)} size={32} />
     <span class="pick-text">
       <span class="text-body-strong">{h.title}</span>
@@ -445,9 +519,6 @@
   </button>
 {/snippet}
 
-{#if openPack && packProvider}
-  <PackPage provider={packProvider} summary={openPack} onBack={() => (openPack = null)} />
-{:else}
 <div class="screen">
   <div class="top">
     <h1 class="text-title">{t('Discover')}</h1>
@@ -508,8 +579,18 @@
 
   <div class="layout">
     <nav class="filters" aria-label={t('Filters')}>
-      {#if packProvider}
-        {#if packLoaderChoices.length}
+      {#if (fromCf || fromModrinth) && scoped && target}
+        <section>
+          <h2 class="text-label muted">{t('Minecraft version')}</h2>
+          <p class="text-small muted hint">
+            {t('Only what works with {name}', { name: target.name })} (<span class="text-mono">{instanceMeta(target)}</span>).
+            <button type="button" class="link" onclick={() => setScoped(false)}>{t('Pick other versions')}</button>
+          </p>
+        </section>
+      {/if}
+
+      {#if showPickFilters}
+        {#if packLoaderChoices.length && (kind === 'mod' || kind === 'modpack')}
           <section>
             <h2 class="text-label muted">{t('Loader')}</h2>
             <ul>
@@ -518,7 +599,7 @@
                 <li>
                   <button type="button" class="check" aria-pressed={on} onclick={() => (packLoaders = togglePack(packLoaders, l))}>
                     <span class={['box', on && 'on']} aria-hidden="true">{#if on}<Icon name="check" size={9} />{/if}</span>
-                    <span class="text-body">{categoryLabel(l)}</span>
+                    <span class="text-body">{loaderLabel(l)}</span>
                   </button>
                 </li>
               {/each}
@@ -526,38 +607,46 @@
           </section>
         {/if}
         {#if packVersionChoices.length}
+          {@const full = cfFiltering && packVersions.length >= MAX_CF_VERSIONS}
           <section>
             <h2 class="text-label muted">{t('Minecraft version')}</h2>
             <ul>
               {#each packVersionChoices as v (v)}
                 {@const on = packVersions.includes(v)}
                 <li>
-                  <button type="button" class="check" aria-pressed={on} onclick={() => (packVersions = togglePack(packVersions, v))}>
+                  <button type="button" class="check" aria-pressed={on} disabled={full && !on} onclick={() => (packVersions = togglePack(packVersions, v))}>
                     <span class={['box', on && 'on']} aria-hidden="true">{#if on}<Icon name="check" size={9} />{/if}</span>
                     <span class="text-body text-mono">{v}</span>
                   </button>
                 </li>
               {/each}
             </ul>
+            {#if versionChoices.length > FEW_VERSIONS}
+              <button type="button" class="link text-small more" onclick={() => (allVersions = !allVersions)}>
+                {allVersions ? t('Show fewer versions') : t('Show all versions ({n})', { n: num(versionChoices.length) })}
+              </button>
+            {/if}
+            {#if full}<p class="text-small muted hint">{t('CurseForge searches up to {n} versions at once.', { n: MAX_CF_VERSIONS })}</p>{/if}
           </section>
         {/if}
       {/if}
 
-      {#if fromCf && cfCategories[kind]?.length}
+      {#if cfFiltering && cfCategories[kind]?.length}
+        {@const full = d.categories.length >= MAX_CF_CATEGORIES}
         <section>
           <h2 class="text-label muted">{t('Categories')}</h2>
           <ul>
             {#each cfCategories[kind] as c (c.id)}
               {@const on = d.categories.includes(c.id)}
               <li>
-                <button type="button" class="check" aria-pressed={on} onclick={() => ((app.discover.categories = on ? [] : [c.id]), (app.discover.page = 0))}>
+                <button type="button" class="check" aria-pressed={on} disabled={full && !on} onclick={() => toggleCategory(c.id)}>
                   <span class={['box', on && 'on']} aria-hidden="true">{#if on}<Icon name="check" size={9} />{/if}</span>
                   <span class="text-body">{c.name}</span>
                 </button>
               </li>
             {/each}
           </ul>
-          <p class="text-small muted hint">{t('CurseForge filters by one category at a time.')}</p>
+          {#if full}<p class="text-small muted hint">{t('CurseForge searches up to {n} categories at once.', { n: MAX_CF_CATEGORIES })}</p>{/if}
         </section>
       {/if}
 
@@ -596,7 +685,7 @@
         </section>
       {/if}
 
-      {#if kind !== 'modpack' && kind !== 'datapack' && target && !fromCf}
+      {#if kind !== 'modpack' && kind !== 'datapack' && target}
         <Switch
           checked={d.hideInstalled}
           onChange={(v) => (app.discover.hideInstalled = v)}
@@ -629,11 +718,13 @@
             <span>{t('Searching {name}…', { name: sourceName })}</span>
           {:else if results}
             <span>
-              {local ? (bufferDone ? plural(matches.length, 'result', 'results') : t('At least {n}', { n: plural(matches.length, 'result', 'results') })) : plural(results.total, 'result', 'results')}.
+              {local ? (bufferDone ? plural(matches.length, 'result', 'results') : t('At least {n}', { n: plural(matches.length, 'result', 'results') })) : cfCapped ? t('More than {n}', { n: plural(CF_WINDOW, 'result', 'results') }) : plural(results.total, 'result', 'results')}.
               {#if kind === 'modpack'}
                 {t('Each one installs as a new instance.')}
               {:else if scoped && target}
                 {t('Showing {many} that work with {name}', { many: words.many, name: target.name })} (<span class="text-mono">{instanceMeta(target)}</span>).
+              {:else if (fromCf || fromModrinth) && (packVersions.length || (kind === 'mod' && packLoaders.length))}
+                {t('Showing {many} for {what}.', { many: words.many, what: [packVersions.length ? `Minecraft ${packVersions.join(', ')}` : '', kind === 'mod' ? packLoaders.map(loaderLabel).join(', ') : ''].filter(Boolean).join(' · ') })}
               {:else if target}
                 {t('Showing {many} for every Minecraft version.', { many: words.many })}
               {/if}
@@ -728,17 +819,15 @@
                     {:else if s.action === 'busy'}
                       <Button size="sm" icon="download" disabled>{t('Installing')}</Button>
                     {:else if s.action === 'update'}
-                      <Button size="sm" icon="update" onclick={() => (installing = h)} aria-label={t('Update {title}', { title: h.title })}>{t('Update')}</Button>
+                      <Button size="sm" icon="update" onclick={() => startInstall(h)} aria-label={t('Update {title}', { title: h.title })}>{t('Update')}</Button>
                     {:else if s.action === 'queued'}
                       <Button size="sm" icon="check" onclick={() => target && queue.remove(`${target.id}:${h.id}`)} aria-label={t('Remove {title} from the queue', { title: h.title })}>{t('In the queue')}</Button>
                     {:else if s.action === 'pack'}
                       <Button size="sm" icon="download" onclick={() => open(h)} aria-label={t('Install {title}', { title: h.title })}>{t('Install')}</Button>
-                    {:else if s.action === 'curseforge'}
-                      <Button size="sm" iconEnd="chevron-right" onclick={() => open(h)} aria-label={t('See {title} on CurseForge', { title: h.title })}>{t('On CurseForge')}</Button>
                     {:else if s.action === 'other'}
-                      <Button size="sm" onclick={() => (installing = h)} aria-label={t('Install {title} to another instance or version', { title: h.title })}>{t('Install to…')}</Button>
+                      <Button size="sm" onclick={() => startInstall(h)} aria-label={t('Install {title} to another instance or version', { title: h.title })}>{t('Install to…')}</Button>
                     {:else}
-                      <Button size="sm" icon="download" onclick={() => (installing = h)} aria-label={t('Install {title}', { title: h.title })}>{t('Install')}</Button>
+                      <Button size="sm" icon="download" onclick={() => startInstall(h)} aria-label={t('Install {title}', { title: h.title })}>{t('Install')}</Button>
                     {/if}
                   </span>
                 </div>
@@ -751,7 +840,7 @@
           <nav class="pages" aria-label={t('Result pages')}>
             <span class="text-small muted">{!local || bufferDone ? t('Page {n} of {n2}', { n: num(d.page + 1), n2: num(pages) }) : t('Page {n}', { n: num(d.page + 1) })}</span>
             <span class="grow"></span>
-            <Button size="sm" disabled={d.page === 0 || loading} onclick={() => goPage(d.page - 1)}>{t('Previous')}</Button>
+            <Button size="sm" icon="chevron-left" disabled={d.page === 0 || loading} onclick={() => goPage(d.page - 1)}>{t('Previous')}</Button>
             {#each pageList as p, i (i)}
               {#if p === null}
                 <span class="text-body muted" aria-hidden="true">…</span>
@@ -800,21 +889,24 @@
   </div>
   {#if target}<QueueTray instanceId={target.id} />{/if}
 </div>
-{/if}
 
 {#if installing}
   {@const h = installing}
   {#snippet dialogActions()}
-    <Button variant="ghost" iconEnd="chevron-right" onclick={() => {
-        // Read the project before closing: `h` follows `installing`.
-        const p = h
-        installing = null
-        app.openProject(p.slug, p.kind)
-      }}>{t('See the full page')}</Button>
+    {#if !installingCf}
+      <Button variant="ghost" iconEnd="chevron-right" onclick={() => {
+          // Read the project before closing: `h` follows `installing`.
+          const p = h
+          installing = null
+          app.openProject(p.slug, p.kind, undefined, p.title)
+        }}>{t('See the full page')}</Button>
+    {/if}
     <Button onclick={() => (installing = null)}>{t('Close')}</Button>
   {/snippet}
   <Dialog wide title={t('Install {title}', { title: h.title })} onClose={() => (installing = null)} actions={dialogActions}>
-    {#if h.kind === 'datapack'}
+    {#if installingCf}
+      <CfInstall project={h} pageUrl={cfUrl(h)} onLeave={() => (installing = null)} onInstall={(id) => (pending[h.id] = id)} />
+    {:else if h.kind === 'datapack'}
       <DatapackInstall project={h} compact onLeave={() => (installing = null)} />
     {:else}
       <InstallPanel project={h} compact onLeave={() => (installing = null)} onInstall={(id) => (pending[h.id] = id)} onQueued={() => (installing = null)} />
@@ -963,8 +1055,17 @@
     border: 0;
     cursor: pointer;
   }
-  .check:hover {
+  .check:hover:not(:disabled) {
     background: var(--surface);
+  }
+  .check:disabled {
+    cursor: default;
+    opacity: 0.5;
+  }
+  .more {
+    align-self: flex-start;
+    margin-top: var(--space-1);
+    margin-inline: 6px;
   }
   .check:focus-visible {
     outline: 2px solid transparent;

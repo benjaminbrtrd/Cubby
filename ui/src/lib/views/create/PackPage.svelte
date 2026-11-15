@@ -4,14 +4,17 @@
   import { untrack } from 'svelte'
   import { api } from '../../api'
   import { Banner, Button, Dialog, Icon, InstanceIcon, MetaChip, Switch, type Ground, type Motif } from '../../cubby'
-  import { compactNum, date, loaderName, plural, relativeTime } from '../../format'
+  import { compactNum, date, loaderName, num, plural, relativeTime } from '../../format'
   import { projectArt } from '../../icon'
   import { app } from '../../state.svelte'
   import type { OptionalMod, PackDetails, PackProvider, PackSummary, PackVersion } from '../../types'
   import Markdown from '../discover/Markdown.svelte'
+  import PackContentsList from '../discover/PackContentsList.svelte'
+  import { loadPackContents } from '../discover/packContents'
   import Picker from '../discover/Picker.svelte'
   import Identity, { iconValue } from './Identity.svelte'
   import { CHANNEL_WORD, mcSpan, paragraphs } from './packs'
+  import { wizard } from './wizard/state.svelte'
 
   interface Props {
     provider: PackProvider
@@ -63,7 +66,18 @@
 
   // version
 
-  let versionId = $state<string | null>(null)
+  // Back to this page shows the version picked when it was left
+  let versionId = $state<string | null>(untrack(() => app.recall<string | null>('versionId') ?? null))
+  $effect(() => app.keep('versionId', versionId))
+  /** Where Back goes when it isn't Discover (an instance, another page): the crumbs lead there. */
+  const from = $derived(app.previous && app.previous.name !== 'discover' ? app.previous : null)
+  /** Opened from the New instance wizard: Pick sets its modpack and goes back to it, instead of installing here. */
+  const forWizard = $derived(app.previous?.name === 'create')
+  function pickForWizard() {
+    if (!chosen) return
+    wizard.choosePack(provider.id, summary, versions, chosen.id)
+    app.back()
+  }
   const chosen = $derived(versions?.find((v) => v.id === versionId) ?? versions?.find((v) => v.channel === 'release') ?? versions?.[0])
   const newest = $derived(versions?.find((v) => v.channel === 'release') ?? versions?.[0])
   const versionItems = $derived((versions ?? []).map((v) => ({ id: v.id, v })))
@@ -177,6 +191,26 @@
     }
   }
 
+  // content: the count next to the heading
+
+  let contentCount = $state<number | null>(null)
+  $effect(() => {
+    const v = chosen?.id
+    const p = provider.id
+    const id = summary.id
+    contentCount = null
+    if (!v) return
+    let stale = false
+    loadPackContents(p, id, v)
+      .then((c) => {
+        if (!stale && !c.unavailable) contentCount = c.items.length
+      })
+      .catch(() => {})
+    return () => {
+      stale = true
+    }
+  })
+
   // links and gallery
 
   function open(e: MouseEvent, url: string) {
@@ -199,10 +233,16 @@
 </script>
 
 <div class="page">
-  <div class="main">
+  <div class="main" data-keep-scroll>
     <nav aria-label={t('Breadcrumb')}>
       <ol class="crumbs">
-        <li><button type="button" class="link text-body-strong" onclick={onBack}>{provider.name}</button></li>
+        {#if from}
+          <li><button type="button" class="link text-body-strong back" onclick={onBack}><Icon name="chevron-left" size={18} />{app.routeLabel(from)}</button></li>
+        {:else}
+          <li><button type="button" class="link text-body-strong" onclick={onBack}>{t('Discover')}</button></li>
+          <li aria-hidden="true" class="sep"><Icon name="chevron-right" size={18} /></li>
+          <li><button type="button" class="link text-body" onclick={onBack}>{provider.name}</button></li>
+        {/if}
         <li aria-hidden="true" class="sep"><Icon name="chevron-right" size={18} /></li>
         <li class="text-body" aria-current="page">{summary.name}</li>
       </ol>
@@ -281,11 +321,25 @@
         </section>
       {/if}
     {/if}
+
+    <section aria-labelledby="pk-contents">
+      <h2 id="pk-contents" class="text-heading heading-count">{t('Content')}{#if contentCount !== null}<span class="cb-tab__count text-counter">{num(contentCount)}</span>{/if}</h2>
+      {#if versionsError && !versions}
+        <p class="text-small muted">{t('The versions didn\'t load, so neither did the content.')}</p>
+      {:else}
+        <PackContentsList provider={provider.id} packId={summary.id} versionId={chosen?.id ?? null} versionName={chosen?.name ?? null} labelledby="pk-contents" loadingVersions={!versions && !versionsError} />
+      {/if}
+    </section>
   </div>
 
   <aside class="aside" aria-label={t('Install {name}', { name: summary.name })}>
-    <p class="cb-ins-eyebrow">{t('Install')}</p>
-    <p class="text-small muted">{t('It becomes a new instance, with its own Minecraft version, loader and settings. Your other instances stay as they are.')}</p>
+    {#if forWizard}
+      <p class="cb-ins-eyebrow">{t('Your new instance')}</p>
+      <p class="text-small muted">{t('This pack sets its Minecraft version, its loader and its mods. You can add more after.')}</p>
+    {:else}
+      <p class="cb-ins-eyebrow">{t('Install')}</p>
+      <p class="text-small muted">{t('It becomes a new instance, with its own Minecraft version, loader and settings. Your other instances stay as they are.')}</p>
+    {/if}
 
     <div class="field">
       <span class="text-body-strong">{t('Version')}</span>
@@ -328,7 +382,7 @@
       </dl>
     {/if}
 
-    {#if provider.id === 'atlauncher' && chosen}
+    {#if provider.id === 'atlauncher' && chosen && !forWizard}
       <section class="optional" aria-labelledby="pk-opt">
         <h3 id="pk-opt" class="cb-ins-eyebrow">{t('Optional mods')}</h3>
         {#if optionalError}
@@ -361,6 +415,10 @@
       </section>
     {/if}
 
+    {#if forWizard}
+      <Button variant="primary" size="lg" icon="check" disabled={!chosen} onclick={pickForWizard} class="wide">{t('Pick this modpack')}</Button>
+      <p class="text-small muted">{t('Back to the new instance, with this version.')}</p>
+    {:else}
     <Identity bind:name bind:group bind:motif bind:ground bind:src bind:iconTouched {nameError} />
 
     <Button variant="primary" size="lg" icon="download" busy={busy} disabled={!canInstall} onclick={install} class="wide">{t('Install modpack')}</Button>
@@ -369,13 +427,14 @@
     {:else}
       <p class="text-small muted">{t('You can keep using Cubby while it installs.')}</p>
     {/if}
+    {/if}
   </aside>
 </div>
 
 {#if viewing !== null && gallery[viewing]}
   {#snippet viewerActions()}
     {#if gallery.length > 1}
-      <Button size="sm" onclick={() => move(-1)}>{t('Previous')}</Button>
+      <Button size="sm" icon="chevron-left" onclick={() => move(-1)}>{t('Previous')}</Button>
       <Button size="sm" iconEnd="chevron-right" onclick={() => move(1)}>{t('Next')}</Button>
     {/if}
   {/snippet}
@@ -511,6 +570,11 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
+  }
+  .heading-count {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
   }
   section {
     display: flex;
@@ -670,5 +734,16 @@
   }
   .aside :global(.wide) {
     width: 100%;
+  }
+  /* every crumb on the same line: the Back one is a button with an icon, the others plain text */
+  .crumbs > li {
+    display: flex;
+    align-items: center;
+  }
+  .back {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    line-height: 22px;
   }
 </style>

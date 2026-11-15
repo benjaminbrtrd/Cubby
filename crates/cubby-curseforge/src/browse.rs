@@ -4,7 +4,7 @@ use cubby_common::packs::{PackChannel, PackLoaderKind, PackPage, PackSort, PackS
 use cubby_common::Result;
 
 use crate::api;
-use crate::client::{CurseForgeClient, GAME_ID, MODPACK_CLASS_ID, MOD_CLASS_ID, RESOURCE_PACK_CLASS_ID, SHADER_CLASS_ID};
+use crate::client::{CurseForgeClient, DATAPACK_CLASS_ID, GAME_ID, MODPACK_CLASS_ID, MOD_CLASS_ID, RESOURCE_PACK_CLASS_ID, SHADER_CLASS_ID};
 
 /// CurseForge refuses `index + pageSize` above this.
 const MAX_WINDOW: u32 = 10_000;
@@ -37,6 +37,9 @@ pub struct CfProject {
     pub description_html: String,
     pub links: CfLinks,
     pub screenshots: Vec<CfScreenshot>,
+    /// Category names.
+    pub categories: Vec<String>,
+    pub created: Option<String>,
 }
 
 /// `sortField` of the search API: 1 Featured, 2 Popularity, 3 LastUpdated, 4 Name, 6 TotalDownloads,
@@ -51,21 +54,32 @@ pub(crate) fn sort_params(sort: PackSort) -> (u8, &'static str) {
     }
 }
 
-/// What a resource search looks for. Modpacks have their own search ([`CurseForgeClient::search`]).
+/// What a resource search looks for.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ResourceKind {
     Mod,
     ResourcePack,
     Shader,
+    /// Goes into a world (`saves/<world>/datapacks`).
+    Datapack,
+    /// Searched with filters here; installed through the modpack plans.
+    Modpack,
 }
 
 impl ResourceKind {
-    fn class_id(self) -> u32 {
+    pub fn class_id(self) -> u32 {
         match self {
             ResourceKind::Mod => MOD_CLASS_ID,
             ResourceKind::ResourcePack => RESOURCE_PACK_CLASS_ID,
             ResourceKind::Shader => SHADER_CLASS_ID,
+            ResourceKind::Datapack => DATAPACK_CLASS_ID,
+            ResourceKind::Modpack => MODPACK_CLASS_ID,
         }
+    }
+
+    /// Mods and modpacks are made for a loader; packs and datapacks aren't.
+    pub fn has_loader(self) -> bool {
+        matches!(self, ResourceKind::Mod | ResourceKind::Modpack)
     }
 }
 
@@ -76,23 +90,30 @@ pub struct ResourceCategory {
     pub name: String,
 }
 
-/// A search for mods, resource packs or shader packs.
+/// Most game versions one search takes (`gameVersions`).
+pub const MAX_SEARCH_VERSIONS: usize = 4;
+/// Most loaders one search takes (`modLoaderTypes`).
+pub const MAX_SEARCH_LOADERS: usize = 5;
+/// Most categories one search takes (`categoryIds`).
+pub const MAX_SEARCH_CATEGORIES: usize = 10;
+
+/// A search for mods, resource packs, shader packs, datapacks or modpacks.
 #[derive(Debug, Clone)]
 pub struct ResourceQuery {
     pub kind: ResourceKind,
     pub text: String,
-    /// Only files for this Minecraft version.
-    pub game_version: Option<String>,
-    /// Only mods for this loader (resource packs and shaders have none).
-    pub loader: Option<PackLoaderKind>,
-    /// One category id (CurseForge filters by one at a time).
-    pub category: Option<u64>,
+    /// Only projects with files for one of these Minecraft versions (at most [`MAX_SEARCH_VERSIONS`]).
+    pub game_versions: Vec<String>,
+    /// Only projects for one of these loaders (mods and modpacks; at most [`MAX_SEARCH_LOADERS`]).
+    pub loaders: Vec<PackLoaderKind>,
+    /// Category ids (at most [`MAX_SEARCH_CATEGORIES`]).
+    pub categories: Vec<u64>,
     pub sort: PackSort,
     pub offset: u32,
     pub limit: u32,
 }
 
-fn loader_code(loader: PackLoaderKind) -> u8 {
+pub(crate) fn loader_code(loader: PackLoaderKind) -> u8 {
     match loader {
         PackLoaderKind::Forge => 1,
         PackLoaderKind::Fabric => 4,
@@ -101,6 +122,31 @@ fn loader_code(loader: PackLoaderKind) -> u8 {
     }
 }
 
+/// The `ModLoaderType` names `modLoaderTypes=[...]` takes.
+fn loader_enum_name(loader: PackLoaderKind) -> &'static str {
+    match loader {
+        PackLoaderKind::Forge => "Forge",
+        PackLoaderKind::Fabric => "Fabric",
+        PackLoaderKind::Quilt => "Quilt",
+        PackLoaderKind::NeoForge => "NeoForge",
+    }
+}
+
+fn unique<T: PartialEq + Clone>(items: impl IntoIterator<Item = T>, max: usize) -> Vec<T> {
+    let mut out: Vec<T> = Vec::new();
+    for item in items {
+        if !out.contains(&item) {
+            out.push(item);
+        }
+    }
+    out.truncate(max);
+    out
+}
+
+/// The list parameters of the search API: one value goes in the single parameter (`gameVersion`,
+/// `categoryId`), several in the list one (`gameVersions=["1.20.1","1.21.1"]`, `categoryIds=[1,2]`,
+/// `modLoaderTypes=[Fabric,Quilt]`). `modLoaderType` alone needs a `gameVersion`, so a loader without exactly
+/// one version uses the list form.
 pub(crate) fn resource_params(q: &ResourceQuery) -> Vec<(&'static str, String)> {
     let mut params = search_params(&q.text, q.sort, q.offset, q.limit);
     for (name, value) in &mut params {
@@ -108,14 +154,25 @@ pub(crate) fn resource_params(q: &ResourceQuery) -> Vec<(&'static str, String)> 
             *value = q.kind.class_id().to_string();
         }
     }
-    if let Some(version) = q.game_version.as_deref().map(str::trim).filter(|v| !v.is_empty()) {
-        params.push(("gameVersion", version.to_string()));
+    let versions = unique(q.game_versions.iter().map(|v| v.trim().to_string()).filter(|v| !v.is_empty()), MAX_SEARCH_VERSIONS);
+    match versions.as_slice() {
+        [] => {}
+        [one] => params.push(("gameVersion", one.clone())),
+        many => params.push(("gameVersions", serde_json::to_string(many).unwrap_or_default())),
     }
-    if let Some(id) = q.category {
-        params.push(("categoryId", id.to_string()));
+    let categories = unique(q.categories.iter().copied(), MAX_SEARCH_CATEGORIES);
+    match categories.as_slice() {
+        [] => {}
+        [one] => params.push(("categoryId", one.to_string())),
+        many => params.push(("categoryIds", format!("[{}]", many.iter().map(u64::to_string).collect::<Vec<_>>().join(",")))),
     }
-    if let (ResourceKind::Mod, Some(loader)) = (q.kind, q.loader) {
-        params.push(("modLoaderType", loader_code(loader).to_string()));
+    if q.kind.has_loader() {
+        let loaders = unique(q.loaders.iter().copied(), MAX_SEARCH_LOADERS);
+        match loaders.as_slice() {
+            [] => {}
+            [one] if versions.len() == 1 => params.push(("modLoaderType", loader_code(*one).to_string())),
+            many => params.push(("modLoaderTypes", format!("[{}]", many.iter().map(|l| loader_enum_name(*l)).collect::<Vec<_>>().join(",")))),
+        }
     }
     params
 }
@@ -139,7 +196,7 @@ pub(crate) fn search_params(query: &str, sort: PackSort, offset: u32, limit: u32
     params
 }
 
-fn loader_from_index(code: Option<u8>) -> Option<PackLoaderKind> {
+pub(crate) fn loader_from_index(code: Option<u8>) -> Option<PackLoaderKind> {
     match code? {
         1 => Some(PackLoaderKind::Forge),
         4 => Some(PackLoaderKind::Fabric),
@@ -149,7 +206,7 @@ fn loader_from_index(code: Option<u8>) -> Option<PackLoaderKind> {
     }
 }
 
-fn loader_from_name(name: &str) -> Option<PackLoaderKind> {
+pub(crate) fn loader_from_name(name: &str) -> Option<PackLoaderKind> {
     match name.to_ascii_lowercase().as_str() {
         "forge" => Some(PackLoaderKind::Forge),
         "fabric" => Some(PackLoaderKind::Fabric),
@@ -170,7 +227,7 @@ fn version_key(s: &str) -> Vec<u32> {
 }
 
 /// Sorted newest first, without duplicates.
-fn sorted_versions(versions: impl Iterator<Item = String>) -> Vec<String> {
+pub(crate) fn sorted_versions(versions: impl Iterator<Item = String>) -> Vec<String> {
     let mut out: Vec<String> = versions.filter(|v| is_release_version(v)).collect();
     out.sort_by_key(|v| std::cmp::Reverse(version_key(v)));
     out.dedup();
@@ -214,6 +271,8 @@ pub(crate) fn project_from_mod(m: &api::Mod, description_html: String) -> CfProj
             .iter()
             .filter_map(|s| Some(CfScreenshot { title: s.title.clone().filter(|t| !t.is_empty()), url: s.url.clone().filter(|u| !u.is_empty())?, thumbnail_url: s.thumbnail_url.clone() }))
             .collect(),
+        categories: m.categories.iter().map(|c| c.name.trim().to_string()).filter(|n| !n.is_empty()).collect(),
+        created: m.date_created.clone(),
     }
 }
 
@@ -243,14 +302,14 @@ impl CurseForgeClient {
         Ok(PackPage { hits: response.data.iter().map(summary_from_mod).collect(), total: response.pagination.map(|p| p.total_count) })
     }
 
-    /// Mods, resource packs or shader packs matching the query.
+    /// Projects of any kind matching the query, with the filters CurseForge applies itself.
     pub async fn search_resources(&self, query: &ResourceQuery) -> Result<PackPage> {
         let params = resource_params(query);
         let response: api::Envelope<Vec<api::Mod>> = self.get("/v1/mods/search", &params, "CurseForge search").await?;
         Ok(PackPage { hits: response.data.iter().map(summary_from_mod).collect(), total: response.pagination.map(|p| p.total_count) })
     }
 
-    /// The categories of mods, resource packs or shader packs, by name.
+    /// The categories of a kind of project, by name.
     pub async fn resource_categories(&self, kind: ResourceKind) -> Result<Vec<ResourceCategory>> {
         let class = kind.class_id();
         let query = [("gameId", GAME_ID.to_string()), ("classId", class.to_string())];
@@ -271,7 +330,7 @@ impl CurseForgeClient {
         self.search("", PackSort::Downloads, 0, 20).await
     }
 
-    /// A modpack page. `id` is the CurseForge project id.
+    /// A project page (modpack, mod, pack or datapack). `id` is the CurseForge project id.
     pub async fn pack(&self, id: u64) -> Result<CfProject> {
         let project: api::Envelope<api::Mod> = self.get(&format!("/v1/mods/{id}"), &[], &format!("CurseForge modpack {id}")).await?;
         // The description is secondary: a failure there still shows the page.
@@ -339,7 +398,16 @@ mod tests {
 
     #[test]
     fn resource_search_params() {
-        let mut q = ResourceQuery { kind: ResourceKind::Mod, text: "sodium".into(), game_version: Some(" 1.21.1 ".into()), loader: Some(PackLoaderKind::Fabric), category: Some(409), sort: PackSort::Downloads, offset: 0, limit: 20 };
+        let mut q = ResourceQuery {
+            kind: ResourceKind::Mod,
+            text: "sodium".into(),
+            game_versions: vec![" 1.21.1 ".into()],
+            loaders: vec![PackLoaderKind::Fabric],
+            categories: vec![409],
+            sort: PackSort::Downloads,
+            offset: 0,
+            limit: 20,
+        };
         let get = |p: &[(&str, String)], k: &str| p.iter().find(|(n, _)| *n == k).map(|(_, v)| v.clone());
         let p = resource_params(&q);
         assert_eq!(get(&p, "classId").as_deref(), Some("6"));
@@ -351,12 +419,42 @@ mod tests {
         q.kind = ResourceKind::Shader;
         let p = resource_params(&q);
         assert_eq!(get(&p, "classId").as_deref(), Some("6552"));
-        assert!(get(&p, "modLoaderType").is_none());
+        assert!(get(&p, "modLoaderType").is_none() && get(&p, "modLoaderTypes").is_none());
         q.kind = ResourceKind::ResourcePack;
-        q.game_version = None;
+        q.game_versions = Vec::new();
         let p = resource_params(&q);
         assert_eq!(get(&p, "classId").as_deref(), Some("12"));
         assert!(get(&p, "gameVersion").is_none());
+        q.kind = ResourceKind::Datapack;
+        assert_eq!(get(&resource_params(&q), "classId").as_deref(), Some("6945"));
+    }
+
+    #[test]
+    fn several_filters_use_the_list_parameters() {
+        let q = ResourceQuery {
+            kind: ResourceKind::Modpack,
+            text: String::new(),
+            game_versions: vec!["1.21.1".into(), "1.20.1".into(), "1.21.1".into(), "1.19.2".into(), "1.18.2".into(), "1.16.5".into()],
+            loaders: vec![PackLoaderKind::Fabric, PackLoaderKind::Quilt],
+            categories: vec![1, 2, 2, 3],
+            sort: PackSort::Relevance,
+            offset: 0,
+            limit: 20,
+        };
+        let p = resource_params(&q);
+        let get = |k: &str| p.iter().find(|(n, _)| *n == k).map(|(_, v)| v.clone());
+        assert_eq!(get("classId").as_deref(), Some("4471"));
+        // at most 4 versions, without duplicates
+        assert_eq!(get("gameVersions").as_deref(), Some(r#"["1.21.1","1.20.1","1.19.2","1.18.2"]"#));
+        assert!(get("gameVersion").is_none());
+        assert_eq!(get("categoryIds").as_deref(), Some("[1,2,3]"));
+        assert_eq!(get("modLoaderTypes").as_deref(), Some("[Fabric,Quilt]"));
+        assert!(get("modLoaderType").is_none());
+
+        // one loader without one version: modLoaderType alone needs a gameVersion
+        let q = ResourceQuery { game_versions: Vec::new(), loaders: vec![PackLoaderKind::NeoForge], ..q };
+        let p = resource_params(&q);
+        assert_eq!(p.iter().find(|(n, _)| *n == "modLoaderTypes").map(|(_, v)| v.as_str()), Some("[NeoForge]"));
     }
 
     #[test]

@@ -1,18 +1,30 @@
 <!-- Name, group and icon of a new instance: the same fields as the Custom form, for packs and imports. -->
 <script lang="ts" module>
   import { encodeIcon } from '../../icon'
+  import { t } from '../../i18n.svelte'
+  import { app } from '../../state.svelte'
   import type { Ground, Motif } from '../../cubby'
 
   /** What goes into the instance's `icon`: the picked image, else "motif:ground". */
   export function iconValue(src: string | null, motif: Motif | undefined, ground: Ground | undefined): string | null {
     return src ?? (motif && ground ? encodeIcon(motif, ground) : null)
   }
+
+  /** An image picked for an icon, as a data URL: PNG or JPG under 512 KB, else a toast and nothing. */
+  export function readIconImage(file: File, done: (src: string) => void) {
+    if (!/^image\/(png|jpeg)$/.test(file.type)) return app.toast(t('Pick a PNG or JPG image.'), 'error')
+    if (file.size > 512_000) return app.toast(t('Pick an image under 512 KB.'), 'error')
+    const reader = new FileReader()
+    reader.onload = () => {
+      if (typeof reader.result === 'string') done(reader.result)
+    }
+    reader.onerror = () => app.toast(t('Couldn\'t read this image.'), 'error')
+    reader.readAsDataURL(file)
+  }
 </script>
 
 <script lang="ts">
-  import { t } from '../../i18n.svelte'
   import { Button, IconPicker, InstanceIcon, TextField, pickIcon } from '../../cubby'
-  import { app } from '../../state.svelte'
 
   interface Props {
     name: string
@@ -61,17 +73,10 @@
     const file = e.currentTarget.files?.[0]
     e.currentTarget.value = ''
     if (!file) return
-    if (!/^image\/(png|jpeg)$/.test(file.type)) return app.toast(t('Pick a PNG or JPG image.'), 'error')
-    if (file.size > 512_000) return app.toast(t('Pick an image under 512 KB.'), 'error')
-    const reader = new FileReader()
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        src = reader.result
-        iconTouched = true
-      }
-    }
-    reader.onerror = () => app.toast(t('Couldn\'t read this image.'), 'error')
-    reader.readAsDataURL(file)
+    readIconImage(file, (data) => {
+      src = data
+      iconTouched = true
+    })
   }
 </script>
 

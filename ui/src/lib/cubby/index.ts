@@ -30,6 +30,7 @@ export { default as InstanceTile } from './InstanceTile.svelte';
 export { default as InstanceRow } from './InstanceRow.svelte';
 /* Content */
 export { default as ModRow } from './ModRow.svelte';
+export { default as SourceMark } from './SourceMark.svelte';
 export { default as ServerRow } from './ServerRow.svelte';
 export { default as Motd } from './Motd.svelte';
 export { default as LogViewer } from './LogViewer.svelte';

@@ -85,6 +85,8 @@ async fn mrpack_file_installs_and_is_kept() {
             kind: cubby_modrinth::ProjectKind::Modpack,
             game_version: None,
             loader: None,
+            game_versions: Vec::new(),
+            loaders: Vec::new(),
             categories: vec![],
             environment: None,
             sort: cubby_modrinth::Sort::Relevance,

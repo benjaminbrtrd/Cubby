@@ -110,7 +110,7 @@ where
     }))
 }
 
-async fn run_task<T, Fut>(
+pub(crate) async fn run_task<T, Fut>(
     app: &AppHandle,
     task: String,
     work: impl FnOnce(AppHandle, String) -> Fut,
@@ -131,7 +131,7 @@ where
     }
 }
 
-fn ensure_stopped(core: &Core, id: &str) -> CmdResult<()> {
+pub(crate) fn ensure_stopped(core: &Core, id: &str) -> CmdResult<()> {
     if core.games.is_running(id) {
         return Err("Close the game before changing this instance.".into());
     }

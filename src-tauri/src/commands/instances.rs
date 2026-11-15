@@ -200,6 +200,14 @@ pub async fn list_loader_versions(
         .msg()
 }
 
+/// The Minecraft versions a loader runs on, newest first (snapshots included where the loader has them).
+#[tauri::command]
+pub async fn loader_game_versions(core: State<'_, Core>, kind: String) -> CmdResult<Vec<String>> {
+    cubby_meta::game_versions_supported(&core.http, loader_kind(&kind)?)
+        .await
+        .msg()
+}
+
 /// Cubby's own icon, for a desktop shortcut: the app executable on Windows (it holds the icon), the bundle's
 /// `.icns` on macOS, an installed PNG on Linux. `None` in development builds without a bundle.
 fn app_icon() -> Option<PathBuf> {

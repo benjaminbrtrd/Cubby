@@ -1,6 +1,8 @@
+import { untrack } from 'svelte'
 import { api, inTauri, onEvent } from './api'
-import type { Account, AppInfo, AppUpdate, ContentSource, ContentUpdate, Instance, LogLine, ProjectKind, PackProvider, ProjectSort, ProviderId, Settings, CubbyEvent } from './types'
+import type { Account, AppInfo, AppUpdate, CfInstalled, ContentSource, ContentUpdate, Instance, LogLine, ProjectKind, PackProvider, PackSummary, ProjectSort, ProviderId, Settings, CubbyEvent } from './types'
 import { t } from './i18n.svelte'
+import { plural } from './format'
 
 export type InstanceTab = 'overview' | 'mods' | 'resourcepacks' | 'shaders' | 'worlds' | 'screenshots' | 'servers' | 'settings'
 export type SettingsSection = 'general' | 'appearance' | 'language' | 'java' | 'game' | 'downloads' | 'storage' | 'accounts' | 'keyboard' | 'privacy' | 'updates' | 'about'
@@ -23,7 +25,9 @@ export type Route =
   | { name: 'create' }
   | { name: 'discover' }
   /** A Modrinth project page (mod, modpack, shader pack or resource pack). */
-  | { name: 'project'; idOrSlug: string; kind: ProjectKind }
+  | { name: 'project'; idOrSlug: string; kind: ProjectKind; source?: 'curseforge' }
+  /** A modpack page of a provider other than Modrinth (CurseForge, FTB, ATLauncher, Technic). */
+  | { name: 'pack'; provider: ProviderId; id: string }
   | { name: 'downloads' }
   | { name: 'accounts' }
   /** Skin and cape of an account. */
@@ -37,6 +41,7 @@ export function sectionOf(route: Route): 'library' | 'discover' | 'servers' | 'c
   switch (route.name) {
     case 'discover':
     case 'project':
+    case 'pack':
       return 'discover'
     case 'skins':
       return 'accounts'
@@ -49,6 +54,57 @@ export function sectionOf(route: Route): 'library' | 'discover' | 'servers' | 'c
     default:
       return 'library'
   }
+}
+
+const TAB_LABELS: Record<InstanceTab, () => string> = {
+  overview: () => t('Overview'),
+  mods: () => t('Mods'),
+  resourcepacks: () => t('Resource packs'),
+  shaders: () => t('Shader packs'),
+  worlds: () => t('Worlds'),
+  screenshots: () => t('Screenshots'),
+  servers: () => t('Servers'),
+  settings: () => t('Settings'),
+}
+
+/** The same page, whatever the order of its fields. */
+export function routeKey(route: Route): string {
+  return JSON.stringify(route, Object.keys(route).sort())
+}
+
+/** Another tab of the same instance, another settings section: the same place, not a new page. */
+function samePlace(a: Route, b: Route): boolean {
+  if (a.name === 'instance' && b.name === 'instance') return a.id === b.id
+  return a.name === 'settings' && b.name === 'settings'
+}
+
+/** Elements whose scroll position a page keeps: the main area, and the panes marked `data-keep-scroll`. */
+function scrollers(): HTMLElement[] {
+  if (typeof document === 'undefined') return []
+  const main = document.querySelector<HTMLElement>('main')
+  return [...(main ? [main] : []), ...document.querySelectorAll<HTMLElement>('[data-keep-scroll]')]
+}
+
+function scrollPositions(): number[] {
+  return scrollers().map((e) => e.scrollTop)
+}
+
+/** True once every position could be applied (the content is tall enough). */
+function applyScroll(saved: number[]): boolean {
+  const els = scrollers()
+  let done = els.length >= saved.length
+  saved.forEach((y, i) => {
+    const el = els[i]
+    if (!el) return
+    el.scrollTop = y
+    if (Math.abs(el.scrollTop - y) > 2) done = false
+  })
+  return done
+}
+
+function resetScroll() {
+  if (typeof requestAnimationFrame === 'undefined') return
+  requestAnimationFrame(() => scrollers().forEach((e) => (e.scrollTop = 0)))
 }
 
 export interface Task {
@@ -128,12 +184,19 @@ export type UpdateDialog = 'notes' | 'restart' | 'playing' | 'updated'
 
 const CHECK_EVERY_MS = 6 * 60 * 60 * 1000
 const FIRST_CHECK_MS = 8000
+/** Content updates are looked for a little after start, once the first screen is up. */
+const CONTENT_CHECK_MS = 4000
 const SEEN_VERSION_KEY = 'cubby.seenVersion'
 
 class AppState {
   route = $state<Route>({ name: 'library' })
-  /** Previous routes, for Back (Alt Left). */
-  private history: Route[] = []
+  /** Pages behind and ahead of this one, for Back and Forward. */
+  past = $state<Route[]>([])
+  future = $state<Route[]>([])
+  /** A little view state per page (scroll position, tab, version picked), so a page comes back as it was left. */
+  private memory = new Map<string, Record<string, unknown>>()
+  /** Modpack summaries seen in lists, so a pack page opens at once. */
+  packSummaries = new Map<string, PackSummary>()
   info = $state<AppInfo | null>(null)
   instances = $state<Instance[]>([])
   accounts = $state<Account[]>([])
@@ -187,6 +250,8 @@ class AppState {
   sources = $state<Record<string, ContentSource[]>>({})
   /** instance id → available updates */
   updates = $state<Record<string, ContentUpdate[]>>({})
+  /** instance id → files identified on CurseForge (loaded by Discover when CurseForge is the source) */
+  cfInstalled = $state<Record<string, CfInstalled[]>>({})
 
   private toastId = 0
 
@@ -276,7 +341,34 @@ class AppState {
     this.listenForLinks()
     this.noticeNewVersion()
     this.startUpdateChecks()
+    setTimeout(() => void this.checkContentUpdates(), CONTENT_CHECK_MS)
     return unlisten
+  }
+
+  /** At start (Settings › Check for updates): looks for newer mods, resource packs and shader packs in every
+   *  instance, most recently played first, then says what it found. Nothing is installed: the player updates
+   *  from the instance. */
+  async checkContentUpdates() {
+    if (!this.settings?.checkUpdates) return
+    const found: { instance: Instance; count: number; mods: boolean }[] = []
+    for (const instance of this.recent) {
+      // An instance being installed or played is checked when it is opened.
+      if (this.instanceTask(instance.id) || this.running[instance.id]) continue
+      const list = await this.loadUpdates(instance.id, true)
+      if (list.length) found.push({ instance, count: list.length, mods: list.every((u) => /\.jar(\.disabled)?$/i.test(u.fileName)) })
+    }
+    if (!found.length) return
+    const total = found.reduce((n, f) => n + f.count, 0)
+    const first = found[0]
+    // Mods when they are all mods, else Overview, which lists every kind.
+    const tab: InstanceTab = first.mods ? 'mods' : 'overview'
+    this.toast(
+      found.length === 1
+        ? t('{n} can be updated in {name}.', { n: plural(total, 'file', 'files'), name: first.instance.name })
+        : t('{n} can be updated in {count}.', { n: plural(total, 'file', 'files'), count: plural(found.length, 'instance', 'instances') }),
+      'info',
+      { label: found.length === 1 ? t('See them') : t('See {name}', { name: first.instance.name }), run: () => this.openInstance(first.instance.id, tab) },
+    )
   }
 
   /** cubby://pack/<code> links (the "Open in Cubby" button of a shared pack's page) open New instance › From a link.
@@ -316,27 +408,148 @@ class AppState {
     }).catch((e) => console.warn('deep links unavailable', e))
   }
 
-  navigate(route: Route) {
-    if (JSON.stringify(route) === JSON.stringify(this.route)) return
-    this.history.push(this.route)
-    if (this.history.length > 50) this.history.shift()
-    this.route = route
-    if ('id' in route && route.name !== 'crash') this.selected = route.id
-    document.querySelector('main')?.scrollTo?.(0, 0)
+  /** Goes to a page. Another tab of the same instance, or another section of the settings, replaces the page in the
+   *  history instead of adding one: Back leaves the instance, it doesn't walk through its tabs. */
+  navigate(route: Route, opts: { replace?: boolean } = {}) {
+    if (routeKey(route) === routeKey(this.route)) return
+    const replace = opts.replace ?? samePlace(this.route, route)
+    this.saveScroll()
+    if (!replace) {
+      this.past = [...this.past, this.route].slice(-50)
+      this.future = []
+    }
+    this.show(route, false)
+  }
+
+  get canBack(): boolean {
+    return this.past.length > 0 || this.route.name !== 'library'
+  }
+
+  get canForward(): boolean {
+    return this.future.length > 0
+  }
+
+  /** The page Back goes to, for "Back to …" links. */
+  get previous(): Route | null {
+    return this.past[this.past.length - 1] ?? null
   }
 
   back() {
-    const prev = this.history.pop()
-    if (prev) this.route = prev
-    else if (this.route.name !== 'library') this.route = { name: 'library' }
+    const prev = this.past[this.past.length - 1]
+    this.saveScroll()
+    if (!prev) {
+      if (this.route.name !== 'library') this.show({ name: 'library' }, false)
+      return
+    }
+    this.past = this.past.slice(0, -1)
+    this.future = [this.route, ...this.future].slice(0, 50)
+    this.show(prev, true)
+  }
+
+  forward() {
+    const next = this.future[0]
+    if (!next) return
+    this.saveScroll()
+    this.future = this.future.slice(1)
+    this.past = [...this.past, this.route].slice(-50)
+    this.show(next, true)
+  }
+
+  private show(route: Route, restore: boolean) {
+    this.route = route
+    if ('id' in route && route.name !== 'crash' && route.name !== 'pack') this.selected = route.id
+    if (restore) this.restoreScroll()
+    else resetScroll()
+  }
+
+  /** A value a page keeps for when it comes back (Back, Forward): its tab, the version picked… */
+  recall<T>(key: string): T | undefined {
+    return this.memory.get(untrack(() => routeKey(this.route)))?.[key] as T | undefined
+  }
+
+  /** Not reactive on the route: an effect calling it doesn't run again when the page changes. */
+  keep(key: string, value: unknown) {
+    const k = untrack(() => routeKey(this.route))
+    const m = this.memory.get(k) ?? {}
+    m[key] = value
+    this.memory.set(k, m)
+    if (this.memory.size > 100) this.memory.delete(this.memory.keys().next().value!)
+  }
+
+  private saveScroll() {
+    this.keep('$scroll', scrollPositions())
+  }
+
+  /** Puts the scroll positions back once the page has drawn what it loads (lists come a moment later). */
+  private restoreScroll() {
+    const saved = this.recall<number[]>('$scroll')
+    if (!saved?.some((y) => y > 0)) return resetScroll()
+    const started = Date.now()
+    const tick = () => {
+      const done = applyScroll(saved)
+      if (!done && Date.now() - started < 1500) requestAnimationFrame(tick)
+    }
+    requestAnimationFrame(tick)
+  }
+
+  /** What a page is called in "Back to …" links: the instance and its tab, the project, the pack… */
+  routeLabel(route: Route): string {
+    const titled = this.memory.get(routeKey(route))?.$title
+    switch (route.name) {
+      case 'library':
+        return t('Library')
+      case 'instance': {
+        const name = this.instance(route.id)?.name ?? route.id
+        return route.tab === 'overview' ? name : `${name} › ${TAB_LABELS[route.tab]()}`
+      }
+      case 'running':
+      case 'crash':
+        return this.instance(route.id)?.name ?? route.id
+      case 'discover':
+        return t('Discover')
+      case 'project':
+        return typeof titled === 'string' ? titled : t('Project')
+      case 'pack':
+        return this.packSummaries.get(`${route.provider}:${route.id}`)?.name ?? t('Modpack')
+      case 'create':
+        return t('New instance')
+      case 'downloads':
+        return t('Downloads')
+      case 'servers':
+        return t('Servers')
+      case 'captures':
+        return t('Screenshots')
+      case 'accounts':
+      case 'skins':
+        return t('Accounts')
+      case 'settings':
+        return t('Settings')
+    }
+  }
+
+  /** A modpack page of a provider (Modrinth packs have project pages). */
+  openPack(provider: ProviderId, summary: PackSummary) {
+    this.packSummaries.set(`${provider}:${summary.id}`, summary)
+    this.navigate({ name: 'pack', provider, id: summary.id })
   }
 
   openInstance(id: string, tab: InstanceTab = 'overview') {
     this.navigate({ name: 'instance', id, tab })
   }
 
-  openProject(idOrSlug: string, kind: ProjectKind) {
-    this.navigate({ name: 'project', idOrSlug, kind })
+  /** Names of projects opened by id or slug, so their page can show the name before the project loads. */
+  #projectTitles = new Map<string, string>()
+
+  /** A project page; `source: 'curseforge'` opens a CurseForge project by its id. `title`: its name, when the
+   * caller knows it (the breadcrumb shows it at once instead of the id). */
+  openProject(idOrSlug: string, kind: ProjectKind, source?: 'curseforge', title?: string) {
+    if (title?.trim()) this.#projectTitles.set(idOrSlug, title.trim())
+    this.navigate(source ? { name: 'project', idOrSlug, kind, source } : { name: 'project', idOrSlug, kind })
+  }
+
+  /** The name a project was opened with, if any. */
+  projectTitle(idOrSlug: string): string | undefined {
+    return this.#projectTitles.get(idOrSlug)
   }
 
   async refreshInstances() {
@@ -453,7 +666,24 @@ class AppState {
     const other = (f: string) => f.replace(/\.disabled$/, '') !== base
     if (this.sources[id]) this.sources[id] = this.sources[id].filter((s) => other(s.fileName))
     if (this.updates[id]) this.updates[id] = this.updates[id].filter((u) => other(u.fileName))
+    if (this.cfInstalled[id]) this.cfInstalled[id] = this.cfInstalled[id].filter((f) => other(f.fileName))
     void this.loadSources(id, true)
+  }
+
+  /** Files of the instance identified on CurseForge; cached until `force`. */
+  async loadCfInstalled(id: string, force = false) {
+    if (this.cfInstalled[id] && !force) return this.cfInstalled[id]
+    try {
+      this.cfInstalled[id] = await api.curseforgeInstalled(id)
+    } catch {
+      this.cfInstalled[id] = []
+    }
+    return this.cfInstalled[id]
+  }
+
+  /** The instance's file of a CurseForge project, when CurseForge identified it. */
+  cfInstalledIn(id: string | undefined, projectId: string): CfInstalled | undefined {
+    return id ? this.cfInstalled[id]?.find((f) => f.projectId === projectId) : undefined
   }
 
   installedIn(id: string | undefined, projectId: string): ContentSource | undefined {
@@ -592,9 +822,10 @@ class AppState {
         if (e.error) this.error(e.error)
         const [kind, id] = e.task.split(':')
         if (id && ['install', 'update', 'modpack'].includes(kind)) {
-          delete this.sources[id]
-          delete this.updates[id]
+          // Read again without emptying first: what is shown stays until the new answer replaces it.
           void this.loadSources(id, true)
+          if (this.updates[id]) void this.loadUpdates(id, true)
+          if (this.cfInstalled[id]) void this.loadCfInstalled(id, true)
         }
         void this.refreshInstances().then(() => {
           // a failed first install is deleted by the backend: leave its page instead of showing a hole

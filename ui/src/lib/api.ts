@@ -6,6 +6,13 @@ import type {
   AppUpdate,
   ContentSource,
   BlockedFile,
+  CfFile,
+  SearchFilters,
+  CfInstalled,
+  CfPlan,
+  DatapackSource,
+  ExtrasReport,
+  WizardExtra,
   ContentUpdate,
   DataFolder,
   WorldMapImage,
@@ -21,6 +28,7 @@ import type {
   DefaultSkin,
   VersionBrief,
   Project,
+  ProjectKind,
   ProjectQuery,
   ProjectVersion,
   SearchResults,
@@ -38,6 +46,7 @@ import type {
   LoaderVersion,
   LogLine,
   OptionalMod,
+  PackContents,
   PackDetails,
   PackFileInfo,
   PackPage,
@@ -93,6 +102,8 @@ export const api = {
 
   listVersions: () => call<GameVersion[]>('list_versions'),
   listLoaderVersions: (kind: LoaderKind, game: string) => call<LoaderVersion[]>('list_loader_versions', { kind, game }),
+  /** The Minecraft versions a loader runs on, newest first. */
+  loaderGameVersions: (kind: LoaderKind) => call<string[]>('loader_game_versions', { kind }),
 
   listMods: (id: string) => call<ModFile[]>('list_mods', { id }),
   setModEnabled: (id: string, fileName: string, enabled: boolean) => call<void>('set_mod_enabled', { id, fileName, enabled }),
@@ -144,11 +155,33 @@ export const api = {
   listJava: () => call<JavaInstall[]>('list_java'),
 
   // Discover (Modrinth)
-  /** Mods, shader packs and resource packs from CurseForge, in the shape of searchProjects. */
-  curseforgeSearch: (query: ProjectQuery) => call<SearchResults>('curseforge_search', { query }),
-  /** The categories CurseForge sorts mods, shader packs or resource packs into (ids are strings). */
+  /** CurseForge projects in the shape of searchProjects. `query.categories` are CurseForge ids; `filters` override the query's version and loader. */
+  curseforgeSearch: (query: ProjectQuery, filters: SearchFilters | null = null) => call<SearchResults>('curseforge_search', { query, filters }),
+  /** The categories CurseForge sorts a kind of project into (ids are strings). */
   curseforgeCategories: (kind: string) => call<{ id: string; name: string }[]>('curseforge_categories', { kind }),
-  searchProjects: (query: ProjectQuery) => call<SearchResults>('search_projects', { query }),
+  /** The instance's mods, resource packs and shader packs that come from CurseForge (by fingerprint). */
+  curseforgeInstalled: (instanceId: string) => call<CfInstalled[]>('curseforge_installed', { instanceId }),
+  /** A CurseForge project page, shaped like a Modrinth one (`source: 'curseforge'`, description in HTML). */
+  curseforgeProject: (projectId: string, kind: ProjectKind) => call<Project>('curseforge_project', { projectId, kind }),
+  /** The newest files of a CurseForge project for a Minecraft version (null = every version), newest first. */
+  curseforgeFiles: (projectId: string, gameVersion: string | null) => call<CfFile[]>('curseforge_files', { projectId, gameVersion }),
+  /** What installing a CurseForge project (`fileId`, else the best file) into the instance would do, with the projects it requires. */
+  curseforgePlan: (instanceId: string, kind: ProjectKind, projectId: string, fileId: string | null) =>
+    call<CfPlan>('curseforge_plan', { instanceId, kind, projectId, fileId }),
+  /** Installs a CurseForge project and what it requires (task `install:<instanceId>`). Returns the plan that ran: its `manualUrl` items still need a download by hand. */
+  curseforgeInstall: (instanceId: string, kind: ProjectKind, projectId: string, fileId: string | null) =>
+    call<CfPlan>('curseforge_install', { instanceId, kind, projectId, fileId }),
+  /** Installs what the New instance wizard picked (task `install:<instanceId>`), after the instance's modpack if one is installing. Returns when done. */
+  installExtras: (instanceId: string, items: WizardExtra[], turnOn: boolean) => call<ExtrasReport>('install_extras', { instanceId, items, turnOn }),
+  /** The datapacks waiting for the instance's new worlds. */
+  worldDatapacks: (instanceId: string) => call<Omit<WizardExtra, 'kind'>[]>('world_datapacks', { instanceId }),
+  /** The datapacks of a world that Modrinth (by SHA-1) or CurseForge (by fingerprint) knows. */
+  datapackSources: (id: string, world: string) => call<DatapackSource[]>('datapack_sources', { id, world }),
+  /** Downloads a CurseForge datapack into a world; returns the file name. */
+  curseforgeInstallDatapack: (id: string, world: string, projectId: string, fileId: string | null) =>
+    call<string>('curseforge_install_datapack', { id, world, projectId, fileId }),
+  /** `filters`: several Minecraft versions and loaders, instead of the query's own (categories stay in the query). */
+  searchProjects: (query: ProjectQuery, filters: SearchFilters | null = null) => call<SearchResults>('search_projects', { query, filters }),
   getProject: (idOrSlug: string) => call<Project>('get_project', { idOrSlug }),
   /** Newest first. `gameVersion` / `loader` null = every version. */
   listProjectVersions: (idOrSlug: string, gameVersion: string | null, loader: LoaderKind | null) =>
@@ -193,11 +226,16 @@ export const api = {
   /** ATLauncher, CurseForge, FTB, Modrinth, Technic (in that order). */
   packProviders: () => call<PackProvider[]>('pack_providers'),
   /** 20 per page; an empty query lists the featured packs. */
-  packSearch: (provider: ProviderId, query: string, sort: PackSort, offset: number) => call<PackPage>('pack_search', { provider, query, sort, offset }),
+  packSearch: (provider: ProviderId, query: string, sort: PackSort, offset: number, filters: SearchFilters | null = null) =>
+    call<PackPage>('pack_search', { provider, query, sort, offset, filters }),
   packDetails: (provider: ProviderId, id: string) => call<PackDetails>('pack_details', { provider, id }),
   packVersions: (provider: ProviderId, id: string) => call<PackVersion[]>('pack_versions', { provider, id }),
   /** Empty for every provider but ATLauncher. */
+  /** Switches an instance installed from a modpack to another version of the pack (task `modpack:<instanceId>`); returns when done. */
+  changePackVersion: (instanceId: string, versionId: string) => call<void>('change_pack_version', { instanceId, versionId }),
   packOptionalMods: (provider: ProviderId, id: string, versionId: string) => call<OptionalMod[]>('pack_optional_mods', { provider, id, versionId }),
+  /** The mods, resource packs and shader packs one version of a pack installs (remembered per version). */
+  packContents: (provider: ProviderId, packId: string, versionId: string) => call<PackContents>('pack_contents', { provider, packId, versionId }),
   /** Creates the instance and returns it right away; the install runs as task `modpack:<instanceId>`. `optionalMods`: names of the ticked optional mods (installed exactly); null = the pack's default selection. */
   installPack: (provider: ProviderId, packId: string, versionId: string, name: string, group: string | null, icon: string | null, optionalMods: string[] | null) =>
     call<Instance>('install_pack', { provider, packId, versionId, name, group, icon, optionalMods }),

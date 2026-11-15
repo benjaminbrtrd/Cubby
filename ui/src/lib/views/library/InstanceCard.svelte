@@ -93,6 +93,8 @@
 <style>
   .card {
     position: relative;
+    /* its own layers (the stretched button, Play) stay inside the card: never above a menu of the page */
+    isolation: isolate;
     display: flex;
     flex-direction: column;
     min-width: 0;
