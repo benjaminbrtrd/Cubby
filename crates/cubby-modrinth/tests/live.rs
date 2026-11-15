@@ -25,6 +25,8 @@ async fn search_mods_and_shaders() {
         kind: ProjectKind::Mod,
         game_version: Some("1.21.1".into()),
         loader: Some("quilt".into()),
+        game_versions: Vec::new(),
+        loaders: Vec::new(),
         categories: vec!["optimization".into()],
         environment: Some(Environment::Client),
         sort: Sort::Downloads,

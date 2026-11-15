@@ -43,6 +43,8 @@ pub struct Core {
     pub discord: Option<cubby_discord::Presence>,
     /// Games running, oldest first, with what Discord shows for each: the newest one is shown.
     pub playing: Mutex<Vec<(String, cubby_discord::Activity)>>,
+    /// CurseForge fingerprints of content files, kept while a file's size and modification time stay the same.
+    pub cf_prints: Mutex<std::collections::HashMap<std::path::PathBuf, (u64, std::time::SystemTime, u32)>>,
 }
 
 impl Core {
@@ -78,6 +80,7 @@ impl Core {
             total_memory_mb: crate::commands::total_memory_mb(),
             discord: cubby_discord::client_id().map(cubby_discord::Presence::new),
             playing: Mutex::new(Vec::new()),
+            cf_prints: Mutex::new(std::collections::HashMap::new()),
             paths,
         })
     }

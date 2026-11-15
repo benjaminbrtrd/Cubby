@@ -151,6 +151,7 @@ impl Modrinth {
                     title: project.map(|p| p.title.clone()).filter(|t| !t.is_empty()).unwrap_or_else(|| f.file_name.clone()),
                     icon_url: project.and_then(|p| p.icon_url.clone()).filter(|u| !u.is_empty()),
                     version_number: version.version_number.clone(),
+                    categories: project.map(|p| p.categories.iter().chain(&p.additional_categories).cloned().collect()).unwrap_or_default(),
                     file_name: f.file_name,
                 })
             })

@@ -3,7 +3,8 @@
   import { app, sectionOf } from './lib/state.svelte'
   import { windowAction } from './lib/api'
   import { setLanguage, t } from './lib/i18n.svelte'
-  import { Button, Hotbar, TitleBar, Tooltips, type HotbarItem } from './lib/cubby'
+  import { Button, Hotbar, Icon, TitleBar, Tooltips, type HotbarItem } from './lib/cubby'
+  import PackRoute from './lib/views/create/PackRoute.svelte'
   import Toasts from './lib/views/shell/Toasts.svelte'
   import Palette from './lib/views/shell/Palette.svelte'
   import UpdateBanner from './lib/views/shell/UpdateBanner.svelte'
@@ -11,7 +12,7 @@
   import Library from './lib/views/library/Library.svelte'
   import DeleteInstanceDialog from './lib/views/library/DeleteInstanceDialog.svelte'
   import ImportDialog from './lib/views/library/ImportDialog.svelte'
-  import NewInstance from './lib/views/create/NewInstance.svelte'
+  import Wizard from './lib/views/create/wizard/Wizard.svelte'
   import InstancePage from './lib/views/instance-page/InstancePage.svelte'
   import Running from './lib/views/play/Running.svelte'
   import Crash from './lib/views/play/Crash.svelte'
@@ -120,14 +121,30 @@
       e.preventDefault()
       app.paletteOpen = false
       go(SLOTS[Number(e.key) - 1])
-    } else if (e.altKey && !ctrl && e.key === 'ArrowLeft') {
+    } else if ((e.altKey && !ctrl && e.key === 'ArrowLeft') || (e.metaKey && !e.shiftKey && e.key === '[')) {
       e.preventDefault()
       app.back()
+    } else if ((e.altKey && !ctrl && e.key === 'ArrowRight') || (e.metaKey && !e.shiftKey && e.key === ']')) {
+      e.preventDefault()
+      app.forward()
     }
+  }
+
+  /** The mouse's side buttons: Back and Forward, as in a browser. */
+  function onmouseup(e: MouseEvent) {
+    if (onboarding || (e.button !== 3 && e.button !== 4)) return
+    e.preventDefault()
+    if (e.button === 3) app.back()
+    else app.forward()
   }
 </script>
 
-<svelte:window {onkeydown} {oncontextmenu} />
+<svelte:window {onkeydown} {oncontextmenu} {onmouseup} />
+
+{#snippet navButtons()}
+  <button type="button" class="cb-titlebar__navbtn" aria-label={t('Back')} data-tip={t('Back')} disabled={!app.canBack} onclick={() => app.back()}><Icon name="chevron-left" size={18} /></button>
+  <button type="button" class="cb-titlebar__navbtn" aria-label={t('Forward')} data-tip={t('Forward')} disabled={!app.canForward} onclick={() => app.forward()}><Icon name="chevron-right" size={18} /></button>
+{/snippet}
 
 <!-- The skin texture cropped to the head, like the Accounts screen draws it -->
 {#snippet accountHead()}
@@ -139,6 +156,7 @@
   <TitleBar
     {account}
     children={chipShown ? updateChip : undefined}
+    nav={onboarding ? undefined : navButtons}
     onAccount={() => app.navigate({ name: 'accounts' })}
     onSearch={() => (app.paletteOpen = true)}
     onMinimize={() => windowAction('minimize')}
@@ -163,12 +181,16 @@
       {:else if app.route.name === 'crash'}
         {#key app.route.id}<Crash id={app.route.id} />{/key}
       {:else if app.route.name === 'create'}
-        <NewInstance />
+        <Wizard />
       {:else if app.route.name === 'discover'}
         <Discover />
       {:else if app.route.name === 'project'}
         {#key app.route.idOrSlug}
-          <ProjectPage idOrSlug={app.route.idOrSlug} kind={app.route.kind} />
+          <ProjectPage idOrSlug={app.route.idOrSlug} kind={app.route.kind} source={app.route.source} />
+        {/key}
+      {:else if app.route.name === 'pack'}
+        {#key `${app.route.provider}:${app.route.id}`}
+          <PackRoute provider={app.route.provider} id={app.route.id} />
         {/key}
       {:else if app.route.name === 'downloads'}
         <Downloads />

@@ -24,7 +24,8 @@ export interface Instance {
   /** Free text the player keeps about this instance (Overview › Notes). */
   notes: string | null
   /** Modrinth modpack this instance was installed from, if any. */
-  modpack: { projectId: string; versionId: string; title: string; versionNumber: string } | null
+  /** `provider`: "modrinth", "curseforge", "ftb", "atlauncher" or "technic"; absent in old instances (Modrinth). */
+  modpack: { provider?: ProviderId | null; projectId: string; versionId: string; title: string; versionNumber: string } | null
   /** Files of a modpack still to download by hand (0 normally). */
   blockedFiles: number
   /** The memory "Set memory automatically" gives this instance (MB), from its mods and the computer's memory. */
@@ -305,7 +306,10 @@ export interface SearchResults {
 }
 
 export interface GalleryImage {
+  /** Full size: the banner and the viewer. */
   url: string
+  /** A small copy for thumbnails (Modrinth's is 350 px wide). */
+  thumbUrl?: string | null
   title: string | null
   description: string | null
   featured: boolean
@@ -319,6 +323,10 @@ export interface Project extends ProjectHit {
   links: { source: string | null; issues: string | null; wiki: string | null; discord: string | null; donation: { platform: string; url: string }[] }
   /** Number of versions. */
   versionCount: number
+  /** Set for a CurseForge project (absent for Modrinth). */
+  source?: 'curseforge'
+  /** The project's page on its site, when it isn't Modrinth. */
+  pageUrl?: string
 }
 
 export type DependencyKind = 'required' | 'optional' | 'incompatible' | 'embedded'
@@ -408,6 +416,8 @@ export interface ContentSource {
   title: string
   iconUrl: string | null
   versionNumber: string
+  /** The project's Modrinth categories ("library", "optimization"...). */
+  categories: string[]
 }
 
 export interface ContentUpdate {
@@ -441,6 +451,95 @@ export interface DataFolder {
 
 // Modpack providers (ATLauncher, CurseForge, FTB, Modrinth, Technic) and file imports
 export type ProviderId = 'modrinth' | 'curseforge' | 'ftb' | 'atlauncher' | 'technic'
+
+/** Filters CurseForge applies itself (it takes 4 versions, 5 loaders and 10 categories at most). */
+export interface SearchFilters {
+  gameVersions: string[]
+  /** Launcher loader keys. */
+  loaders: string[]
+  /** CurseForge category ids. */
+  categories: string[]
+}
+
+/** A file of a CurseForge project. */
+export interface CfFile {
+  id: string
+  name: string
+  fileName: string
+  channel: 'release' | 'beta' | 'alpha'
+  /** Minecraft releases, newest first. */
+  gameVersions: string[]
+  loaders: string[]
+  released: string | null
+  size: number | null
+  downloads: number
+  /** False: the author only lets it be downloaded on curseforge.com. */
+  downloadable: boolean
+}
+
+/** One project of a CurseForge install plan. */
+export interface CfPlanItem {
+  projectId: string
+  fileId: string
+  title: string
+  iconUrl: string | null
+  pageUrl: string
+  fileName: string
+  size: number
+  reason: 'requested' | 'dependency'
+  /** This very file is already in the instance. */
+  installed: boolean
+  /** The file of another version of the project, replaced. */
+  replaces: string | null
+  /** Only downloadable on curseforge.com: the page to get it from. */
+  manualUrl: string | null
+}
+
+/** What installing a CurseForge project into an instance does. */
+export interface CfPlan {
+  instanceId: string
+  /** The requested project first, then the projects it requires that the instance doesn't have. */
+  items: CfPlanItem[]
+  /** Required projects with no file for the instance. */
+  missing: { projectId: string; title: string; pageUrl: string }[]
+  downloadBytes: number
+}
+
+/** A project picked in the New instance wizard, installed once the instance is ready. */
+export interface WizardExtra {
+  source: 'modrinth' | 'curseforge'
+  /** Modrinth slug or id, CurseForge id. */
+  projectId: string
+  kind: 'mod' | 'resourcepack' | 'shader' | 'datapack'
+  title: string
+}
+
+/** What installing the wizard's projects did. */
+export interface ExtrasReport {
+  installed: number
+  /** Projects with nothing for the instance's Minecraft version and loader. */
+  missing: string[]
+  /** Datapacks waiting for the instance's new worlds. */
+  pendingDatapacks: number
+}
+
+/** A datapack of a world that Modrinth or CurseForge knows. */
+export interface DatapackSource {
+  fileName: string
+  source: 'modrinth' | 'curseforge'
+  projectId: string
+  title: string
+}
+
+/** A file of the instance that CurseForge knows. */
+export interface CfInstalled {
+  projectId: string
+  fileId: string
+  fileName: string
+  folder: 'mods' | 'resourcepacks' | 'shaderpacks'
+  /** Cubby downloaded this file from CurseForge (the same file may be on Modrinth too). */
+  fromCurseforge: boolean
+}
 export type PackLoaderKind = 'fabric' | 'quilt' | 'forge' | 'neoforge'
 export type PackSort = 'relevance' | 'downloads' | 'updated' | 'newest' | 'name'
 
@@ -495,6 +594,39 @@ export interface PackVersion {
   minecraft: string | null
   loader: PackLoaderKind | null
   released: string | null
+}
+
+/** What a file listed in a pack is. */
+export type PackContentKind = 'mod' | 'resourcepack' | 'shader'
+
+/** A mod, resource pack or shader pack one version of a pack installs. */
+export interface PackContentItem {
+  /** The project's name when known, else what the pack calls the file. */
+  name: string
+  fileName: string | null
+  /** The file's version, when the source gives one. */
+  version: string | null
+  kind: PackContentKind
+  iconUrl: string | null
+  /** The site `projectId` belongs to. */
+  site: 'modrinth' | 'curseforge' | null
+  projectId: string | null
+  /** Web page of the project. */
+  pageUrl: string | null
+  /** The player may leave it out. */
+  optional: boolean
+  /** One line about the project, when its source says. */
+  description: string | null
+  authors: string[]
+  /** Modrinth-style category keys ("library", "optimization"…). */
+  categories: string[]
+}
+
+export interface PackContents {
+  /** Mods first, then resource packs, then shader packs; by name. */
+  items: PackContentItem[]
+  /** Why there is no list (a Technic pack that is a single zip). */
+  unavailable: string | null
 }
 
 /** ATLauncher only. */

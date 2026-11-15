@@ -36,7 +36,7 @@ export function depStatus(d: Dependency, target: Instance | undefined): { tone: 
 
 export function openDep(d: Dependency) {
   const id = d.slug ?? d.projectId
-  if (id) app.openProject(id, 'mod')
+  if (id) app.openProject(id, 'mod', undefined, d.title ?? undefined)
 }
 
 /** Opens a web page in the browser. */

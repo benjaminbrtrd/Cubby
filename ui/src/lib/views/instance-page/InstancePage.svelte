@@ -3,7 +3,8 @@
   import { date, timeOfDay } from '../../format'
   import { t } from '../../i18n.svelte'
   import { app } from '../../state.svelte'
-  import type { ContentSource, ContentUpdate, Instance, ModFile, Pack, ProjectKind, Screenshot, Server, World, UpdateBackup, WorldBackup } from '../../types'
+  import type { CfInstalled, ContentSource, ContentUpdate, Instance, ModFile, Pack, ProjectKind, Screenshot, Server, World, UpdateBackup, WorldBackup } from '../../types'
+  import type { VersionTarget } from './VersionDialog.svelte'
 
   // Helpers shared by the tabs of this folder (plain hoisted functions, safe to import from the tabs).
 
@@ -58,6 +59,10 @@
 
     /** Files identified on Modrinth, by file name without ".disabled". */
     sourceByFile = $derived.by(() => new Map((app.sources[this.id] ?? []).map((s) => [baseFile(s.fileName), s] as const)))
+    /** Files identified on CurseForge, by file name without ".disabled". */
+    cfByFile = $derived.by(() => new Map((app.cfInstalled[this.id] ?? []).map((f) => [baseFile(f.fileName), f] as const)))
+    /** The project whose versions are shown (Versions dialog). */
+    versionsOf = $state<VersionTarget | null>(null)
     /** Available updates, by file name without ".disabled". */
     updateByFile = $derived.by(() => new Map((app.updates[this.id] ?? []).map((u) => [baseFile(u.fileName), u] as const)))
     /** Mods turned on more than once (two files with the same mod name): file name → the other files. */
@@ -97,6 +102,36 @@
 
     source(fileName: string): ContentSource | undefined {
       return this.sourceByFile.get(baseFile(fileName))
+    }
+
+    /** The file's CurseForge project, when it comes from CurseForge: downloaded from there, or unknown to Modrinth. */
+    cfSource(fileName: string): CfInstalled | undefined {
+      const cf = this.cfByFile.get(baseFile(fileName))
+      return cf && (cf.fromCurseforge || !this.source(fileName)) ? cf : undefined
+    }
+
+    /** Where the file comes from. A file on both sites counts as CurseForge when it was downloaded from there. */
+    origin(fileName: string): 'modrinth' | 'curseforge' | 'local' {
+      return this.cfSource(fileName) ? 'curseforge' : this.source(fileName) ? 'modrinth' : 'local'
+    }
+
+    /** Where the file comes from, for its logo. */
+    sourceTone(fileName: string): 'modrinth' | 'curseforge' | 'local' {
+      return this.origin(fileName)
+    }
+
+    /** Where the file comes from, in words: "Modrinth", "CurseForge" or "Local file". */
+    sourceName(fileName: string): string {
+      const o = this.origin(fileName)
+      return o === 'modrinth' ? 'Modrinth' : o === 'curseforge' ? 'CurseForge' : t('Local file')
+    }
+
+    /** Where another version of this file can come from, if Modrinth or CurseForge knows it. */
+    versionTarget(fileName: string, kind: ProjectKind, title: string): VersionTarget | null {
+      const cf = this.cfSource(fileName)
+      const mr = this.source(fileName)
+      if (cf) return { source: 'curseforge', projectId: cf.projectId, kind, title: mr?.title || title, current: cf.fileId }
+      return mr ? { source: 'modrinth', projectId: mr.projectId, kind, title: mr.title || title, current: mr.versionId } : null
     }
 
     update(fileName: string): ContentUpdate | undefined {
@@ -215,9 +250,15 @@
     }
 
     /** Opens a Modrinth project page, installing into this instance. */
-    project(slug: string, kind: ProjectKind) {
+    project(slug: string, kind: ProjectKind, title?: string) {
       app.setTarget(this.id)
-      app.openProject(slug, kind)
+      app.openProject(slug, kind, undefined, title)
+    }
+
+    /** Opens a CurseForge project page, installing into this instance. */
+    cfProject(projectId: string, kind: ProjectKind, title?: string) {
+      app.setTarget(this.id)
+      app.openProject(projectId, kind, 'curseforge', title)
     }
 
     async duplicate(instance: Instance) {
@@ -262,6 +303,7 @@
   import WorldsTab from './WorldsTab.svelte'
   import ScreenshotsTab from './ScreenshotsTab.svelte'
   import BlockedFilesDialog from './BlockedFilesDialog.svelte'
+  import VersionDialog from './VersionDialog.svelte'
   import ServersTab from './ServersTab.svelte'
   import SettingsTab from './SettingsTab.svelte'
 
@@ -275,6 +317,10 @@
   const busy = $derived(!!startedAt || !!task)
 
   data.loadAll()
+  // Files from CurseForge (only with a key: it asks CurseForge by fingerprint).
+  $effect(() => {
+    if (app.info?.curseforgeKey) untrack(() => void app.loadCfInstalled(id))
+  })
 
   // Check Modrinth for updates when the player asked for it in Settings (again after an update ran).
   $effect(() => {
@@ -547,6 +593,10 @@
     <p class="muted text-body">{t('It may have been deleted or moved to the trash.')}</p>
     <Button variant="primary" icon="library" onclick={() => app.navigate({ name: 'library' })}>{t('Back to library')}</Button>
   </div>
+{/if}
+
+{#if data.versionsOf}
+  <VersionDialog instanceId={id} item={data.versionsOf} onClose={() => (data.versionsOf = null)} />
 {/if}
 
 {#if exporting && instance}

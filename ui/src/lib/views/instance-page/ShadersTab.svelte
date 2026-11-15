@@ -1,7 +1,7 @@
 <script lang="ts">
   import { t } from '../../i18n.svelte'
   import { api } from '../../api'
-  import { Banner, Button, Dialog, Icon, Inspector, InspectorHead, InspectorNotice, InspectorPath, InspectorSection, InspectorStatus, InstanceIcon, MetaChip, StatusTag } from '../../cubby'
+  import { Banner, Button, Dialog, Icon, Inspector, InspectorHead, InspectorNotice, InspectorPath, InspectorSection, InspectorStatus, InstanceIcon, MetaChip, StatusTag, SourceMark } from '../../cubby'
   import { bytes, relativeTime } from '../../format'
   import { projectArt } from '../../icon'
   import { app } from '../../state.svelte'
@@ -121,7 +121,7 @@
   {/if}
 {/snippet}
 
-<div class="ip-body" role="tabpanel" id="instance-panel" aria-label={t('Shader packs')}>
+<div class="ip-body" data-keep-scroll role="tabpanel" id="instance-panel" aria-label={t('Shader packs')}>
   {#if requirement}
     <Banner tone={requirement.ok ? 'success' : 'warning'} title={requirement.title} actions={requirement.ok ? undefined : fixAction}>
       <div class="req">
@@ -190,7 +190,7 @@
               {@render art(p)}
               <div class="card__title">
                 <p class="text-body-strong wrap"><button type="button" class="card__hit" aria-pressed={shown?.fileName === p.fileName} onclick={() => (selected = p.fileName)}>{src?.title ?? p.name}</button></p>
-                <p class="text-small muted">{src ? src.versionNumber : describe(p)}</p>
+                <p class="text-small muted with-mark"><SourceMark tone={data.sourceTone(p.fileName)} label={data.sourceName(p.fileName)} size={14} />{src ? src.versionNumber : describe(p)}</p>
               </div>
             </div>
             <p class="text-mono muted wrap">{p.fileName}</p>
@@ -242,18 +242,24 @@
           <Button variant="primary" class="wide" icon="update" busy={updating} disabled={updating || locked} onclick={() => data.applyUpdates([shownUpdate.fileName])}>{t('Update to {latestVersion}', { latestVersion: shownUpdate.latestVersion })}</Button>
         {/if}
         {#if shown.enabled}
-          <Button icon="close" disabled={locked || saving} onclick={() => use(null)}>{t('Use none')}</Button>
+          <Button class="wide" icon="close" disabled={locked || saving} onclick={() => use(null)}>{t('Use none')}</Button>
         {:else}
-          <Button variant={shownUpdate ? 'secondary' : 'primary'} class={shownUpdate ? undefined : 'wide'} icon="check" disabled={locked || saving} onclick={() => use(shown.fileName)}>{t('Use this pack')}</Button>
+          <Button variant={shownUpdate ? 'secondary' : 'primary'} class="wide" icon="check" disabled={locked || saving} onclick={() => use(shown.fileName)}>{t('Use this pack')}</Button>
         {/if}
-        {#if shownSource}<Button icon="globe" onclick={() => shownSource && data.project(shownSource.slug, 'shader')}>{t('Open page')}</Button>{/if}
+        {#if data.versionTarget(shown.fileName, 'shader', shown.name)}
+          <div class="cb-ins-acts wide">
+            {#if shownSource && !data.cfSource(shown.fileName)}<Button icon="globe" onclick={() => shownSource && data.project(shownSource.slug, 'shader', shownSource.title)}>{t('Open page')}</Button>{/if}
+            {#if data.cfSource(shown.fileName)}<Button icon="globe" onclick={() => shown && data.cfProject(data.cfSource(shown.fileName)!.projectId, 'shader', shown.name)}>{t('Open page')}</Button>{/if}
+            <Button icon="clock" disabled={locked} onclick={() => shown && (data.versionsOf = data.versionTarget(shown.fileName, 'shader', shown.name))}>{t('Versions')}</Button>
+          </div>
+        {/if}
       </div>
       <InspectorSection title={t('Settings')}>
         <p class="cb-ins-hint">{t('Each pack has its own settings, like shadows and fog. Change them in game under Options › Video settings › Shader packs › Shader pack settings.')}</p>
       </InspectorSection>
       <InspectorSection title={t('Details')}>
         <dl class="cb-ins-facts">
-          <dt>{t('Source')}</dt><dd><span>{shownSource ? 'Modrinth' : t('Not found on Modrinth')}</span></dd>
+          <dt>{t('Source')}</dt><dd><span class="with-mark"><SourceMark tone={data.sourceTone(shown.fileName)} label={data.sourceName(shown.fileName)} />{data.sourceName(shown.fileName)}</span></dd>
           {#if shown.modified}<dt>{t('Changed')}</dt><dd><span>{relativeTime(shown.modified)}</span></dd>{/if}
           <dt>{t('Size')}</dt><dd><span>{bytes(shown.size)}</span></dd>
           <InspectorPath path={shown.fileName} openLabel={t('Open folder')} onopen={() => data.openFolder('shaderpacks')} />
@@ -426,5 +432,10 @@
     flex-wrap: wrap;
     align-items: center;
     gap: var(--space-2);
+  }
+  .with-mark {
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }
 </style>

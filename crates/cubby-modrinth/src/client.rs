@@ -129,6 +129,18 @@ impl Modrinth {
         Ok(out)
     }
 
+    /// The members of teams, by team id, in batches; one list per team Modrinth knows.
+    pub(crate) async fn teams_raw(&self, ids: &[String]) -> Result<Vec<Vec<api::TeamMember>>> {
+        let mut out = Vec::new();
+        for chunk in dedup(ids).chunks(IDS_PER_REQUEST) {
+            chunk.iter().try_for_each(|id| check_id(id))?;
+            let ids = serde_json::to_string(chunk).map_err(|e| Error::Other(e.to_string()))?;
+            let mut part: Vec<Vec<api::TeamMember>> = self.get("/teams", &[("ids", ids)], "Modrinth teams").await?;
+            out.append(&mut part);
+        }
+        Ok(out)
+    }
+
     /// Versions by id, in batches. Unknown ids are left out.
     pub(crate) async fn versions_raw(&self, ids: &[String]) -> Result<Vec<api::Version>> {
         let mut out = Vec::new();
@@ -176,17 +188,20 @@ impl Modrinth {
 
     /// `POST /version_files/update`: for each SHA-1, the newest version of its project for these loaders
     /// and game versions.
-    pub(crate) async fn latest_versions(&self, hashes: &[String], loaders: &[String], game_versions: &[String]) -> Result<HashMap<String, api::Version>> {
+    /// `version_types` ("release", "beta", "alpha") limits the channels looked at; empty for all of them.
+    pub(crate) async fn latest_versions(&self, hashes: &[String], loaders: &[String], game_versions: &[String], version_types: &[&str]) -> Result<HashMap<String, api::Version>> {
         #[derive(Serialize)]
         struct Body<'a> {
             hashes: &'a [String],
             algorithm: &'static str,
             loaders: &'a [String],
             game_versions: &'a [String],
+            #[serde(skip_serializing_if = "<[_]>::is_empty")]
+            version_types: &'a [&'a str],
         }
         let mut out = HashMap::new();
         for chunk in dedup(hashes).chunks(HASHES_PER_REQUEST) {
-            let body = Body { hashes: chunk, algorithm: "sha1", loaders, game_versions };
+            let body = Body { hashes: chunk, algorithm: "sha1", loaders, game_versions, version_types };
             let part: HashMap<String, api::Version> = self.post("/version_files/update", &body, "Modrinth updates").await?;
             out.extend(part.into_iter().map(|(k, v)| (k.to_lowercase(), v)));
         }

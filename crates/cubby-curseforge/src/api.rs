@@ -44,6 +44,8 @@ pub struct Mod {
     pub logo: Option<Asset>,
     pub screenshots: Vec<Asset>,
     pub latest_files_indexes: Vec<FileIndex>,
+    pub categories: Vec<Category>,
+    pub date_created: Option<String>,
     pub date_modified: Option<String>,
     /// `Some(false)`: the author doesn't let third-party launchers download the files.
     pub allow_mod_distribution: Option<bool>,
@@ -93,7 +95,18 @@ pub struct File {
     pub file_date: Option<String>,
     pub file_length: Option<u64>,
     pub download_url: Option<String>,
+    pub download_count: f64,
     pub game_versions: Vec<String>,
+    pub dependencies: Vec<FileDependency>,
+}
+
+/// A project a file needs or works with.
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct FileDependency {
+    pub mod_id: u64,
+    /// 1 embedded library, 2 optional, 3 required, 4 tool, 5 incompatible, 6 include.
+    pub relation_type: u8,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]

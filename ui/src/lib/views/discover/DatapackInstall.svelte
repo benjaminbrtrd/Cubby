@@ -21,9 +21,11 @@
     compact?: boolean
     /** Called when a link of the panel leaves the screen (to close a dialog). */
     onLeave?: () => void
+    /** Changing the version of a datapack already in the world: its file, moved to the trash once the new one is in. */
+    replaces?: string
   }
 
-  let { project, versions: given, versionsError = null, compact = false, onLeave }: Props = $props()
+  let { project, versions: given, versionsError = null, compact = false, onLeave, replaces }: Props = $props()
 
   function message(e: unknown): string {
     return typeof e === 'string' ? e : e instanceof Error ? e.message : JSON.stringify(e)
@@ -81,7 +83,8 @@
     busy = true
     const k = key
     try {
-      await api.installDatapack(target.id, app.targetWorld, project.id, chosen.id)
+      const file = await api.installDatapack(target.id, app.targetWorld, project.id, chosen.id)
+      if (replaces && replaces !== file) await api.removeDatapack(target.id, app.targetWorld, replaces).catch(() => {})
       done = [...done, k]
       app.toast(t('{title} is in the world. It loads the next time you open it.', { title: project.title }), 'success')
     } catch (e) {

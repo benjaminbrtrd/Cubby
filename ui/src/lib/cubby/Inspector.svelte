@@ -13,7 +13,7 @@
   {@render children()}
   {#if danger}
     <div class="cb-ins-foot">
-      <Button size="sm" variant="danger" icon={danger.icon ?? 'trash'} disabled={danger.disabled} busy={danger.busy} onclick={danger.onclick}>{danger.label}</Button>
+      <Button variant="danger" icon={danger.icon ?? 'trash'} disabled={danger.disabled} busy={danger.busy} onclick={danger.onclick}>{danger.label}</Button>
       {#if danger.hint}<p class="cb-ins-hint">{danger.hint}</p>{/if}
     </div>
   {/if}

@@ -23,6 +23,18 @@
   const tid = $props.id();
   let dialog: HTMLDivElement | undefined = $state();
 
+  // Modal with onClose: a click on the dim layer around it closes it, like Esc. Only when the press started there
+  // too, so a text selection dragged out of the dialog doesn't close it.
+  let downOutside = false;
+  function layerDown(e: PointerEvent) {
+    downOutside = !inline && !!onClose && e.button === 0 && e.target === e.currentTarget;
+  }
+  function layerClick(e: MouseEvent) {
+    const close = downOutside && e.target === e.currentTarget;
+    downOutside = false;
+    if (close) onClose?.();
+  }
+
   // Modal (not inline): focus goes to the first field, else the least destructive action (actions list Cancel first),
   // else the first control; Tab and Shift Tab stay inside; Esc calls onClose; focus returns where it was on close.
   $effect(() => {
@@ -74,7 +86,8 @@
   });
 </script>
 
-<div class={['cb-dialog-layer', inline && 'is-inline']}>
+<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -- a pointer shortcut: Esc and the close button do the same from the keyboard -->
+<div class={['cb-dialog-layer', inline && 'is-inline']} onpointerdown={layerDown} onclick={layerClick}>
   <div
     bind:this={dialog}
     class={['cb-dialog', wide && 'cb-dialog--wide']}

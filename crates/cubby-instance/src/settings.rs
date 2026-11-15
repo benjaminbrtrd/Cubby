@@ -137,7 +137,7 @@ pub struct Settings {
     /// Use Atkinson Hyperlegible instead of the regular UI fonts.
     pub hyperlegible: bool,
     pub reduce_motion: bool,
-    /// Check installed content for updates on Modrinth when an instance is opened.
+    /// Check installed content for updates on Modrinth when Cubby starts and when an instance is opened.
     pub check_updates: bool,
     pub accent: String,
     pub frame_mode: FrameMode,

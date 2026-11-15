@@ -1,7 +1,7 @@
 <!-- Gallery tab: the author's images, and a viewer to see one larger (arrows move, Esc closes). -->
 <script lang="ts">
   import { t } from '../../../i18n.svelte'
-  import { Button, Icon, IconButton } from '../../../cubby'
+  import { Button, IconButton } from '../../../cubby'
   import { plural } from '../../../format'
   import type { Project } from '../../../types'
 
@@ -61,7 +61,7 @@
     {#each project.gallery as g, i (g.url + i)}
       <li>
         <button type="button" class="thumb" aria-label={g.title ? t('Open image {i} of {length}: {title}', { i: i + 1, length: project.gallery.length, title: g.title }) : t('Open image {i} of {length}', { i: i + 1, length: project.gallery.length })} onclick={(e) => openImage(i, e)}>
-          <img src={g.url} alt="" loading="lazy" />
+          <img src={g.thumbUrl ?? g.url} alt="" loading="lazy" decoding="async" />
         </button>
         {#if g.title}<span class="text-small caption">{g.title}</span>{/if}
       </li>
@@ -87,7 +87,7 @@
       </div>
       {#if project.gallery.length > 1}
         <div class="viewer-nav">
-          <Button size="sm" onclick={() => move(-1)}><span class="flip"><Icon name="chevron-right" size={18} /></span>{t('Previous')}</Button>
+          <Button size="sm" icon="chevron-left" onclick={() => move(-1)}>{t('Previous')}</Button>
           <span class="text-small muted">{t('Use the arrow keys to move, Esc to close.')}</span>
           <Button size="sm" iconEnd="chevron-right" onclick={() => move(1)}>{t('Next')}</Button>
         </div>
@@ -139,7 +139,6 @@
     width: 100%;
     aspect-ratio: 16 / 9;
     object-fit: cover;
-    image-rendering: pixelated;
   }
   .caption {
     overflow: hidden;
@@ -185,7 +184,6 @@
     max-width: 100%;
     max-height: calc(100vh - 200px);
     object-fit: contain;
-    image-rendering: pixelated;
   }
   .viewer-nav {
     display: flex;
@@ -194,9 +192,5 @@
     gap: var(--space-3);
     padding: var(--space-3) var(--space-4);
     border-top: var(--border-hair) solid var(--line);
-  }
-  .flip {
-    display: inline-flex;
-    transform: scaleX(-1);
   }
 </style>

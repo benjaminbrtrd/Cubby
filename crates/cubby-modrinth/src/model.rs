@@ -146,6 +146,10 @@ pub struct SearchQuery {
     pub game_version: Option<String>,
     /// Launcher loader key: "vanilla", "fabric", "quilt", "forge", "neoforge".
     pub loader: Option<String>,
+    /// Any of these game versions; used instead of `game_version` when not empty.
+    pub game_versions: Vec<String>,
+    /// Any of these loaders (mods and modpacks); used instead of `loader` when not empty.
+    pub loaders: Vec<String>,
     /// Category slugs, all required.
     pub categories: Vec<String>,
     pub environment: Option<Environment>,
@@ -217,7 +221,10 @@ pub struct SearchResults {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct GalleryImage {
+    /// The image at full size: for the banner and the viewer.
     pub url: String,
+    /// A small copy for thumbnails, when the site has one.
+    pub thumb_url: Option<String>,
     pub title: Option<String>,
     pub description: Option<String>,
     pub featured: bool,
@@ -361,6 +368,8 @@ pub struct ContentSource {
     pub title: String,
     pub icon_url: Option<String>,
     pub version_number: String,
+    /// The project's categories ("library", "optimization"...), main and additional.
+    pub categories: Vec<String>,
 }
 
 /// A newer compatible version of an installed file.

@@ -54,6 +54,18 @@ pub struct SolderMod {
     pub url: String,
     #[serde(default)]
     pub filesize: Option<u64>,
+    /// The mod's display name, when the build was asked `?include=mods`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pretty_name: Option<String>,
+    /// The mod's web page (`?include=mods`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub link: Option<String>,
+    /// `?include=mods`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub author: Option<String>,
+    /// `?include=mods`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
 }
 
 /// A Solder build: `GET {solder}/modpack/{slug}/{build}`.

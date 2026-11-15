@@ -138,6 +138,101 @@ pub struct PackPlan {
     pub recommended_memory_mib: Option<u32>,
 }
 
+/// What a file listed in a pack is.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum PackContentKind {
+    #[serde(rename = "mod")]
+    Mod,
+    #[serde(rename = "resourcepack")]
+    ResourcePack,
+    #[serde(rename = "shader")]
+    Shader,
+}
+
+impl PackContentKind {
+    /// The kind of a file by the folder it goes to (`mods/…`, `resourcepacks/…`, `shaderpacks/…`); `None` for
+    /// anything else (configs, scripts…).
+    pub fn of_path(path: &str) -> Option<Self> {
+        let path = path.replace('\\', "/");
+        let path = path.trim_start_matches("./");
+        let (folder, rest) = path.split_once('/')?;
+        if rest.is_empty() {
+            return None;
+        }
+        match folder.to_ascii_lowercase().as_str() {
+            "mods" | "coremods" => Some(Self::Mod),
+            "resourcepacks" | "texturepacks" => Some(Self::ResourcePack),
+            "shaderpacks" => Some(Self::Shader),
+            _ => None,
+        }
+    }
+}
+
+/// Where the project of a listed file lives, when it is known.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ContentSite {
+    Modrinth,
+    Curseforge,
+}
+
+/// A mod, resource pack or shader pack a version of a pack installs.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PackContentItem {
+    /// The project's name when known, else what the pack calls the file.
+    pub name: String,
+    pub file_name: Option<String>,
+    /// The file's version number, when the provider gives one.
+    pub version: Option<String>,
+    pub kind: PackContentKind,
+    pub icon_url: Option<String>,
+    /// The site `project_id` belongs to.
+    pub site: Option<ContentSite>,
+    pub project_id: Option<String>,
+    /// Web page of the project.
+    pub page_url: Option<String>,
+    /// The player may leave it out (ATLauncher optional mods, CurseForge `required: false`, Modrinth
+    /// `env.client: optional`).
+    pub optional: bool,
+    /// One line about the project, when its source says.
+    pub description: Option<String>,
+    pub authors: Vec<String>,
+    /// Modrinth-style category keys ("library", "optimization"…), for the kind of mod it is.
+    pub categories: Vec<String>,
+}
+
+impl PackContentItem {
+    /// An item known only by its file name: the name is the file name without its extension.
+    pub fn from_file(file_name: &str, kind: PackContentKind) -> Self {
+        let stem = file_name.rsplit_once('.').map(|(s, _)| s).filter(|s| !s.is_empty()).unwrap_or(file_name);
+        Self {
+            name: stem.to_string(),
+            file_name: Some(file_name.to_string()).filter(|f| !f.is_empty()),
+            version: None,
+            kind,
+            icon_url: None,
+            site: None,
+            project_id: None,
+            page_url: None,
+            optional: false,
+            description: None,
+            authors: Vec::new(),
+            categories: Vec::new(),
+        }
+    }
+}
+
+/// Mods first, then resource packs, then shader packs; by name in each.
+pub fn sort_contents(items: &mut [PackContentItem]) {
+    let rank = |k: PackContentKind| match k {
+        PackContentKind::Mod => 0,
+        PackContentKind::ResourcePack => 1,
+        PackContentKind::Shader => 2,
+    };
+    items.sort_by(|a, b| rank(a.kind).cmp(&rank(b.kind)).then_with(|| a.name.to_lowercase().cmp(&b.name.to_lowercase())));
+}
+
 /// Rejects absolute paths, `..`, drive letters and empty segments; returns the cleaned relative path.
 pub fn safe_relative_path(path: &str) -> Option<PathBuf> {
     let path = path.replace('\\', "/");
@@ -167,5 +262,35 @@ mod tests {
         assert_eq!(safe_relative_path("/etc/passwd"), None);
         assert_eq!(safe_relative_path("C:/x"), None);
         assert_eq!(safe_relative_path(""), None);
+    }
+
+    #[test]
+    fn content_kinds_by_folder() {
+        assert_eq!(PackContentKind::of_path("mods/a.jar"), Some(PackContentKind::Mod));
+        assert_eq!(PackContentKind::of_path("./mods/a.jar"), Some(PackContentKind::Mod));
+        assert_eq!(PackContentKind::of_path("resourcepacks\\Faithful.zip"), Some(PackContentKind::ResourcePack));
+        assert_eq!(PackContentKind::of_path("shaderpacks/BSL.zip"), Some(PackContentKind::Shader));
+        assert_eq!(PackContentKind::of_path("config/a.toml"), None);
+        assert_eq!(PackContentKind::of_path("mods/"), None);
+        assert_eq!(PackContentKind::of_path("options.txt"), None);
+    }
+
+    #[test]
+    fn items_from_files_and_order() {
+        let a = PackContentItem::from_file("sodium-0.5.8.jar", PackContentKind::Mod);
+        assert_eq!(a.name, "sodium-0.5.8");
+        assert_eq!(a.file_name.as_deref(), Some("sodium-0.5.8.jar"));
+        let mut items = vec![
+            PackContentItem::from_file("Zed.zip", PackContentKind::Shader),
+            PackContentItem::from_file("b.zip", PackContentKind::ResourcePack),
+            PackContentItem::from_file("Beta.jar", PackContentKind::Mod),
+            PackContentItem::from_file("alpha.jar", PackContentKind::Mod),
+        ];
+        sort_contents(&mut items);
+        let names: Vec<&str> = items.iter().map(|i| i.name.as_str()).collect();
+        assert_eq!(names, ["alpha", "Beta", "b", "Zed"]);
+        let json = serde_json::to_value(&items[0]).unwrap();
+        assert_eq!(json["kind"], "mod");
+        assert_eq!(json["fileName"], "alpha.jar");
     }
 }

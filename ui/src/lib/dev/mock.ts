@@ -4,11 +4,16 @@
 
 import { pixelArt, svgUrl } from './pixelart'
 import { handleDatapackProject, handleExtra, NOT_HANDLED } from './mockExtra'
+import { mockPackContents } from './mockContents'
 import { OPTIONAL_MODS, PACKS, PACK_DESCRIPTION, PACK_MARKDOWN, PROVIDERS, SORTERS, morePacks, type MockPackDef } from './mockPacks'
 import type {
   Account,
   AppUpdate,
   BlockedFile,
+  CfFile,
+  SearchFilters,
+  CfInstalled,
+  CfPlan,
   ContentSource,
   ContentUpdate,
   GameVersion,
@@ -401,7 +406,7 @@ function sourcesOf(id: string): ContentSource[] {
   for (const { f, v } of files) {
     const match = FILE_PROJECT.find(([re]) => re.test(f))
     const p = match && bySlug(match[1])
-    if (p) out.push({ fileName: f, projectId: p.id, versionId: p.versions[0].id, slug: p.slug, title: p.title, iconUrl: p.iconUrl, versionNumber: v })
+    if (p) out.push({ fileName: f, projectId: p.id, versionId: p.versions[0].id, slug: p.slug, title: p.title, iconUrl: p.iconUrl, versionNumber: v, categories: p.categories })
   }
   return out
 }
@@ -421,13 +426,124 @@ function compatible(v: ProjectVersion, i: Instance | undefined, kind: ProjectKin
   return v.loaders.some((l) => loaders.includes(l as never))
 }
 
+// CurseForge (mods, packs and datapacks installed one at a time)
+const CF_NAMES: Record<string, [string, string][]> = {
+  mod: [['Just Enough Items', 'mezz'], ['Jade', 'Snownee'], ['Create', 'simibubi'], ['Applied Energistics 2', 'AE2'], ['Waystones', 'BlayTheNinth'], ['Farmer’s Delight', 'vectorwing'], ['GeckoLib', 'Gecko'], ['AppleSkin', 'squeek502']],
+  shader: [['Complementary Shaders', 'EminGT'], ['BSL Shaders', 'capttatsu'], ['Bliss Shaders', 'Xonk'], ['Photon Shader', 'sixthsurge']],
+  resourcepack: [['Fresh Animations', 'FreshLX'], ['Faithful 32x', 'Faithful'], ['Bare Bones', 'RobotPants'], ['Low On Fire', 'Haikis']],
+  datapack: [['Supplementaries Compat', 'CyberRat2'], ['Farmer’s Delight Cutting Compat', 'CyberRat2'], ['Terralith', 'Stardust Labs'], ['Incendium', 'Stardust Labs'], ['Aether Compat', 'CyberRat2']],
+}
+const CF_VERSIONS = [['26.3', '26.2', '1.21.1'], ['1.21.1', '1.20.1'], ['26.3', '1.21.1', '1.20.1'], ['1.20.1', '1.19.2']]
+
+function cfHits(kind: ProjectKind): ProjectHit[] {
+  return (CF_NAMES[kind] ?? []).map(([title, author], i): ProjectHit => ({
+    id: String((kind === 'mod' ? 238222 : kind === 'shader' ? 382000 : kind === 'resourcepack' ? 460000 : 900000) + i),
+    slug: title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+    kind,
+    title,
+    author,
+    summary: 'A sample result from CurseForge.',
+    iconUrl: null,
+    categories: [],
+    downloads: 90_000_000 / (i + 1),
+    follows: 0,
+    updated: daysAgo(i * 3 + 1),
+    published: daysAgo(i * 3 + 1),
+    gameVersions: CF_VERSIONS[i % CF_VERSIONS.length],
+    loaders: kind === 'mod' ? (i % 3 === 2 ? ['forge', 'neoforge'] : ['fabric', 'neoforge']) : [],
+    clientSide: 'unknown',
+    serverSide: 'unknown',
+    license: null,
+    featuredImage: null,
+  }))
+}
+
+function cfProject(id: string): ProjectHit | undefined {
+  for (const kind of Object.keys(CF_NAMES) as ProjectKind[]) {
+    const hit = cfHits(kind).find((h) => h.id === id)
+    if (hit) return hit
+  }
+}
+
+function cfFiles(projectId: string): CfFile[] {
+  const hit = cfProject(projectId)
+  if (!hit) return []
+  const ext = hit.kind === 'mod' ? 'jar' : 'zip'
+  // Applied Energistics 2: its author only allows downloads on curseforge.com
+  const downloadable = hit.title !== 'Applied Energistics 2'
+  const out: CfFile[] = []
+  let n = 0
+  for (const mc of hit.gameVersions) {
+    for (const loader of hit.kind === 'mod' ? hit.loaders : ['']) {
+      n++
+      out.push({
+        id: `${projectId}${String(n).padStart(3, '0')}`,
+        name: `${hit.title} ${mc}-${loader ? `${loader}-` : ''}${3 - (n % 3)}.${n}.0`,
+        fileName: `${hit.slug}-${mc}${loader ? `-${loader}` : ''}-${n}.${ext}`,
+        channel: n % 4 === 0 ? 'beta' : 'release',
+        gameVersions: [mc],
+        loaders: loader ? [loader] : [],
+        released: daysAgo(n * 5),
+        size: 1_400_000 + n * 120_000,
+        downloads: 250_000 - n * 9_000,
+        downloadable,
+      })
+    }
+  }
+  return out
+}
+
+const cfInstalledMock = new Map<string, CfInstalled[]>()
+function cfInstalledOf(id: string): CfInstalled[] {
+  if (!cfInstalledMock.has(id)) cfInstalledMock.set(id, id === 'friends-smp' ? [{ projectId: '238223', fileId: '238223001', fileName: 'jade-1.21.1-fabric-1.jar', folder: 'mods', fromCurseforge: true }] : [])
+  return cfInstalledMock.get(id)!
+}
+
+function cfPlan(instanceId: string, projectId: string, fileId: string | null): CfPlan {
+  const hit = cfProject(projectId)!
+  const file = cfFiles(projectId).find((f) => f.id === fileId) ?? cfFiles(projectId)[0]
+  const have = cfInstalledOf(instanceId).find((x) => x.projectId === projectId)
+  const page = `https://www.curseforge.com/minecraft/mc-mods/${hit.slug}`
+  const items: CfPlan['items'] = [
+    {
+      projectId,
+      fileId: file.id,
+      title: hit.title,
+      iconUrl: null,
+      pageUrl: page,
+      fileName: file.fileName,
+      size: file.size ?? 0,
+      reason: 'requested',
+      installed: have?.fileId === file.id,
+      replaces: have && have.fileId !== file.id ? have.fileName : null,
+      manualUrl: file.downloadable ? null : `${page}/download/${file.id}`,
+    },
+  ]
+  const missing: CfPlan['missing'] = []
+  if (hit.kind === 'mod' && hit.title !== 'Jade') {
+    items.push({ projectId: '419699', fileId: '6000001', title: 'Architectury API', iconUrl: null, pageUrl: 'https://www.curseforge.com/minecraft/mc-mods/architectury-api', fileName: 'architectury-13.0.8-fabric.jar', size: 520_000, reason: 'dependency', installed: false, replaces: null, manualUrl: null })
+    if (hit.title === 'Create') items.push({ projectId: '348521', fileId: '6000002', title: 'Cloth Config API', iconUrl: null, pageUrl: 'https://www.curseforge.com/minecraft/mc-mods/cloth-config', fileName: 'cloth-config-15.0.140-fabric.jar', size: 1_100_000, reason: 'dependency', installed: false, replaces: null, manualUrl: 'https://www.curseforge.com/minecraft/mc-mods/cloth-config/download/6000002' })
+    if (hit.title === 'Waystones') missing.push({ projectId: '531761', title: 'Balm', pageUrl: 'https://www.curseforge.com/minecraft/mc-mods/balm' })
+  }
+  // required projects already in the instance are left out
+  const owned = new Set(cfInstalledOf(instanceId).map((x) => x.projectId))
+  const kept = items.filter((i) => i.reason === 'requested' || !owned.has(i.projectId))
+  const downloadBytes = kept.filter((i) => !i.installed && !i.manualUrl).reduce((n, i) => n + i.size, 0)
+  return { instanceId, items: kept, missing, downloadBytes }
+}
+
+/** Tasks running in the mock, like the backend's `core.tasks`. */
+const activeTasks: Record<string, true> = {}
+
 async function runTask(task: string, steps: [string, number][], stepMs = 70) {
+  activeTasks[task] = true
   for (const [label, total] of steps) {
     for (let done = 0; done <= total; done += Math.max(1, Math.round(total / 14))) {
       emit({ type: 'progress', task, label, done: Math.min(done, total), total })
       await sleep(stepMs)
     }
   }
+  delete activeTasks[task]
   emit({ type: 'taskFinished', task, error: null })
 }
 
@@ -588,6 +704,14 @@ export async function handle(command: string, args: Record<string, any>): Promis
       return
     case 'list_versions':
       return versions
+    case 'loader_game_versions': {
+      // mock: Fabric and Quilt run every release from 1.14, NeoForge from 1.20.2, Forge everything but the newest
+      const releases = versions.filter((v) => v.kind === 'release').map((v) => v.id)
+      const from = (min: string) => releases.filter((id) => id.localeCompare(min, undefined, { numeric: true }) >= 0)
+      if (args.kind === 'neoforge') return from('1.20.2')
+      if (args.kind === 'forge') return releases.slice(1)
+      return [...versions.filter((v) => v.kind === 'snapshot').map((v) => v.id), ...from('1.14')]
+    }
     case 'list_loader_versions':
       return ['0.16.5', '0.16.4', '0.16.3', '0.15.11'].map((version, i) => ({ version, stable: i !== 1 }))
     case 'list_mods':
@@ -758,42 +882,72 @@ export async function handle(command: string, args: Record<string, any>): Promis
     // Discover
     case 'curseforge_categories': {
       const lists: Record<string, string[]> = {
-        mod: ['Adventure and RPG', 'Armor, Tools, and Weapons', 'Magic', 'Technology', 'World Gen'],
-        shader: ['Realistic', 'Fantasy', 'Vanilla-like', 'Lightweight'],
-        resourcepack: ['16x', '32x', '64x', 'Modern', 'Medieval'],
+        mod: ['Adventure and RPG', 'API and Library', 'Armor, Tools, and Weapons', 'Magic', 'Map and Information', 'Storage', 'Technology', 'World Gen'],
+        modpack: ['Adventure and RPG', 'Combat / PvP', 'Exploration', 'Magic', 'Quests', 'Skyblock', 'Tech'],
+        shader: ['Realistic', 'Fantasy', 'Vanilla'],
+        resourcepack: ['16x', '32x', '64x', 'Modern', 'Medieval', 'Animated'],
+        datapack: ['Adventure', 'Fantasy', 'Library', 'Magic', 'Miscellaneous', 'Mod Support', 'Utility'],
       }
       return (lists[args.kind as string] ?? []).map((name, i) => ({ id: String(100 + i), name }))
     }
     case 'curseforge_search': {
       const q = args.query as ProjectQuery
+      const f = (args.filters as SearchFilters | null) ?? null
       await sleep(300)
-      const names: Record<string, string[]> = {
-        mod: ['Just Enough Items', 'Jade', 'Create', 'Applied Energistics 2', 'Waystones', 'Farmer’s Delight'],
-        shader: ['Complementary Shaders', 'BSL Shaders', 'Rethinking Voxels'],
-        resourcepack: ['Faithful 32x', 'Bare Bones', 'Sphax PureBDCraft'],
+      const versions = f?.gameVersions.length ? f.gameVersions : q.gameVersion ? [q.gameVersion] : []
+      const loaders = f?.loaders.length ? f.loaders : q.loader ? [q.loader] : []
+      const hits = cfHits(q.kind).filter(
+        (h) =>
+          h.title.toLowerCase().includes(q.query.trim().toLowerCase()) &&
+          (!versions.length || h.gameVersions.some((v) => versions.includes(v))) &&
+          (!loaders.length || !h.loaders.length || h.loaders.some((l) => loaders.includes(l))),
+      )
+      return { hits: hits.slice(q.offset, q.offset + q.limit), total: hits.length, offset: q.offset, limit: q.limit }
+    }
+    case 'curseforge_project': {
+      await sleep(250)
+      const hit = cfProject(args.projectId)
+      if (!hit) throw 'CurseForge doesn’t know this project.'
+      const section = hit.kind === 'shader' ? 'shaders' : hit.kind === 'resourcepack' ? 'texture-packs' : hit.kind === 'datapack' ? 'data-packs' : 'mc-mods'
+      return {
+        ...hit,
+        categories: ['Utility', 'Map and Information'],
+        body: `<h2>${hit.title}</h2><p>A sample <strong>CurseForge</strong> description, in HTML.</p><ul><li>Shows what you look at</li><li>Works with most mods</li></ul>`,
+        gallery: [],
+        links: { source: 'https://github.com/example/project', issues: null, wiki: null, discord: null, donation: [] },
+        versionCount: 0,
+        source: 'curseforge',
+        pageUrl: `https://www.curseforge.com/minecraft/${section}/${hit.slug}`,
       }
-      const all = (names[q.kind] ?? []).map((title, i): ProjectHit => ({
-        id: String(238222 + i),
-        slug: title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-        kind: q.kind,
-        title,
-        author: ['mezz', 'Snownee', 'simibubi', 'AE2', 'BlayTheNinth', 'vectorwing'][i % 6],
-        summary: 'A sample result from CurseForge.',
-        iconUrl: null,
-        categories: [],
-        downloads: 90_000_000 / (i + 1),
-        follows: 0,
-        updated: daysAgo(i * 3 + 1),
-        published: daysAgo(i * 3 + 1),
-        gameVersions: ['1.21.1', '1.20.1'],
-        loaders: q.kind === 'mod' ? ['fabric', 'neoforge'] : [],
-        clientSide: 'unknown',
-        serverSide: 'unknown',
-        license: null,
-        featuredImage: null,
-      }))
-      const hits = all.filter((h) => h.title.toLowerCase().includes(q.query.trim().toLowerCase()))
-      return { hits, total: hits.length, offset: q.offset, limit: q.limit }
+    }
+    case 'curseforge_installed':
+      return structuredClone(cfInstalledOf(args.instanceId))
+    case 'curseforge_files': {
+      await sleep(250)
+      return cfFiles(args.projectId).filter((f) => !args.gameVersion || f.gameVersions.includes(args.gameVersion))
+    }
+    case 'curseforge_plan':
+      await sleep(300)
+      return cfPlan(args.instanceId, args.projectId, args.fileId)
+    case 'curseforge_install': {
+      const plan = cfPlan(args.instanceId, args.projectId, args.fileId)
+      await runTask(`install:${args.instanceId}`, [['Checking dependencies', 2], ['Downloading content', 12]], 60)
+      const list = cfInstalledOf(args.instanceId)
+      for (const item of plan.items.filter((i) => !i.manualUrl)) {
+        const at = list.findIndex((x) => x.projectId === item.projectId)
+        if (at >= 0) list.splice(at, 1)
+        list.push({ projectId: item.projectId, fileId: item.fileId, fileName: item.fileName, folder: args.kind === 'shader' ? 'shaderpacks' : args.kind === 'resourcepack' ? 'resourcepacks' : 'mods', fromCurseforge: true })
+        if (args.kind === 'mod') {
+          const mods = modsOf(args.instanceId)
+          if (!mods.some((m) => m.fileName === item.fileName)) mods.push({ fileName: item.fileName, enabled: true, size: item.size, name: item.title, version: '1.0.0', description: '', authors: [] })
+        }
+      }
+      return plan
+    }
+    case 'curseforge_install_datapack': {
+      await sleep(700)
+      const hit = cfHits('datapack').find((h) => h.id === args.projectId)
+      return `${hit?.slug ?? 'datapack'}.zip`
     }
     case 'search_projects': {
       const q: ProjectQuery = args.query
@@ -804,6 +958,9 @@ export async function handle(command: string, args: Record<string, any>): Promis
       if (q.environment === 'server') hits = hits.filter((p) => p.serverSide !== 'unsupported')
       if (q.gameVersion) hits = hits.filter((p) => p.gameVersions.some((g) => g === q.gameVersion))
       if (q.loader && q.kind === 'mod') hits = hits.filter((p) => p.loaders.includes(q.loader!) || (q.loader === 'quilt' && p.loaders.includes('fabric')))
+      const f = args.filters as SearchFilters | null
+      if (f?.gameVersions.length) hits = hits.filter((p) => p.gameVersions.some((g) => f.gameVersions.includes(g)))
+      if (f?.loaders.length && (q.kind === 'mod' || q.kind === 'modpack')) hits = hits.filter((p) => p.loaders.some((l) => f.loaders.includes(l)))
       const key: Record<string, (p: CatalogEntry) => number> = { downloads: (p) => -p.downloads, follows: (p) => -p.follows, newest: (p) => -Date.parse(p.published), updated: (p) => -Date.parse(p.updated), relevance: () => 0 }
       hits = [...hits].sort((a, b) => key[q.sort](a) - key[q.sort](b))
       return { hits: hits.slice(q.offset, q.offset + q.limit).map(hit), total: hits.length * 37, offset: q.offset, limit: q.limit }
@@ -931,7 +1088,15 @@ export async function handle(command: string, args: Record<string, any>): Promis
       let all = paged ? morePacks(id, PACKS[id], 45) : PACKS[id]
       if (q) all = all.filter((d) => `${d.name} ${d.summary} ${d.authors.join(' ')}`.toLowerCase().includes(q))
       all = [...all].sort(SORTERS[args.sort as PackSort] ?? SORTERS.relevance)
-      return { hits: (paged ? all.slice(args.offset, args.offset + 20) : all).map((d) => packSummary(id, d)), total: paged ? all.length : null }
+      let summaries = all.map((d) => packSummary(id, d))
+      // CurseForge filters itself
+      const f = args.filters as SearchFilters | null
+      if (id === 'curseforge' && f) {
+        summaries = summaries.filter(
+          (p) => (!f.gameVersions.length || p.minecraft.some((v) => f.gameVersions.includes(v))) && (!f.loaders.length || p.loaders.some((l) => f.loaders.includes(l))),
+        )
+      }
+      return { hits: paged ? summaries.slice(args.offset, args.offset + 20) : summaries, total: paged ? summaries.length : null }
     }
     case 'pack_details': {
       const { id, def } = findPack(args.provider, args.id)
@@ -962,6 +1127,34 @@ export async function handle(command: string, args: Record<string, any>): Promis
         released: daysAgo(def.daysOld + i * 21),
       }))
       return versions
+    }
+    case 'install_extras': {
+      // like the backend: after the modpack, if one is installing
+      while (Object.keys(activeTasks).includes(`modpack:${args.instanceId}`)) await sleep(300)
+      const items = (args.items ?? []) as { source: string; projectId: string; kind: string; title: string }[]
+      if (!items.length) return { installed: 0, missing: [], pendingDatapacks: 0 }
+      await runTask(`install:${args.instanceId}`, [['Finding versions', items.length], ['Downloading content', items.length * 3]], 60)
+      const mods = modsOf(args.instanceId)
+      for (const it of items.filter((i) => i.kind === 'mod')) {
+        const fileName = `${it.projectId}-mock.jar`
+        if (!mods.some((m) => m.fileName === fileName)) mods.push({ fileName, enabled: true, size: 400_000, name: it.title, version: '1.0.0', description: '', authors: [] })
+      }
+      return { installed: items.filter((i) => i.kind !== 'datapack').length, missing: [], pendingDatapacks: items.filter((i) => i.kind === 'datapack').length }
+    }
+    case 'world_datapacks':
+      return []
+    case 'change_pack_version': {
+      const target = instances.find((i) => i.id === args.instanceId)
+      await runTask(`modpack:${args.instanceId}`, [['Preparing the modpack', 3], ['Installing the new version', 14]], 60)
+      if (target?.modpack) target.modpack = { ...target.modpack, versionId: args.versionId, versionNumber: String(args.versionId) }
+      return
+    }
+    case 'pack_contents': {
+      await sleep(350)
+      // Modrinth packs open the project page with a catalog slug or id; the other sources' packs are in PACKS
+      if (args.provider !== 'modrinth') findPack(args.provider, args.packId)
+      const cf = (['mod', 'resourcepack', 'shader'] as ProjectKind[]).flatMap((k) => cfHits(k).slice(0, k === 'mod' ? 8 : 1))
+      return mockPackContents(args.provider, args.packId, String(args.versionId), catalog, cf)
     }
     case 'pack_optional_mods': {
       await sleep(150)

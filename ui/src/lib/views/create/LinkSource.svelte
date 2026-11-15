@@ -100,6 +100,7 @@
 </script>
 
 <div class="link">
+  <div class="main">
   <h1 class="text-title">{t('Join with a link')}</h1>
   <p class="text-body muted lead">{t('Paste a pack link to see what is inside before anything downloads.')}</p>
 
@@ -169,11 +170,14 @@
         <Button variant="primary" size="lg" icon="download" busy={installing} disabled={installing || !name.trim() || !chosen.length} onclick={install}>{t('Install pack')}</Button>
       </div>
     </section>
-  {:else if !text.trim()}
+  {/if}
+  </div>
+  <!-- beside the form: the field stays the first thing, the explanation doesn't push the preview down -->
+  <aside class="help">
     <Banner tone="info" icon="info" title={t('Where do links come from?')}>
       {t('From the Share button on any instance. People post them on Discord, in a README or by message. Anyone with the link can install the pack.')}
     </Banner>
-  {/if}
+  </aside>
 </div>
 
 <style>
@@ -182,11 +186,24 @@
     min-height: 0;
     overflow: auto;
     display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: var(--space-4) var(--space-6);
+    padding: var(--space-6);
+    box-sizing: border-box;
+  }
+  .main {
+    flex: 999 1 480px;
+    max-width: 760px;
+    min-width: 0;
+    display: flex;
     flex-direction: column;
     gap: var(--space-4);
-    padding: var(--space-6);
-    max-width: 760px;
-    box-sizing: border-box;
+  }
+  /* next to the form when there is room, under it otherwise */
+  .help {
+    flex: 1 1 280px;
+    max-width: 380px;
   }
   h1,
   h2,

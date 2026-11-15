@@ -7,7 +7,7 @@ export type Run = readonly [x: number, y: number, w: number];
 /** A run with a colour: [x, y, width, index into the palette]. */
 export type ColorRun = readonly [x: number, y: number, w: number, c: number];
 
-export type IconName = "play" | "stop" | "plus" | "search" | "library" | "discover" | "servers" | "captures" | "accounts" | "settings" | "folder" | "download" | "import" | "update" | "check" | "info" | "warning" | "error" | "close" | "wrench" | "trash" | "copy" | "terminal" | "clock" | "cube" | "mods" | "memory" | "key" | "globe" | "offline" | "minimize" | "maximize" | "chevron-right" | "chevron-down" | "more";
+export type IconName = "play" | "stop" | "plus" | "search" | "library" | "discover" | "servers" | "captures" | "accounts" | "settings" | "folder" | "download" | "import" | "update" | "check" | "info" | "warning" | "error" | "close" | "wrench" | "trash" | "copy" | "terminal" | "clock" | "cube" | "mods" | "memory" | "key" | "globe" | "offline" | "minimize" | "maximize" | "chevron-left" | "chevron-right" | "chevron-down" | "more";
 export type Status = 'ready' | 'download' | 'installing' | 'running' | 'crashed' | 'update' | 'online' | 'offline' | 'disabled';
 export type Motif = "block" | "pickaxe" | "sword" | "tree" | "island" | "house" | "castle" | "gear" | "rocket" | "potion" | "gem" | "heart" | "skull" | "flame" | "snowflake" | "fish" | "mushroom" | "book" | "map" | "star";
 export type Ground = "moss" | "sky" | "lagoon" | "amber" | "brick" | "amethyst" | "rose" | "sand" | "slate" | "night";
@@ -56,13 +56,14 @@ export const ICONS: Record<IconName, readonly IconShape[]> = {
   offline: [{ d: "M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0z" }, { d: "M5.6 5.6l12.8 12.8" }],
   minimize: [{ d: "M5 12h14" }],
   maximize: [{ d: "M5 5h14v14h-14z" }],
+  "chevron-left": [{ d: "M15 5l-7 7 7 7" }],
   "chevron-right": [{ d: "M9 5l7 7-7 7" }],
   "chevron-down": [{ d: "M5 9l7 7 7-7" }],
   more: [{ d: "M4 10.5h3v3h-3z", fill: true }, { d: "M10.5 10.5h3v3h-3z", fill: true }, { d: "M17 10.5h3v3h-3z", fill: true }],
 };
 export const ICON_NAMES = Object.keys(ICONS) as IconName[];
 /** Directional icons that flip in right-to-left layouts. */
-export const MIRRORED: Partial<Record<IconName, true>> = { 'chevron-right': true };
+export const MIRRORED: Partial<Record<IconName, true>> = { 'chevron-left': true, 'chevron-right': true };
 
 /* Logo: 16 x 16 mark and a 7 pixel tall wordmark */
 export const MARK: { c: readonly string[]; r: readonly ColorRun[] } = {

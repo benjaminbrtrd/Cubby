@@ -122,7 +122,7 @@ impl TechnicClient {
     // plumbing
 
     /// GET and decode; 404 becomes `Error::NotFound`.
-    async fn get<T: DeserializeOwned>(&self, url: &Url, what: &str) -> Result<T> {
+    pub(crate) async fn get<T: DeserializeOwned>(&self, url: &Url, what: &str) -> Result<T> {
         let response = self.http.client().get(url.clone()).send().await.map_err(|e| Error::http(url.as_str(), e))?;
         let status = response.status().as_u16();
         if status == 404 {
@@ -137,7 +137,7 @@ impl TechnicClient {
 }
 
 /// Slugs and builds go into a URL path: nothing that could change the path is accepted.
-fn check_segment(s: &str) -> Result<&str> {
+pub(crate) fn check_segment(s: &str) -> Result<&str> {
     if s.is_empty() || s == "." || s == ".." || s.len() > 200 || s.chars().any(|c| c.is_control() || c == '/' || c == '\\') {
         return Err(Error::Other(format!("\"{s}\" isn't a valid pack or build name.")));
     }

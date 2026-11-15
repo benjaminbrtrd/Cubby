@@ -4,6 +4,8 @@ mod cf_resources;
 mod commands;
 mod dto;
 mod events;
+mod extras;
+mod origins;
 mod packs;
 mod state;
 mod update;
@@ -60,6 +62,7 @@ pub fn run() {
             commands::instances::create_desktop_shortcut,
             commands::instances::list_versions,
             commands::instances::list_loader_versions,
+            commands::instances::loader_game_versions,
             commands::content::list_mods,
             commands::content::set_mod_enabled,
             commands::content::remove_mod,
@@ -113,6 +116,16 @@ pub fn run() {
             commands::discover::apply_updates,
             cf_resources::curseforge_search,
             cf_resources::curseforge_categories,
+            cf_resources::curseforge_installed,
+            cf_resources::curseforge_files,
+            cf_resources::curseforge_project,
+            cf_resources::datapack_sources,
+            cf_resources::curseforge_plan,
+            cf_resources::curseforge_install,
+            cf_resources::curseforge_install_datapack,
+            extras::install_extras,
+            extras::apply_world_datapacks_now,
+            extras::world_datapacks,
             update::check_update,
             update::download_update,
             update::install_update,
@@ -122,9 +135,11 @@ pub fn run() {
             commands::content::delete_world,
             packs::pack_providers,
             packs::pack_search,
+            packs::change_pack_version,
             packs::pack_details,
             packs::pack_versions,
             packs::pack_optional_mods,
+            packs::pack_contents,
             packs::install_pack,
             packs::pick_pack_file,
             packs::inspect_pack_file,

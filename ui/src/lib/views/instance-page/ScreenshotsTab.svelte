@@ -141,7 +141,7 @@
 
 </script>
 
-<div class="ip-body" role="tabpanel" id="instance-panel" aria-label={t('Screenshots')}>
+<div class="ip-body" data-keep-scroll role="tabpanel" id="instance-panel" aria-label={t('Screenshots')}>
   <div class="toolbar">
     <div class="toolbar__title">
       <h2 class="text-heading">{data.screenshots ? plural(shots.length, 'screenshot', 'screenshots') : t('Screenshots')}</h2>

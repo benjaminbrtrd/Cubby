@@ -113,7 +113,7 @@
   {/if}
 {/snippet}
 
-<div class="ip-body" role="tabpanel" id="instance-panel" aria-label={t('Worlds')}>
+<div class="ip-body" data-keep-scroll role="tabpanel" id="instance-panel" aria-label={t('Worlds')}>
   <div class="toolbar">
     <h2 class="text-heading">{data.worlds ? plural(worlds.length, 'world', 'worlds') : t('Worlds')}</h2>
     {#if worlds.length}<span class="text-small muted">{t('{n} in all', { n: bytes(total) })}</span>{/if}

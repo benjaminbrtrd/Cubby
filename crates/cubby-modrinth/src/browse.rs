@@ -21,10 +21,16 @@ const PACK_LOADERS: &[&str] = &["minecraft", "iris", "optifine", "canvas", "vani
 /// Modrinth search facets for a query: an AND of OR-groups.
 pub fn facets(q: &SearchQuery) -> Vec<Vec<String>> {
     let mut out = vec![vec![format!("project_type:{}", q.kind.as_str())]];
-    if let Some(version) = q.game_version.as_deref().filter(|v| !v.is_empty()) {
+    let versions: Vec<&str> = q.game_versions.iter().map(|v| v.trim()).filter(|v| !v.is_empty()).collect();
+    if !versions.is_empty() {
+        out.push(versions.iter().map(|v| format!("versions:{v}")).collect());
+    } else if let Some(version) = q.game_version.as_deref().filter(|v| !v.is_empty()) {
         out.push(vec![format!("versions:{version}")]);
     }
-    if matches!(q.kind, ProjectKind::Mod | ProjectKind::Modpack) {
+    let loaders: Vec<&str> = q.loaders.iter().map(|l| l.trim()).filter(|l| !l.is_empty() && *l != "vanilla").collect();
+    if !loaders.is_empty() && matches!(q.kind, ProjectKind::Mod | ProjectKind::Modpack) {
+        out.push(loaders.iter().map(|l| format!("categories:{l}")).collect());
+    } else if matches!(q.kind, ProjectKind::Mod | ProjectKind::Modpack) {
         // A Quilt instance runs Fabric mods too; a modpack must be for the loader itself.
         let loaders = match q.kind {
             ProjectKind::Mod => mod_loaders(q.loader.as_deref()),
@@ -100,7 +106,7 @@ pub(crate) fn project_from_api(p: api::Project, author: String) -> Project {
     categories.extend(p.additional_categories.iter().filter(|c| !p.categories.contains(c)).cloned());
     let mut gallery = p.gallery.clone();
     gallery.sort_by_key(|g| (!g.featured, g.ordering));
-    let featured_image = gallery.first().map(|g| g.url.clone());
+    let featured_image = gallery.first().map(|g| full_url(g).to_owned());
     let link = |u: &Option<String>| u.clone().filter(|u| !u.trim().is_empty());
     Project {
         hit: ProjectHit {
@@ -125,7 +131,11 @@ pub(crate) fn project_from_api(p: api::Project, author: String) -> Project {
         },
         gallery: gallery
             .into_iter()
-            .map(|g| GalleryImage { url: g.url, title: g.title, description: g.description, featured: g.featured })
+            .map(|g| {
+                let url = full_url(&g).to_owned();
+                let thumb_url = Some(g.url).filter(|t| !t.is_empty() && *t != url);
+                GalleryImage { url, thumb_url, title: g.title, description: g.description, featured: g.featured }
+            })
             .collect(),
         links: Links {
             source: link(&p.source_url),
@@ -289,6 +299,11 @@ impl Modrinth {
     }
 }
 
+/// The uploaded image: Modrinth's `url` is a copy 350 px wide.
+fn full_url(g: &crate::api::GalleryItem) -> &str {
+    if g.raw_url.is_empty() { &g.url } else { &g.raw_url }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -299,12 +314,30 @@ mod tests {
             kind,
             game_version: None,
             loader: None,
+            game_versions: Vec::new(),
+            loaders: Vec::new(),
             categories: Vec::new(),
             environment: None,
             sort: Sort::Relevance,
             offset: 0,
             limit: 20,
         }
+    }
+
+    #[test]
+    fn several_versions_and_loaders_match_any_of_them() {
+        let mut q = query(ProjectKind::Modpack);
+        q.game_version = Some("1.21.1".into());
+        q.game_versions = vec!["1.20.1".into(), " ".into(), "1.21.1".into()];
+        q.loaders = vec!["fabric".into(), "neoforge".into()];
+        assert_eq!(
+            facets(&q),
+            vec![vec!["project_type:modpack"], vec!["versions:1.20.1", "versions:1.21.1"], vec!["categories:fabric", "categories:neoforge"]]
+        );
+        // packs have no loader
+        let mut q = query(ProjectKind::ResourcePack);
+        q.loaders = vec!["fabric".into()];
+        assert_eq!(facets(&q), [["project_type:resourcepack"]]);
     }
 
     #[test]
@@ -395,7 +428,7 @@ mod tests {
             "categories":["adventure"],"additional_categories":["magic","adventure"],"source_url":"https://src","issues_url":"",
             "donation_urls":[{"id":"patreon","platform":"Patreon","url":"https://patreon"}],"followers":5,
             "license":{"id":"MIT","name":"MIT License","url":null},"versions":["a","b","c"],
-            "gallery":[{"url":"https://g1","featured":false,"ordering":0},{"url":"https://g2","featured":true,"title":"Main","ordering":1}]}"##,
+            "gallery":[{"url":"https://g1","featured":false,"ordering":0},{"url":"https://g2_350.webp","raw_url":"https://g2.png","featured":true,"title":"Main","ordering":1}]}"##,
         )
         .unwrap();
         let members: Vec<api::TeamMember> = serde_json::from_str(
@@ -408,8 +441,10 @@ mod tests {
         assert_eq!(p.hit.categories, ["adventure", "magic"]);
         assert_eq!(p.hit.license.as_deref(), Some("MIT"));
         assert_eq!(p.version_count, 3);
-        assert_eq!(p.gallery[0].url, "https://g2");
-        assert_eq!(p.hit.featured_image.as_deref(), Some("https://g2"));
+        // full size for the banner and the viewer, the 350 px copy for thumbnails
+        assert_eq!((p.gallery[0].url.as_str(), p.gallery[0].thumb_url.as_deref()), ("https://g2.png", Some("https://g2_350.webp")));
+        assert_eq!(p.hit.featured_image.as_deref(), Some("https://g2.png"));
+        assert_eq!((p.gallery[1].url.as_str(), p.gallery[1].thumb_url.as_deref()), ("https://g1", None));
         assert_eq!(p.links.source.as_deref(), Some("https://src"));
         assert_eq!(p.links.issues, None);
         assert_eq!(p.links.donation, [Donation { platform: "Patreon".into(), url: "https://patreon".into() }]);

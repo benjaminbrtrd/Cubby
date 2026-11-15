@@ -295,7 +295,7 @@
   const game = $derived(app.settings?.game)
 </script>
 
-<div class="ip-body" role="tabpanel" id="instance-panel" aria-label={t('Settings')}>
+<div class="ip-body" data-keep-scroll role="tabpanel" id="instance-panel" aria-label={t('Settings')}>
   <div class="cols">
     <div class="col">
       <section class="block" aria-labelledby="is-general">

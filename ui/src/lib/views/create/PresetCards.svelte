@@ -11,7 +11,8 @@
   import { t } from '../../i18n.svelte'
   import { addressProblem, discoverPerformanceMods, findNewest, hostOf, presetSpec, type Newest, type Preset } from './presets'
 
-  let { align = 'center' }: { align?: 'center' | 'start' } = $props()
+  /** `grid`: equal columns that line up with a grid of the same width (the wizard's Start step). */
+  let { align = 'center' }: { align?: 'center' | 'start' | 'grid' } = $props()
 
   let newest = $state<Newest | null>(null)
   let busy = $state<Preset | null>(null)
@@ -60,7 +61,7 @@
   }
 </script>
 
-<div class={['presets', align === 'start' && 'is-start']}>
+<div class={['presets', align === 'start' && 'is-start', align === 'grid' && 'is-grid']}>
   <div class="preset is-main">
     <div class="preset__head">
       <InstanceIcon motif="block" ground="moss" size={52} raised />
@@ -145,6 +146,14 @@
   }
   .presets.is-start {
     justify-content: flex-start;
+  }
+  .presets.is-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  }
+  .presets.is-grid .preset {
+    width: auto;
+    min-width: 0;
   }
   .preset {
     width: 320px;

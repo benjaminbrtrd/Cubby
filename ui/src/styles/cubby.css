@@ -109,6 +109,11 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f
 .cb-titlebar { display: flex; align-items: stretch; height: var(--size-titlebar); color: var(--ink); background: var(--bg-chrome); border-bottom: var(--border-chrome) solid var(--edge); user-select: none; }
 .cb-titlebar__brand { display: flex; align-items: center; flex: none; width: 200px; padding-inline: var(--space-4); }
 .cb-titlebar__brand .cb-logo { pointer-events: none; }
+.cb-titlebar__nav { display: flex; gap: 2px; margin-inline-start: auto; }
+.cb-titlebar__navbtn { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; color: var(--ink-muted); background: transparent; border: 0; cursor: pointer; }
+.cb-titlebar__navbtn:hover:not(:disabled) { color: var(--ink); background: var(--surface); }
+.cb-titlebar__navbtn:focus-visible { outline: 2px solid transparent; box-shadow: var(--focus-ring); }
+.cb-titlebar__navbtn:disabled { color: var(--ink-disabled); opacity: 0.45; cursor: default; }
 /* macOS: room for the window's own buttons on the left */
 .cb-titlebar--mac .cb-titlebar__brand { width: 260px; padding-inline-start: 84px; }
 .cb-titlebar__search { display: flex; align-items: center; gap: var(--space-2); align-self: center; width: min(440px, 42%); height: 32px; margin-inline: auto; padding: 0 var(--space-1) 0 var(--space-3); color: var(--ink-muted); background: var(--field); border: var(--border-block) solid var(--outline); box-shadow: var(--shadow-well); cursor: pointer; text-align: start; }
@@ -318,6 +323,8 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f
 .cb-mod__body { flex: 1; min-width: 0; }
 .cb-mod__head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px var(--space-2); }
 .cb-mod__version, .cb-mod__authors { color: var(--ink-muted); }
+.cb-mod__meta { display: inline-flex; align-items: center; align-self: center; gap: var(--space-3); margin-inline-start: auto; }
+.cb-mod__kind { display: inline-flex; align-items: center; gap: var(--space-1); color: var(--ink-muted); white-space: nowrap; }
 .cb-mod__desc { margin: 2px 0 0; color: var(--ink-muted); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .cb-mod__flags { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); margin-top: var(--space-2); }
 .cb-mod__warning { display: inline-flex; align-items: center; gap: var(--space-1); font-weight: 600; color: var(--gold-text); }
@@ -398,19 +405,20 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f
 /* Dialog */
 .cb-dialog-layer { position: fixed; inset: 0; z-index: var(--layer-dialog); display: flex; align-items: center; justify-content: center; padding: var(--space-6); background: var(--scrim); }
 .cb-dialog-layer.is-inline { position: relative; inset: auto; z-index: auto; min-height: 100%; }
-.cb-dialog { display: flex; flex-direction: column; width: min(480px, 100%); max-height: calc(100vh - 48px); overflow: auto; color: var(--ink); background: var(--surface); border: var(--border-block) solid var(--edge); box-shadow: var(--shadow-float); }
+.cb-dialog { display: flex; flex-direction: column; width: min(480px, 100%); max-height: calc(100vh - 48px); overflow: hidden; color: var(--ink); background: var(--surface); border: var(--border-block) solid var(--edge); box-shadow: var(--shadow-float); }
 .cb-dialog--wide { width: min(720px, 100%); }
-.cb-dialog__head { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4); background: var(--bg-chrome); border-bottom: var(--border-block) solid var(--edge); }
+.cb-dialog__head { flex: none; display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4); background: var(--bg-chrome); border-bottom: var(--border-block) solid var(--edge); }
 .cb-dialog__slot { display: flex; align-items: center; justify-content: center; flex: none; width: 36px; height: 36px; color: var(--ink); background: var(--surface-hover); border: var(--border-block) solid var(--edge); }
 .cb-dialog__slot--danger { color: var(--on-redstone); background: var(--redstone); }
 .cb-dialog__slot--warning { color: var(--on-gold); background: var(--gold); }
 .cb-dialog__slot--info { color: var(--on-diamond); background: var(--diamond); }
 .cb-dialog__slot--success { color: var(--on-grass); background: var(--grass); }
 .cb-dialog__title { flex: 1; min-width: 0; margin: 0; }
-.cb-dialog__body { padding: var(--space-4); }
+/* only the body scrolls: the title bar and the actions stay in view */
+.cb-dialog__body { flex: 1 1 auto; min-height: 0; overflow: auto; padding: var(--space-4); }
 .cb-dialog__body p { margin: 0 0 var(--space-3); }
 .cb-dialog__body p:last-child { margin-bottom: 0; }
-.cb-dialog__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-3); padding: var(--space-4); border-top: var(--border-hair) solid var(--line); }
+.cb-dialog__actions { flex: none; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-3); padding: var(--space-4); border-top: var(--border-hair) solid var(--line); }
 
 /* Reduced motion: blocks still move by position, but nothing animates */
 @media (prefers-reduced-motion: reduce) {

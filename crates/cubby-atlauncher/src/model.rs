@@ -191,6 +191,26 @@ pub struct AtlMod {
     /// Installed on the client. Like Prism, a missing flag means "no".
     #[serde(default, deserialize_with = "nullable")]
     pub client: bool,
+    /// The mod's web page.
+    #[serde(default)]
+    pub website: Option<String>,
+    #[serde(default, deserialize_with = "nullable")]
+    pub authors: Vec<String>,
+    /// The CurseForge project of the mod, when it comes from there.
+    #[serde(default, rename = "curse_id", alias = "curseForgeProjectId", deserialize_with = "lenient_id")]
+    pub curse_id: Option<u64>,
+    #[serde(default, rename = "curse_file_id", alias = "curseForgeFileId", deserialize_with = "lenient_id")]
+    pub curse_file_id: Option<u64>,
+}
+
+/// An id that may be a number, a string or null; 0 and anything unreadable read as `None`.
+fn lenient_id<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Option<u64>, D::Error> {
+    Ok(match Option::<serde_json::Value>::deserialize(deserializer)? {
+        Some(serde_json::Value::Number(n)) => n.as_u64(),
+        Some(serde_json::Value::String(s)) => s.trim().parse().ok(),
+        _ => None,
+    }
+    .filter(|id| *id != 0))
 }
 
 /// One entry of `libraries`.

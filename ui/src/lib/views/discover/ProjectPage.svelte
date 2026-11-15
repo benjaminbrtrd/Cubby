@@ -1,28 +1,53 @@
-<!-- A Modrinth project: one page for mods, modpacks, shader packs and resource packs, with the install
-     panel on the side. Everything shown comes from Modrinth or from the instance; nothing is estimated.
+<!-- A Modrinth or CurseForge project: one page for mods, modpacks, shader packs, resource packs and datapacks,
+     with the install panel on the side. Everything shown comes from Modrinth or from the instance; nothing is estimated.
      Its parts live in ./project: the header, one component per tab and the side panel. -->
 <script lang="ts">
+  import { untrack } from 'svelte'
   import { t } from '../../i18n.svelte'
   import { api } from '../../api'
   import { Banner, Button, Icon, Tabs } from '../../cubby'
   import { num } from '../../format'
   import { app } from '../../state.svelte'
-  import type { Project, ProjectKind, ProjectVersion } from '../../types'
+  import type { CfFile, Project, ProjectKind, ProjectVersion } from '../../types'
   import { KINDS, bestVersion, fits } from './discover'
   import ChangelogTab from './project/ChangelogTab.svelte'
   import DependenciesTab from './project/DependenciesTab.svelte'
   import DescriptionTab from './project/DescriptionTab.svelte'
   import GalleryTab from './project/GalleryTab.svelte'
   import ProjectAside from './project/ProjectAside.svelte'
+  import WizardAside from '../create/wizard/WizardAside.svelte'
   import ProjectHeader from './project/ProjectHeader.svelte'
   import VersionsTab from './project/VersionsTab.svelte'
+  import PackContentsList from './PackContentsList.svelte'
+  import { loadPackContents } from './packContents'
 
   interface Props {
     idOrSlug: string
     kind: ProjectKind
+    /** A CurseForge project (`idOrSlug` is its id). */
+    source?: 'curseforge'
   }
 
-  let { idOrSlug, kind: routeKind }: Props = $props()
+  let { idOrSlug, kind: routeKind, source }: Props = $props()
+  const cf = $derived(source === 'curseforge')
+
+  /** A CurseForge file in the shape of a Modrinth version, for the Versions tab. */
+  function cfVersion(f: CfFile): ProjectVersion {
+    return {
+      id: f.id,
+      projectId: idOrSlug,
+      name: f.name,
+      versionNumber: f.name,
+      channel: f.channel,
+      gameVersions: f.gameVersions,
+      loaders: f.loaders,
+      published: f.released ?? '',
+      downloads: f.downloads,
+      changelog: '',
+      files: [{ url: '', fileName: f.fileName, size: f.size ?? 0, primary: true, sha1: '' }],
+      dependencies: [],
+    }
+  }
 
   function message(e: unknown): string {
     return typeof e === 'string' ? e : e instanceof Error ? e.message : JSON.stringify(e)
@@ -34,6 +59,8 @@
   let versions = $state<ProjectVersion[] | null>(null)
   let versionsError = $state<string | null>(null)
   let tries = $state(0)
+  /** A CurseForge project's files (newest first). */
+  let cfFiles = $state<CfFile[] | null>(null)
 
   $effect(() => {
     const id = idOrSlug
@@ -41,6 +68,29 @@
     let stale = false
     error = null
     versionsError = null
+    if (cf) {
+      api
+        .curseforgeProject(id, routeKind)
+        .then((p) => {
+          if (!stale) project = p
+        })
+        .catch((e) => {
+          if (!stale) error = message(e)
+        })
+      api
+        .curseforgeFiles(id, null)
+        .then((list) => {
+          if (stale) return
+          cfFiles = list
+          versions = list.map(cfVersion)
+        })
+        .catch((e) => {
+          if (!stale) versionsError = message(e)
+        })
+      return () => {
+        stale = true
+      }
+    }
     api
       .getProject(id)
       .then((p) => {
@@ -63,16 +113,22 @@
   })
 
   // Modrinth calls most datapacks "mod" projects: a page opened as a datapack stays one.
-  const kind = $derived(routeKind === 'datapack' ? 'datapack' : (project?.kind ?? routeKind))
+  const kind = $derived(routeKind === 'datapack' || cf ? routeKind : (project?.kind ?? routeKind))
   const words = $derived(KINDS[kind])
+  /** The name in the breadcrumb: the project's, else the one it was opened with; never a raw id. After an
+   * error, a Modrinth slug still reads well, a CurseForge id doesn't. */
+  const crumbTitle = $derived(project?.title ?? app.projectTitle(idOrSlug) ?? (error ? (cf ? t('CurseForge project') : idOrSlug) : null))
   const target = $derived(kind === 'modpack' ? undefined : app.target)
 
   $effect(() => {
     if (target) void app.loadSources(target.id)
+    if (target && cf && kind !== 'datapack') void app.loadCfInstalled(target.id)
   })
 
   /** The version shown in the install panel (null = the best one for the target). */
-  let versionId = $state<string | null>(null)
+  // Back to this page shows it as it was left: the version and the tab picked.
+  let versionId = $state<string | null>(untrack(() => app.recall<string | null>('versionId') ?? null))
+  $effect(() => app.keep('versionId', versionId))
   const best = $derived(versions ? bestVersion(versions, kind, target) : undefined)
   const chosen = $derived(versions?.find((v) => v.id === versionId) ?? best ?? versions?.[0])
   const deps = $derived(chosen?.dependencies ?? [])
@@ -81,18 +137,49 @@
   let onlyFits = $state(true)
   const listed = $derived(versions ? (onlyFits && target ? versions.filter((v) => fits(v, kind, target)) : versions) : [])
 
-  type Tab = 'description' | 'gallery' | 'versions' | 'changelog' | 'dependencies'
-  let tab = $state<Tab>('description')
+  /** How many files the chosen version of a modpack installs, for its tab (null until known). */
+  let contentCount = $state<number | null>(null)
+  $effect(() => {
+    const v = kind === 'modpack' ? chosen?.id : undefined
+    const id = project?.id
+    const provider = cf ? 'curseforge' : 'modrinth'
+    contentCount = null
+    if (!v || !id) return
+    let stale = false
+    loadPackContents(provider, id, v)
+      .then((c) => {
+        if (!stale && !c.unavailable) contentCount = c.items.length
+      })
+      .catch(() => {})
+    return () => {
+      stale = true
+    }
+  })
+
+  type Tab = 'description' | 'gallery' | 'contents' | 'versions' | 'changelog' | 'dependencies'
+  let tab = $state<Tab>(untrack(() => app.recall<Tab>('tab') ?? 'description'))
+  $effect(() => app.keep('tab', tab))
+  $effect(() => {
+    if (project) app.keep('$title', project.title)
+  })
+  /** Where Back goes when it isn't Discover (an instance's mods, a modpack…): the crumbs lead there. */
+  const from = $derived(app.previous && app.previous.name !== 'discover' ? app.previous : null)
+  /** Opened from the New instance wizard: Add puts it there and goes back, instead of installing it somewhere. */
+  const fromWizard = $derived(app.previous?.name === 'create' && kind !== 'modpack')
   const tabs = $derived.by(() => {
     const out: { id: Tab; label: string; count?: string; panel: string }[] = [{ id: 'description', label: t('Description'), panel: 'pp-description' }]
     if (project?.gallery.length) out.push({ id: 'gallery', label: t('Gallery'), count: num(project.gallery.length), panel: 'pp-gallery' })
+    if (kind === 'modpack') out.push({ id: 'contents', label: t('Content'), count: contentCount === null ? undefined : num(contentCount), panel: 'pp-contents' })
     out.push({ id: 'versions', label: t('Versions'), count: project ? num(Math.max(project.versionCount, versions?.length ?? 0)) : undefined, panel: 'pp-versions' })
+    if (cf) return out
     out.push({ id: 'changelog', label: t('Changelog'), panel: 'pp-changelog' })
     if (kind === 'mod') out.push({ id: 'dependencies', label: t('Dependencies'), count: num(deps.filter((d) => d.kind !== 'embedded').length), panel: 'pp-dependencies' })
     return out
   })
 
   function backToDiscover(sameKind: boolean) {
+    // Discover is the page before: going back keeps its search, filters and scroll
+    if (app.previous?.name === 'discover' && (!sameKind || app.discover.kind === kind)) return app.back()
     if (sameKind && app.discover.kind !== kind) {
       app.discover.kind = kind
       app.discover.categories = []
@@ -105,14 +192,20 @@
 
 <div class="screen">
   <div class="layout">
-    <div class="main">
+    <div class="main" data-keep-scroll>
       <nav aria-label={t('Breadcrumb')}>
         <ol class="crumbs">
-          <li><button type="button" class="link text-body-strong" onclick={() => backToDiscover(false)}>{t('Discover')}</button></li>
+          {#if from}
+            <li><button type="button" class="link text-body-strong back" onclick={() => app.back()}><Icon name="chevron-left" size={18} />{app.routeLabel(from)}</button></li>
+          {:else}
+            <li><button type="button" class="link text-body-strong" onclick={() => backToDiscover(false)}>{t('Discover')}</button></li>
+            <li aria-hidden="true" class="sep"><Icon name="chevron-right" size={18} /></li>
+            <li><button type="button" class="link text-body" onclick={() => backToDiscover(true)}>{words.label}</button></li>
+          {/if}
           <li aria-hidden="true" class="sep"><Icon name="chevron-right" size={18} /></li>
-          <li><button type="button" class="link text-body" onclick={() => backToDiscover(true)}>{words.label}</button></li>
-          <li aria-hidden="true" class="sep"><Icon name="chevron-right" size={18} /></li>
-          <li class="text-body" aria-current="page">{project?.title ?? idOrSlug}</li>
+          <li class="text-body" aria-current="page">
+            {#if crumbTitle}{crumbTitle}{:else}<span class="crumb-sk" aria-hidden="true"></span><span class="cb-visually-hidden">{t('Loading the {one}', { one: words.one })}</span>{/if}
+          </li>
         </ol>
       </nav>
 
@@ -139,6 +232,10 @@
           <DescriptionTab {project} {kind} {target} {chosen} {deps} />
         {:else if tab === 'gallery'}
           <GalleryTab {project} />
+        {:else if tab === 'contents'}
+          <div id="pp-contents" role="tabpanel" aria-label={t('Content')} class="panel">
+            <PackContentsList provider={cf ? 'curseforge' : 'modrinth'} packId={project.id} versionId={chosen?.id ?? null} versionName={chosen?.versionNumber ?? null} loadingVersions={!versions && !versionsError} />
+          </div>
         {:else if tab === 'versions'}
           <VersionsTab
             {kind}
@@ -161,8 +258,10 @@
     </div>
 
     <aside aria-label={t('Install {title}', { title: project?.title ?? '' })}>
-      {#if project}
-        <ProjectAside {project} {kind} {versions} {versionsError} bind:versionId />
+      {#if project && fromWizard}
+        <WizardAside {project} {kind} />
+      {:else if project}
+        <ProjectAside {project} {kind} {versions} {versionsError} {cfFiles} bind:versionId />
       {:else}
         <span class="aside-skeleton" aria-hidden="true"></span>
       {/if}
@@ -305,6 +404,13 @@
   .crumbs .link:hover {
     text-decoration: underline;
   }
+  .crumb-sk {
+    display: inline-block;
+    width: 120px;
+    height: 14px;
+    vertical-align: middle;
+    background: var(--surface);
+  }
   .sep {
     display: flex;
     color: var(--ink-muted);
@@ -345,5 +451,16 @@
       width: 300px;
       padding-inline: var(--space-4);
     }
+  }
+  /* every crumb on the same line: the Back one is a button with an icon, the others plain text */
+  .crumbs > li {
+    display: flex;
+    align-items: center;
+  }
+  .back {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    line-height: 22px;
   }
 </style>
